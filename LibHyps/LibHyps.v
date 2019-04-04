@@ -13,7 +13,7 @@ Ltac revertHyp H := revert H. (* revert is a tactic notation *)
 
 (* revert if subst fails. Never fail, be careful to not use this tactic i n the
    left member of a "+" tactical: *)
-Ltac subst_or_revert H := try (substHyp H + revert H).
+Ltac subst_or_revert H := try first [substHyp H | revert H].
 
 (* A tactic which moves up a hypothesis if it sort is Type or Set.
    These hypothesis are generally less interesting, having them far
@@ -59,7 +59,7 @@ Ltac rename_all_hyps :=
 
 
 (* A full example: *)
-
+(*
 Ltac rename_hyp_2 h th :=
   match th with
   | true = false => fresh "trueEQfalse"
@@ -88,6 +88,7 @@ Proof.
 
   rename_all_hyps.
 *)
+(*
 Lemma foo: forall x y,
     x <= y ->
     x = y ->
