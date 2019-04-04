@@ -5,22 +5,25 @@ hypothesis during a proof.
 
 # Iterator on all hypothesis
 
-- `onAllHyps tac` does `tac H` for each hypothesis `H` of the current goal.
-- `onAllHypsRev tac` does `tac H` for each hypothesis `H` of the
-  current goal. Iteration is done from the oldest to the newest (good
-  for reverting for instance).
+- `onAllHyps tac` does `tac H` for each hypothesis `H` of the current goal. Iteration
+  is done from newest hyps (at the bottom) to oldest.
+- `onAllHypsRev tac` same as `onAllHyps tac` but in reverse order
+  (good for reverting for instance).
 
 # Tactical to apply on each NEW hypothesis
 
-- `tac1 ;; tac2` apply `tac1` to current goal and then `tac2` to each
-  new hypothesis in each subgoal.
-- `tac1 ;!; tac2` apply `tac1` to current goal and then `tac2` to each
-  new hypothesis in each subgoal. From the oldest to the newest.
+- `tac1 ;; tac2` applies `tac1` to current goal and then `tac2` to
+  each new hypothesis in each subgoal (iteration: newest first).
+- `tac1 ;!; tac2` applies `tac1` to current goal and then `tac2` to
+  each new hypothesis in each subgoal (older first).
 
 # Cleaning tactics
 
-- `subst_or_revert H` tries to use H to `subst` some variable and
+- `subst_or_revert H` tries to use `H` to `subst` some variable and
   `revert H` if it fails.
+- `move_up_type H` moves `H` to the top of the goal if it is
+  Type-Sorted (i.e. not in Prop). This is generally a good heuristic
+  to push away non interesting parts of the proof context.
 
 # Specializing a premiss of a hypothesis by its number
 
@@ -44,6 +47,22 @@ tactic allow to rename hypothesis automatically.
 
 - `!!tac` same as `!tac` with lesser priority (less than `;`) to apply
   renaming after a group of chained tactics.
+
+## How to define variants of these tacticals?
+
+Some more example of tacticals performing cleaning and renaming on new
+hypothesis.
+
+```
+(* subst or revert *)
+Tactic Notation (at level 4) "??" tactic4(tac1) :=
+  (tac1 ;; substHyp ;!; revertHyp).
+(* subst or rename or revert *)
+Tactic Notation "!!!" tactic3(Tac) := (Tac ;; substHyp ;!; revert_if_norename ;; autorename).
+(* subst or rename or revert + move up if in (Set or Type). *)
+Tactic Notation (at level 4) "!!!!" tactic4(Tac) :=
+      (Tac ;; substHyp ;!; revert_if_norename ;; autorename ;; move_up_types).
+```
 
 ## How to cstomize the naming scheme
 
