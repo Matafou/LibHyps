@@ -10,7 +10,7 @@ hypothesis during a proof.
 - `onAllHypsRev tac` same as `onAllHyps tac` but in reverse order
   (good for reverting for instance).
 
-# Tactical to apply on each NEW hypothesis
+# Tacticals to apply on each NEW hypothesis
 
 - `tac1 ;; tac2` applies `tac1` to current goal and then `tac2` to
   each new hypothesis in each subgoal (iteration: newest first).
@@ -18,6 +18,10 @@ hypothesis during a proof.
   each new hypothesis in each subgoal (older first).
 
 # Cleaning tactics
+
+This tactics are best used in conjunction with the tacticals above.
+For instance `tac ;; subst_or_revert` allows to have all new
+hypothesis reverted, except the ones that are `subst`able.
 
 - `subst_or_revert H` tries to use `H` to `subst` some variable and
   `revert H` if it fails.
