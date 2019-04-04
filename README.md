@@ -5,8 +5,7 @@ hypothesis during a proof.
 
 # Iterator on all hypothesis
 
-- `onAllHyps tac` does `tac H` for each hypothesis `H` of the current goal. Iteration
-  is done from newest hyps (at the bottom) to oldest.
+- `onAllHyps tac` does `tac H` for each hypothesis `H` of the current goal.
 - `onAllHypsRev tac` same as `onAllHyps tac` but in reverse order
   (good for reverting for instance).
 
