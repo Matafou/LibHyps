@@ -33,7 +33,8 @@ hypothesis reverted, except the ones that are `subst`able.
 
 - `especialize H at n.` create a subgoal to prove the nth dependent
   hypothesis of `H`, creating necessary evars for non unifiable
-  variables.
+  variables. Once proved the subgoal is used to remove the nth
+  hypothesis of `H`.
 
 # Customizable hypothesis auto naming system
 
@@ -51,22 +52,6 @@ tactic allow to rename hypothesis automatically.
 
 - `!!tac` same as `!tac` with lesser priority (less than `;`) to apply
   renaming after a group of chained tactics.
-
-## How to define variants of these tacticals?
-
-Some more example of tacticals performing cleaning and renaming on new
-hypothesis.
-
-```
-(* subst or revert *)
-Tactic Notation (at level 4) "??" tactic4(tac1) :=
-  (tac1 ;; substHyp ;!; revertHyp).
-(* subst or rename or revert *)
-Tactic Notation "!!!" tactic3(Tac) := (Tac ;; substHyp ;!; revert_if_norename ;; autorename).
-(* subst or rename or revert + move up if in (Set or Type). *)
-Tactic Notation (at level 4) "!!!!" tactic4(Tac) :=
-      (Tac ;; substHyp ;!; revert_if_norename ;; autorename ;; move_up_types).
-```
 
 ## How to cstomize the naming scheme
 
@@ -108,3 +93,20 @@ Ltac my_rename_hyp h th :=
 
 Ltac rename_hyp ::= my_rename_hyp.
 ```
+
+## How to define variants of these tacticals?
+
+Some more example of tacticals performing cleaning and renaming on new
+hypothesis.
+
+```
+(* subst or revert *)
+Tactic Notation (at level 4) "??" tactic4(tac1) :=
+  (tac1 ;; substHyp ;!; revertHyp).
+(* subst or rename or revert *)
+Tactic Notation "!!!" tactic3(Tac) := (Tac ;; substHyp ;!; revert_if_norename ;; autorename).
+(* subst or rename or revert + move up if in (Set or Type). *)
+Tactic Notation (at level 4) "!!!!" tactic4(Tac) :=
+      (Tac ;; substHyp ;!; revert_if_norename ;; autorename ;; move_up_types).
+```
+
