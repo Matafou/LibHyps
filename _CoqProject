@@ -1,0 +1,8 @@
+-R LibHyps LibHyps
+
+./LibHyps/LibHypsNaming.v
+./LibHyps/LibHyps.v
+./LibHyps/LibSpecialize.v
+./LibHyps/LibHypsExamples.v
+./LibHyps/LibDecomp.v
+./LibHyps/TacNewHyps.v
