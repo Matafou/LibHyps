@@ -89,8 +89,8 @@ Ltac prefixable h th := prefixable_eq_neq h th.
 (* Add prefix except if not a Prop or if prefixable says otherwise. *)
 Ltac add_prefix h th nme :=
   match type of th with
-  | Prop =>
-    match prefixable h th with
+  | Prop => fresh "h" nme
+   (* match prefixable h th with
     | HypH_ => fresh "h_" nme
     | HypH => fresh "h" nme
     | HypImpl => fresh "h" nme
@@ -99,40 +99,40 @@ Ltac add_prefix h th nme :=
     | HypNeq => fresh "h" nme
     | HypNeg => fresh "h" nme
     | HypNone => nme
-    end
+    end*)
   | _ => nme
   end.
 
 Ltac rename_hyp h ht := fail.
 
-Ltac rename_happ id th :=
+Ltac rename_happ th :=
   match th with
-  | ?f => fresh id f
-  | ?f ?x => fresh id f "_" x
-  | ?f ?x => fresh id f
-  | ?f ?x ?y => fresh id f "_" x "_" y
-  | ?f ?x ?y => fresh id f "_" x
-  | ?f _ _ => fresh id f
-  | ?f ?x ?y ?z => fresh id f "_" x "_" y "_" z
-  | ?f ?x ?y ?z => fresh id f "_" x "_" y
-  | ?f ?x ?y ?z => fresh id f "_" x
-  | ?f _ _ _ => fresh id f
-  | ?f _ ?x ?y ?z => fresh id f "_" x "_" y "_" z
-  | ?f _ ?x ?y ?z => fresh id f "_" x "_" y
-  | ?f _ ?x ?y ?z => fresh id f "_" x
-  | ?f _ _  _  _  => fresh id f
-  | ?f _ _ ?x ?y ?z => fresh id f "_" x "_" y "_" z
-  | ?f _ _ ?x ?y ?z => fresh id f "_" x "_" y
-  | ?f _ _ ?x ?y ?z => fresh id f "_" x
-  | ?f _ _ _  _  _  => fresh id f
-  | ?f _ _ _ ?x ?y ?z => fresh id f "_" x "_" y "_" z
-  | ?f _ _ _ ?x ?y ?z => fresh id f "_" x "_" y
-  | ?f _ _ _ ?x ?y ?z => fresh id f "_" x
-  | ?f _ _ _ _  _  _  => fresh id f
-  | ?f _ _ _ _ ?x ?y ?z => fresh id f "_" x "_" y "_" z
-  | ?f _ _ _ _ ?x ?y ?z => fresh id f "_" x "_" y
-  | ?f _ _ _ _ ?x ?y ?z => fresh id f "_" x
-  | ?f _ _ _ _ _  _  _  => fresh id f
+  | ?f => fresh "_" f
+  | ?f ?x => fresh "_" f "_" x
+  | ?f ?x => fresh "_" f
+  | ?f ?x ?y => fresh "_" f "_" x "_" y
+  | ?f ?x ?y => fresh "_" f "_" x
+  | ?f _ _ => fresh "_" f
+  | ?f ?x ?y ?z => fresh "_" f "_" x "_" y "_" z
+  | ?f ?x ?y ?z => fresh "_" f "_" x "_" y
+  | ?f ?x ?y ?z => fresh "_" f "_" x
+  | ?f _ _ _ => fresh "_" f
+  | ?f _ ?x ?y ?z => fresh "_" f "_" x "_" y "_" z
+  | ?f _ ?x ?y ?z => fresh "_" f "_" x "_" y
+  | ?f _ ?x ?y ?z => fresh "_" f "_" x
+  | ?f _ _  _  _  => fresh "_" f
+  | ?f _ _ ?x ?y ?z => fresh "_" f "_" x "_" y "_" z
+  | ?f _ _ ?x ?y ?z => fresh "_" f "_" x "_" y
+  | ?f _ _ ?x ?y ?z => fresh "_" f "_" x
+  | ?f _ _ _  _  _  => fresh "_" f
+  | ?f _ _ _ ?x ?y ?z => fresh "_" f "_" x "_" y "_" z
+  | ?f _ _ _ ?x ?y ?z => fresh "_" f "_" x "_" y
+  | ?f _ _ _ ?x ?y ?z => fresh "_" f "_" x
+  | ?f _ _ _ _  _  _  => fresh "_" f
+  | ?f _ _ _ _ ?x ?y ?z => fresh "_" f "_" x "_" y "_" z
+  | ?f _ _ _ _ ?x ?y ?z => fresh "_" f "_" x "_" y
+  | ?f _ _ _ _ ?x ?y ?z => fresh "_" f "_" x
+  | ?f _ _ _ _ _  _  _  => fresh "_" f
   end.
 
 Ltac freshable t :=
@@ -157,9 +157,9 @@ Ltac freshable_head t :=
   | ?f _ _ _ _ _  _  _ _ _ _ _ _ _  => let x := freshable f in f
   end.
 
-Ltac rename_happ_only_prop id th :=
+Ltac rename_happ_only_prop th :=
   match type of th with
-  | Prop => rename_happ id th
+  | Prop => rename_happ th
   end.
 
 Ltac rename_heq h th :=
@@ -167,17 +167,18 @@ Ltac rename_heq h th :=
   | ?t = ?u =>
     let a := freshable_head t in
     let b := freshable_head u in
-    fresh "eq_" a "_" b
+    fresh "_eq_" a "_" b
   | ?t = ?u =>
     let a := freshable_head t in
-    fresh "eq_" a
+    fresh "_eq_" a
   | ?t = ?u =>
     let b := freshable_head u in
-    fresh "eq_" b
-  | _ = _ => fresh "eq"
+    fresh "_eq_" b
+  | _ = _ => fresh "_eq"
   end.
 
-
+(* go under binder and rebuild a term with a good name inside,
+   catchable by a match context. *)
 Ltac build_dummy_quantified h th :=
   lazymatch th with
   | forall z:?A , ?B =>        
@@ -192,8 +193,7 @@ Ltac build_dummy_quantified h th :=
     (* let nme := fallback_rename_hyp h th in *)
     let nme := fallback_rename_hyp h th in
     let frshnme := fresh nme in
-    let _ := idtac "foo" in
-    let _ := idtac th in
+    (* Build something catchable with mathc context *)
     constr:(forall frshnme:Prop, DUMMY frshnme)
   end
 
@@ -205,66 +205,31 @@ with fallback_rename_hyp h th :=
     | _ => rename_heq h th
     | ~ ?th' =>
       let sufx := fallback_rename_hyp h th' in
-      fresh "neg_" sufx
-    | ~ ?th' => fresh "neg"
+      fresh "_neg_" sufx
+    | ~ ?th' => fresh "_neg"
     (* Order is important here: *)
     | ?A -> ?B =>
       let dummyH := build_dummy_quantified h th in
-      let _ := idtac "foo" in
-      let _ := idtac dummyH in
       match dummyH with
       | context [forall z:Prop, DUMMY z] =>
-        let _ := idtac "foo" in
-        let _ := idtac z in
         fresh z
       end
     | forall _ , _ =>
       let dummyH := build_dummy_quantified h th in
-      let _ := idtac "foo" in
-      let _ := idtac dummyH in
       match dummyH with
       | context [forall z:Prop, DUMMY z] =>
-         let _ := idtac "foo" in
-         let _ := idtac z in
          fresh z
       end
 (*    | ?A -> ?B =>
       let nme := fallback_rename_hyp h B in
       fresh "impl_" nme
     | forall z , _ => fresh "forall_" z*)
-    | _ => rename_happ_only_prop h_ th
+    | _ => rename_happ_only_prop th
   end.
-(*
-Lemma foo:
-  (true=false -> false = true -> false = false -> False) -> 
-  (forall w w',w < w' -> ~(true=false)) ->
-            False.
-Proof.
-  Set Printing All.
-  intros.
-  Debug Off.
-
-  
-  let t:= type of H in
-  let x := fallback_rename_hyp H t in
-  idtac x.
-*)
 
 Ltac fallback_rename_hyp_prefx h th :=
   let res := fallback_rename_hyp h th in
   add_prefix h th res.
-
-(* Add this if you want hyps of typr ~ P to be renamed like if of type
-   P but prefixed by "neg_" *)
-Ltac rename_hyp_neg h th :=
-  match th with
-  | ~ (_ = _) => fail 1(* h_neq already dealt by fallback *)
-  | ~ ?th' =>
-    let sufx := fallback_rename_hyp h th' in
-    fresh "neg_" sufx
-  | ~ ?th' => fresh "neg"
-  | _ => fail
-  end.
 
 Ltac autorename H :=
   match type of H with
