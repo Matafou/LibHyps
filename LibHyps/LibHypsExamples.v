@@ -99,3 +99,79 @@ Proof.
 Qed.
 
 
+
+(* A full example of the auto renaming scheme: *)
+
+(* We add a custom renaming rule to the general naming scheme. h is
+   the name of the current hypothesis, th is its type. Generally one
+   only nee to use th.
+ You can remove a line in this ltac to see what changes in the goals below. *)
+Ltac rename_hyp_2 h th :=
+  match th with
+  | true = false => fresh "trueEQfalse"
+  end.
+
+Ltac rename_hyp ::= rename_hyp_2.
+
+(* Suppose I want to add later another naming rule: *)
+Ltac rename_hyp_3 h th :=
+  match th with
+  | Nat.eqb ?x ?y = _ => fresh "Nateqb"
+  | _ = Nat.eqb ?x ?y => fresh "Nateqb"
+  | _ => rename_hyp_2 h th (* call the previously defined tactic *)
+  end.
+
+Ltac rename_hyp ::= rename_hyp_2.
+
+
+Lemma dummy: forall x y,
+    x <= y ->
+    x = y ->
+    true = Nat.eqb 3 4  ->
+    true = Nat.leb 3 4  ->
+    1 = 0 ->
+    ~x = y ->
+    ~1 < 0 ->
+     (forall w w':nat , w = w' -> true=false) -> 
+     (forall w w':nat , w = w' -> Nat.eqb 3 4=Nat.eqb 4 3) -> 
+    List.length (cons 3 nil) = (fun x => 0)1 ->
+    List.length (cons 3 nil) = 0 ->
+    plus 0 y = y ->
+    (true=false) ->
+    (False -> (true=false)) ->
+    forall z t:nat, IDProp ->
+      (0 < 1 -> 0 < 0 -> true = false -> ~(true=false)) ->
+      (~(true=false)) ->
+      (forall w w',w < w' -> ~(true=false)) ->
+      (0 < 1 -> ~(1<0)) ->
+      (0 < 1 -> 1<0) -> 0 < z.
+  (* auto naming at intro: *)
+  !intros.
+
+  Undo.
+  (* auto naming + subst when possible at intro: *)
+  !!!intros.
+  Undo.
+  (* intros first, rename after: *)
+  intros.
+  rename_all_hyps.
+  Undo 2.
+  (* intros first, rename some hyp only: *)
+  intros.
+  autorename H0.
+  Undo 2.
+  (* put ;; between to tactics to apply the snd to all new hyps of all subgoals. *)
+  intros;; (fun h => substHyp h||(move_up_types h;autorename h)).
+  (* put ! before a (composed)tactic to rename all new hyps: *)
+  !generalize (le_n 8);intros. 
+  Undo 2.
+  intros until 3.
+  !destruct H eqn:?;intros.
+  Undo.
+  (* !! binds stronger than ";" *)
+  !!destruct H eqn:?;intros.
+  Undo.
+  ?!(destruct H eqn:?;intros).
+Abort.
+
+
