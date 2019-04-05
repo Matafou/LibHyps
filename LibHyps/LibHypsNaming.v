@@ -208,12 +208,6 @@ with fallback_rename_hyp h th :=
       fresh "_neg_" sufx
     | ~ ?th' => fresh "_neg"
     (* Order is important here: *)
-    | ?A -> ?B =>
-      let dummyH := build_dummy_quantified h th in
-      match dummyH with
-      | context [forall z:Prop, DUMMY z] =>
-        fresh z
-      end
     | forall _ , _ =>
       let dummyH := build_dummy_quantified h th in
       match dummyH with
