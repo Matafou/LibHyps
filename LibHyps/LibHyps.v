@@ -65,7 +65,7 @@ Ltac rename_hyp_2 h th :=
   | true = false => fresh "trueEQfalse"
   end.
 
-Ltac rename_hyp ::= rename_hyp_2.
+(* Ltac rename_hyp ::= rename_hyp_2. *)
 
 
 Lemma foo:
@@ -73,7 +73,7 @@ Lemma foo:
   (forall w w',w < w' -> ~(true=false)) ->
             False.
 Proof.
-  intros.
+  !intros.
   let ev := open_constr:((_:Prop)) in
   assert (id:ev).                   (* create a subgoal of type ?ev. *)
   { eapply H0. }
@@ -88,6 +88,7 @@ Proof.
 
   rename_all_hyps.
 *)
+(*
 Lemma foo: forall x y,
     x <= y ->
     x = y ->

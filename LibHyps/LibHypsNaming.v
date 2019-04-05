@@ -56,8 +56,54 @@ Ltac rename_hyp ::= my_rename_hyp.>> *)
 Definition h_:=Type.
 Definition heq_:=Type.
 Definition noname:=Type.
+Definition DUMMY := fun x:Prop => x.
 
-Ltac rename_hyp h ht := match true with true => fail | _ => fresh "hh" end.
+
+(* All hyps are prefixed by "h_" except equalities and non-equalities which
+   are prefixed by "heq_" "hneq" respectively. *)
+Inductive HypPrefixes :=
+  | HypNone
+  | HypH_
+  | HypH
+  | HypEq
+  | HypNeq
+  | HypNeg
+  | HypImpl
+  | HypForall.
+
+(* This is doing nothign for now, no satisfying behaviour found yet.*)
+(* One should rename this if needed *)
+Ltac prefixable_eq_neq h th :=
+  match th with
+  | eq _ _ => HypEq (* Too complicated *)
+  | ~ (eq _ _) => HypNeq
+  | ~ _ => HypNeq
+  (* | _ => HypH_ not satisfying for now because to much collision with ids*)
+  | ?A -> ?B => HypImpl
+  | forall z:?A , ?B => HypForall
+  | _ => HypNone
+  end.
+
+Ltac prefixable h th := prefixable_eq_neq h th.
+
+(* Add prefix except if not a Prop or if prefixable says otherwise. *)
+Ltac add_prefix h th nme :=
+  match type of th with
+  | Prop =>
+    match prefixable h th with
+    | HypH_ => fresh "h_" nme
+    | HypH => fresh "h" nme
+    | HypImpl => fresh "h" nme
+    | HypForall => fresh "h" nme
+    | HypEq => fresh "h" nme
+    | HypNeq => fresh "h" nme
+    | HypNeg => fresh "h" nme
+    | HypNone => nme
+    end
+  | _ => nme
+  end.
+
+Ltac rename_hyp h ht := fail.
 
 Ltac rename_happ id th :=
   match th with
@@ -131,9 +177,29 @@ Ltac rename_heq h th :=
   | _ = _ => fresh "eq"
   end.
 
+
+Ltac build_dummy_quantified h th :=
+  lazymatch th with
+  | forall z:?A , ?B =>        
+    constr:(
+      forall z:A,
+        let h' := (h z) in
+        ltac:(
+          let th' := type of h' in
+          let res := build_dummy_quantified h' th' in
+          exact res))
+  | _ => 
+    (* let nme := fallback_rename_hyp h th in *)
+    let nme := fallback_rename_hyp h th in
+    let frshnme := fresh nme in
+    let _ := idtac "foo" in
+    let _ := idtac th in
+    constr:(forall frshnme:Prop, DUMMY frshnme)
+  end
+
 (** ** Calls the (user-defined) rename_hyp + and fallbacks to some default namings if needed.
     [h] is the hypothesis (ident) to rename, [th] is its type. *)
-Ltac fallback_rename_hyp h th :=
+with fallback_rename_hyp h th :=
   match th with
     | _ => rename_hyp h th
     | _ => rename_heq h th
@@ -143,55 +209,46 @@ Ltac fallback_rename_hyp h th :=
     | ~ ?th' => fresh "neg"
     (* Order is important here: *)
     | ?A -> ?B =>
+      let dummyH := build_dummy_quantified h th in
+      let _ := idtac "foo" in
+      let _ := idtac dummyH in
+      match dummyH with
+      | context [forall z:Prop, DUMMY z] =>
+        let _ := idtac "foo" in
+        let _ := idtac z in
+        fresh z
+      end
+    | forall _ , _ =>
+      let dummyH := build_dummy_quantified h th in
+      let _ := idtac "foo" in
+      let _ := idtac dummyH in
+      match dummyH with
+      | context [forall z:Prop, DUMMY z] =>
+         let _ := idtac "foo" in
+         let _ := idtac z in
+         fresh z
+      end
+(*    | ?A -> ?B =>
       let nme := fallback_rename_hyp h B in
       fresh "impl_" nme
-    | forall z , _ => fresh "forall_" z
+    | forall z , _ => fresh "forall_" z*)
     | _ => rename_happ_only_prop h_ th
   end.
+(*
+Lemma foo:
+  (true=false -> false = true -> false = false -> False) -> 
+  (forall w w',w < w' -> ~(true=false)) ->
+            False.
+Proof.
+  Set Printing All.
+  intros.
+  Debug Off.
 
-(* All hyps are prefixed by "h_" except equalities and non-equalities which
-   are prefixed by "heq_" "hneq" respectively. *)
-Inductive HypPrefixes :=
-  | HypNone
-  | HypH_
-  | HypH
-  | HypEq
-  | HypNeq
-  | HypNeg
-  | HypImpl
-  | HypForall.
-
-(* This is doing nothign for now, no satisfying behaviour found yet.*)
-(* One should rename this if needed *)
-Ltac prefixable_eq_neq h th :=
-  match th with
-  | eq _ _ => HypEq (* Too complicated *)
-  | ~ (eq _ _) => HypNeq
-  | ~ _ => HypNeq
-  (* | _ => HypH_ not satisfying for now because to much collision with ids*)
-  | ?A -> ?B => HypImpl
-  | forall z:?A , ?B => HypForall
-  | _ => HypNone
-  end.
-
-Ltac prefixable h th := prefixable_eq_neq h th.
-
-(* Add prefix except if not a Prop or if prefixable says otherwise. *)
-Ltac add_prefix h th nme :=
-  match type of th with
-  | Prop =>
-    match prefixable h th with
-    | HypH_ => fresh "h_" nme
-    | HypH => fresh "h" nme
-    | HypImpl => fresh "h" nme
-    | HypForall => fresh "h" nme
-    | HypEq => fresh "h" nme
-    | HypNeq => fresh "h" nme
-    | HypNeg => fresh "h" nme
-    | HypNone => nme
-    end
-  | _ => nme
-  end.
+  
+  let t:= type of H in
+  let x := fallback_rename_hyp H t in
+  idtac x.
+*)
 
 Ltac fallback_rename_hyp_prefx h th :=
   let res := fallback_rename_hyp h th in
