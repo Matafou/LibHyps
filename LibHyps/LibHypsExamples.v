@@ -25,24 +25,30 @@ Proof.
   Undo 2.
   intros until 1.
   (* Do subst on new hyps only, notice how x=y remains (as 0 = y). *)
-  onNewHypsOf (destruct x eqn:heq;intros) do substHyp.
-  Undo.
+  (destruct x eqn:heq;intros);; substHyp.
+  match goal with
+  | H: 0 = y |- _ => idtac
+  end.
+  Undo 2.
   (* same + move up new hyps of Sort Type *)
-  onNewHypsOf (destruct x eqn:heq;intros) do (fun h => substHyp h || move_up_types h).
-  Undo.
+  (destruct x eqn:heq;intros) ;; (fun h => substHyp h || move_up_types h).
+  match goal with
+  | H: 0 = y |- _ => idtac
+  end.
+  Undo 2.
   (* First attempt to revert all new hyps: wrong order *)
-  onNewHypsOf (destruct x eqn:heq;intros) do revertHyp.
+  (destruct x eqn:heq;intros) ;; revertHyp.
   Undo.
   (* Works better if we go in reverse order: *)
-  onNewHypsOfRev (destruct x eqn:heq;intros) do revertHyp.
+  (destruct x eqn:heq;intros) ;!; revertHyp.
   Undo.
-  (* revert everything except if subst can remove the hyp *)
-  onNewHypsOfRev (destruct x eqn:heq;intros) do subst_or_revert.
+  (* revert every new hyp except if subst can remove the hyp *)
+  (destruct x eqn:heq;intros) ;!; subst_or_revert.
 Abort.
 
 (* Example of tactic notations to define shortcuts: =tac means "apply
    tac and try subst on all created hypothesis" *)
-Local Tactic Notation "=" tactic3(Tac) := onNewHypsOfRev (Tac) do substHyp.
+Local Tactic Notation "=" tactic3(Tac) := Tac ;!; substHyp.
 
 Lemma bar: forall x y a t u v : nat,
     x = v -> a = t -> u = x -> u = y -> x = y.
@@ -55,8 +61,8 @@ Abort.
 
 
 (* Example of tactic notations to define shortcuts: =tac means "apply
-   tac and try subst on all created hypothesis" *)
-Local Tactic Notation "<=" tactic3(Tac) := onNewHypsOfRev (Tac) do revertHyp.
+   tac and reverts all created hypothesis" *)
+Local Tactic Notation "<=" tactic3(Tac) := Tac ;!; revertHyp.
 
 Lemma bar: forall x y a t u v : nat,
     x = v -> a = t -> u = x -> u = y -> x = y.
@@ -68,8 +74,8 @@ Abort.
 
 
 (* Another exampe: =tac means "apply
-   tac and try subst on all created hypothesis" *)
-Local Tactic Notation "<-" tactic3(Tac) := onNewHypsOfRev (Tac) do subst_or_revert.
+   tac and try subst on all created hypothesis, revert when subst fails" *)
+Local Tactic Notation "<-" tactic3(Tac) := Tac ;!; subst_or_revert.
 
 Lemma bar: forall x y a t u v : nat,
     x < v -> a = t -> u > x -> u = y -> x < y.
@@ -78,46 +84,18 @@ Proof.
   (* Some variable (ones on which subst worked) are not reverted *)
 Abort.
 
-
-(* Better version *)
-Local Tactic Notation "<<-" tactic3(Tac) := onNewHypsOfRev (onNewHypsOf (Tac) do substHyp ) do revertHyp.
-
-Lemma bar: forall x y a t u v : nat,
-    x < v -> a = t -> u > x -> u = y -> x < y.
-Proof.
-  <<-intros.
-Abort.
-
-
-
-
 Definition test n := n = 1.
 Variable Q: nat -> bool -> list nat -> Prop.
 
 Lemma foo:
   (forall n b l, b = true -> test n -> Q n b l) ->
-  (true = true -> false = false ->  True) -> Q 1 true (cons 1 nil).
+  Q 1 true (cons 1 nil).
 Proof.
-  intros hyp hyp'.
-  (* proveprem hyp at 2 as h. *)
-  let ev := open_constr:((_:Prop)) in
-  assert (id:ev).
-  Focus 2.
-  eassert (hhh:=fun b l (h:b=true) => hyp _ b l h id).
-
-
-
-  Focus 2.
-  (specialize hyp with (2:=id)).
-  Show Proof.
-  
-   2:specialize hyp with (2:=id).
+  intro hyp.
+  especialize hyp at 2 as h.
   { reflexivity. }
-  Check hyp.
-  proveprem hyp at 1.
-  { reflexivity. }
-  Check hyp_prem.
   apply hyp.
+  reflexivity.
 Qed.
 
 

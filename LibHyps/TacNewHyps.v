@@ -78,8 +78,8 @@ Ltac tac_new_hyps_rev tac1 tac2 :=
   let hyps_after_tac := all_hyps in
   map_hyps_rev tac2_if_new hyps_after_tac.
 
-Tactic Notation (at level 3) "onNewHypsOf" tactic(Tac) "do" tactic3(Tac2) := (tac_new_hyps Tac Tac2).
-Tactic Notation (at level 3) "onNewHypsOfRev" tactic(Tac) "do" tactic3(Tac2) := (tac_new_hyps_rev Tac Tac2).
+(* Tactic Notation (at level 3) "onNewHypsOf" tactic(Tac) "do" tactic3(Tac2) := (tac_new_hyps Tac Tac2). *)
+(* Tactic Notation (at level 3) "onNewHypsOfRev" tactic(Tac) "do" tactic3(Tac2) := (tac_new_hyps_rev Tac Tac2). *)
 
 (* infix syntax for  *)
 Tactic Notation (at level 4) tactic4(tac1) ";;" tactic3(tac2) := (tac_new_hyps tac1 tac2).
