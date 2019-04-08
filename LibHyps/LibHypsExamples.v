@@ -1,4 +1,4 @@
-Require Import LibHyps.LibHyps LibHyps.LibSpecialize.
+Require Import Arith ZArith LibHyps.LibHyps LibHyps.LibSpecialize.
 
 (* Typical use, subst with all hyps created by inversion, and move
 Type-sorted hyps to the top of the goal:
@@ -121,17 +121,25 @@ Ltac rename_hyp_3 h th :=
   | _ => rename_hyp_2 h th (* call the previously defined tactic *)
   end.
 
-Ltac rename_hyp ::= rename_hyp_2.
+Ltac rename_hyp ::= rename_hyp_3.
 
-
+Close Scope Z_scope.
+Open Scope nat_scope.
 Lemma dummy: forall x y,
+    0 <= 1 ->
+    (0%Z <= 1%Z)%Z ->
     x <= y ->
     x = y ->
+    0 = 1 ->
+    (0 = 1)%Z ->
+    ~x = y ->
     true = Nat.eqb 3 4  ->
+    Nat.eqb 3 4 = true  ->
     true = Nat.leb 3 4  ->
     1 = 0 ->
     ~x = y ->
     ~1 < 0 ->
+     (forall w w':nat , w = w' -> ~true=false) -> 
      (forall w w':nat , w = w' -> true=false) -> 
      (forall w w':nat , w = w' -> Nat.eqb 3 4=Nat.eqb 4 3) -> 
     List.length (cons 3 nil) = (fun x => 0)1 ->

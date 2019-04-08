@@ -3,7 +3,7 @@
 * Author: Pierre Courtieu                                                 *
 * Distributed under the terms of the LGPL-v3 license                      *
 ***************************************************************************)
-Require Import LibHyps.TacNewHyps.
+Require Import Arith ZArith LibHyps.TacNewHyps.
 (** This file is a set of tactical (mainly "!! t" where t is a tactic)
     and tactics (!intros, !destruct etc), that automatically rename
     new hypothesis after applying a tactic. The names chosen for
@@ -59,30 +59,27 @@ Definition noname:=Type.
 Definition DUMMY := fun x:Prop => x.
 
 
-(* We may have slightly different prefixes for some hyps. *)
+(* In principle hypothesis are named as "h" followed by "_" separated
+parts built by looking at there type. we only look at the immediate
+subterms execept is some cases. In this case the generated name would
+be too long if we add a part at each recursive level. So when we
+detect something that will be recursive (for instance a forall) we add
+a single prefix. *)
 Inductive HypPrefixes :=
   | HypDefault
-  | HypH_
-  | HypEq
-  | HypNeq
-  | HypNeg
   | HypImpl
   | HypForall.
 
-(* This is doing nothign for now, no satisfying behaviour found yet.*)
-(* One should rename this if needed *)
 Ltac detect_prefix h th :=
   match th with
-  | eq _ _ => HypEq (* Too complicated *)
-  | ~ (eq _ _) => HypNeq
-  | ~ _ => HypNeq
   | ?A -> ?B => HypImpl
   | forall z:?A , ?B => HypForall
   | _ => HypDefault
   end.
 
 
-(* Add prefix except if not a Prop or if prefixable says otherwise. *)
+(* Add prefix except if not a Prop or if prefixable says otherwise.
+   Only for forall and impl currently.  *)
 Ltac initial_prefix h th :=
   match detect_prefix h th with
   | HypImpl => fresh "h_impl"
@@ -94,12 +91,42 @@ Ltac rename_hyp h th := match th with
                         | _ => fail
                         end.
 
+(* for hypothesis on numerical constants *)
+Ltac numerical_names prefx t :=
+  match t with
+  | Z0 => fresh prefx "_0"
+  | 0%Z => fresh prefx "_0"
+  | (Zpos xH)%Z => fresh prefx "_1"
+  | 2%Z => fresh prefx "_2"
+  | 3%Z => fresh prefx "_3"
+  | 4%Z => fresh prefx "_4"
+  | 5%Z => fresh prefx "_5"
+  | 6%Z => fresh prefx "_6"
+  | 7%Z => fresh prefx "_7"
+  | 8%Z => fresh prefx "_8"
+  | 9%Z => fresh prefx "_9"
+  | 10%Z => fresh prefx "_10"
+  | O%nat => fresh prefx "_0"
+  | 1%nat => fresh prefx "_1"
+  | 2%nat => fresh prefx "_2"
+  | 3%nat => fresh prefx "_3"
+  | 4%nat => fresh prefx "_4"
+  | 5%nat => fresh prefx "_5"
+  | 6%nat => fresh prefx "_6"
+  | 7%nat => fresh prefx "_7"
+  | 8%nat => fresh prefx "_8"
+  | 9%nat => fresh prefx "_9"
+  | 10%nat => fresh prefx "_10"
+  end.
+
 (* fresh with a prefx and that never fails, return
    the prefix itself if the fresh fails *)
-Ltac fresh_ prfx x := match x with
-                 | _ => fresh prfx "_" x
-                 | _ => prfx
-                 end.
+Ltac fresh_ prfx x :=
+  match x with
+  | _ => numerical_names prfx x
+  | _ => fresh prfx "_" x
+  | _ => prfx
+  end.
 
 Ltac fresh_2 prfx x y :=
   let id := fresh_ prfx x in
@@ -115,10 +142,11 @@ Ltac fresh_4 prfx x y z t :=
 
 Ltac rename_happ prefx th :=
   match th with
-  | ?f _ _ _ _ ?x ?y ?z => fresh_4 prefx f x y z 
-  | ?f _ _ _ ?x ?y ?z => fresh_4 prefx f x y z 
-  | ?f _ _ ?x ?y ?z => fresh_4 prefx f x y z 
-  | ?f _ ?x ?y ?z => fresh_4 prefx f x y z 
+  | _ => numerical_names prefx th
+  | ?f _ _ _ _ ?x ?y ?z => fresh_4 prefx f x y z
+  | ?f _ _ _ ?x ?y ?z => fresh_4 prefx f x y z
+  | ?f _ _ ?x ?y ?z => fresh_4 prefx f x y z
+  | ?f _ ?x ?y ?z => fresh_4 prefx f x y z
   | ?f ?x ?y ?z => fresh_4 prefx f x y z
   | ?f ?x ?y => fresh_3 prefx f x y
   | ?f ?x => fresh_2 prefx f x
@@ -127,6 +155,7 @@ Ltac rename_happ prefx th :=
 
 Ltac rename_hhead prefx th :=
   match th with
+  | _ => numerical_names prefx th
   | ?f _ _ _ _ _ _ _ => fresh_ prefx f
   | ?f _ _ _ _ _ _ => fresh_ prefx f
   | ?f _ _ _ _ _ => fresh_ prefx f
@@ -149,13 +178,20 @@ Ltac rename_default prefx h th :=
     let hl := rename_hhead eq t in
     let hlr := rename_hhead hl u in
     fresh prefx "_" hlr
-  end.
+  | ~ ?t = ?u =>
+    let hl := rename_hhead eq t in
+    let hlr := rename_hhead hl u in
+    fresh prefx "_n" hlr
+  | ~ ?t =>
+    let newprefx := fresh prefx "_not" in
+    fallback_rename_hyp newprefx h t
+  end
 
 (* go under binder and rebuild a term with a good name inside,
    catchable by a match context. *)
-Ltac build_dummy_quantified prfx h th :=
+with build_dummy_quantified prfx h th :=
   match th with
-  | forall z:?A , ?B =>        
+  | forall z:?A , ?B =>
     constr:(
       forall z:A,
         let h' := (h z) in
@@ -163,7 +199,7 @@ Ltac build_dummy_quantified prfx h th :=
           let th' := type of h' in
           let res := build_dummy_quantified prfx h' th' in
           exact res))
-  | _ => 
+  | _ =>
     let nme := fallback_rename_hyp prfx h th in
     let frshnme := fresh nme in
     (* Build something catchable with mathc context *)
@@ -180,24 +216,15 @@ with fallback_rename_hyp prfx h th :=
       let sufx := rename_hyp h th in
       fresh prfx "_" sufx
     | _ => rename_default prfx h th
-    | ~ ?th' =>
-      let newpfx := fresh prfx "_neg" in
-      let sufx := fallback_rename_hyp newpfx h th' in
-      sufx
-    | ~ ?th' => fresh "_neg"
-    (* Order is important here: *)
     | forall _ , _ =>
       let dummyH := build_dummy_quantified prfx h th in
       match dummyH with
       | context [forall z:Prop, DUMMY z] =>
          fresh z
       end
-(*    | ?A -> ?B =>
-      let nme := fallback_rename_hyp h B in
-      fresh "impl_" nme
-    | forall z , _ => fresh "forall_" z*)
     | _ => rename_happ_only_prop prfx th
   end.
+
 
 Ltac fallback_rename_hyp_prefx h th :=
     (* initial prefix, we must put something already so that the future
@@ -205,41 +232,6 @@ Ltac fallback_rename_hyp_prefx h th :=
     let initial_prfx := initial_prefix h th in
     let res := fallback_rename_hyp initial_prfx h th in
     res.
-
-(* EXAMPLE *)
-
-
-Lemma foo:
-  true=true -> 
-  1<2 -> 
-  (forall w w',w < w' -> Nat.eqb 3 3 =false) ->
-  (true=false -> false = true -> false = false -> False) -> 
-  (forall w w',w < w' -> ~(true=false)) ->
-            False.
-Proof.
-  intros.
-  Debug Off.
-(*  let typ := type of H1 in
-  let id := rename_default h H1 typ in
-  idtac id.
-*)
-  
-let typ := type of H0 in
-  let x := fallback_rename_hyp_prefx H0 typ in
-  idtac x.
-  Debug Off.
-  
-let typ := type of H1 in
-  let x := fallback_rename_hyp_prefx H1 typ in
-  idtac x.
-  let typ := type of H2 in
-  let x := fallback_rename_hyp_prefx H2 typ in
-  idtac x.
-  let typ := type of H3 in
-  let x := fallback_rename_hyp_prefx H3 typ in
-  idtac x.
-Abort.
-
 
 
 Ltac autorename H :=
