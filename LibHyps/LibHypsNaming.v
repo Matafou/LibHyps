@@ -68,12 +68,14 @@ a single prefix. *)
 Inductive HypPrefixes :=
   | HypDefault
   | HypImpl
-  | HypForall.
+  | HypForall
+  | HypExists.
 
 Ltac detect_prefix h th :=
   match th with
   | ?A -> ?B => HypImpl
   | forall z:?A , ?B => HypForall
+  | exists z:?A , ?B => HypExists
   | _ => HypDefault
   end.
 
@@ -84,6 +86,7 @@ Ltac initial_prefix h th :=
   match detect_prefix h th with
   | HypImpl => fresh "h_impl"
   | HypForall => fresh "h_forall"
+  | HypExists => fresh "h_ex"
   | _ => fresh "h"
   end.
 
@@ -190,15 +193,26 @@ Ltac rename_default prefx h th :=
 (* go under binder and rebuild a term with a good name inside,
    catchable by a match context. *)
 with build_dummy_quantified prfx h th :=
-  match th with
+  lazymatch th with
   | forall z:?A , ?B =>
     constr:(
       forall z:A,
-        let h' := (h z) in
         ltac:(
-          let th' := type of h' in
-          let res := build_dummy_quantified prfx h' th' in
+          let th' := constr:((fun z => B) z) in
+          let th' := eval lazy beta in th' in
+          let res := build_dummy_quantified prfx h th' in
           exact res))
+ | ex ?f =>
+    match f with
+    | (fun z:?A => ?B) =>
+    constr:(
+      forall z:A,
+        ltac:(
+          let th' := constr:((fun z => B) z) in
+          let th' := eval lazy beta in th' in
+          let res := build_dummy_quantified prfx h th' in
+          exact res))
+    end
   | _ =>
     let nme := fallback_rename_hyp prfx h th in
     let frshnme := fresh nme in
@@ -206,8 +220,10 @@ with build_dummy_quantified prfx h th :=
     constr:(forall frshnme:Prop, DUMMY frshnme)
   end
 
-(** ** Calls the (user-defined) rename_hyp + and fallbacks to some default namings if needed.
-    [h] is the hypothesis (ident) to rename, [th] is its type. *)
+(** ** Calls the (user-defined) rename_hyp + and fallbacks to some
+    default namings if needed. [h] is the hypothesis (ident) to
+    rename, [th] is its type. *)
+
 with fallback_rename_hyp prfx h th :=
   match th with
     | _ =>
@@ -217,6 +233,12 @@ with fallback_rename_hyp prfx h th :=
       fresh prfx "_" sufx
     | _ => rename_default prfx h th
     | forall _ , _ =>
+      let dummyH := build_dummy_quantified prfx h th in
+      match dummyH with
+      | context [forall z:Prop, DUMMY z] =>
+         fresh z
+      end
+    | ex (fun _ => _) =>
       let dummyH := build_dummy_quantified prfx h th in
       match dummyH with
       | context [forall z:Prop, DUMMY z] =>

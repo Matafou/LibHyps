@@ -125,6 +125,16 @@ Ltac rename_hyp ::= rename_hyp_3.
 
 Close Scope Z_scope.
 Open Scope nat_scope.
+
+(*
+Lemma dummy: forall x y:nat,
+     (exists w:nat , w = w -> ~true=false) -> True.
+Proof.
+  Debug Off.
+  !intros.
+  Debug On.
+  autorename H.
+*)
 Lemma dummy: forall x y,
     0 <= 1 ->
     (0%Z <= 1%Z)%Z ->
@@ -141,6 +151,8 @@ Lemma dummy: forall x y,
     ~1 < 0 ->
      (forall w w':nat , w = w' -> ~true=false) -> 
      (forall w w':nat , w = w' -> true=false) -> 
+     (exists w:nat , w = w -> ~true=false) ->
+     (exists w:nat , w = w -> true=false) ->
      (forall w w':nat , w = w' -> Nat.eqb 3 4=Nat.eqb 4 3) -> 
     List.length (cons 3 nil) = (fun x => 0)1 ->
     List.length (cons 3 nil) = 0 ->
@@ -154,6 +166,8 @@ Lemma dummy: forall x y,
       (0 < 1 -> ~(1<0)) ->
       (0 < 1 -> 1<0) -> 0 < z.
   (* auto naming at intro: *)
+
+  Debug Off.
   !intros.
   Undo.
   (* auto naming + subst when possible at intro: *)
