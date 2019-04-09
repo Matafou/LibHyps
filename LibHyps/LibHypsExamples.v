@@ -150,8 +150,10 @@ Lemma dummy: forall x y,
     ~x = y ->
     ~1 < 0 ->
      (forall w w':nat , w = w' -> ~true=false) -> 
-     (forall w w':nat , w = w' -> true=false) -> 
-     (exists w:nat , w = w -> ~true=false) ->
+     (forall w w':nat , w = w' -> true=false /\ True) -> 
+     (forall w w':nat , w = w' -> False /\ True) -> 
+     (exists w:nat , w = w -> ~true=false /\ False) ->
+     (exists w:nat , w = w -> True /\ False) ->
      (exists w:nat , w = w -> true=false) ->
      (forall w w':nat , w = w' -> Nat.eqb 3 4=Nat.eqb 4 3) -> 
     List.length (cons 3 nil) = (fun x => 0)1 ->

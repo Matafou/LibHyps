@@ -146,13 +146,13 @@ Ltac fresh_4 prfx x y z t :=
 Ltac rename_happ prefx th :=
   match th with
   | _ => numerical_names prefx th
-  | ?f _ _ _ _ ?x ?y ?z => fresh_4 prefx f x y z
-  | ?f _ _ _ ?x ?y ?z => fresh_4 prefx f x y z
-  | ?f _ _ ?x ?y ?z => fresh_4 prefx f x y z
-  | ?f _ ?x ?y ?z => fresh_4 prefx f x y z
-  | ?f ?x ?y ?z => fresh_4 prefx f x y z
-  | ?f ?x ?y => fresh_3 prefx f x y
-  | ?f ?x => fresh_2 prefx f x
+  | ?f _ _ _ _ ?x ?y => fresh_3 prefx f x y
+  | ?f _ _ _ ?x ?y => fresh_3 prefx f x y
+  | ?f _ _ ?x ?y => fresh_3 prefx f x y
+  | ?f _ ?x ?y => fresh_3 prefx f x y
+  | ?f ?x ?y => fresh_3  prefx f x y
+  | ?f _ ?y => fresh_2 prefx f y
+  | ?f ?x => fresh_ prefx f x
   | ?f => fresh_ prefx f
   end.
 
@@ -169,25 +169,56 @@ Ltac rename_hhead prefx th :=
   | ?f => fresh_ prefx f
   end.
 
+
 Ltac rename_happ_only_prop prefx th :=
   match type of th with
   | Prop => rename_happ prefx th
   end.
 
+Ltac fresh_2_gen tac prfx x y :=
+  let id := tac prfx x in
+  tac id y.
 
-Ltac rename_default prefx h th :=
+Ltac fresh_3_gen tac prfx x y z :=
+  let id := tac prfx x in
+  fresh_2_gen tac id y z.
+
+Ltac fresh_4_gen tac prfx x y z t :=
+  let id := tac prfx x in
+  fresh_3 tac id y z t.
+
+Ltac rename_app stop prefx h th :=
+  let tac :=
+      match stop with
+      | true => ltac:(fun pfx t => fallback_rename_hyp true pfx h t)
+      | false => rename_happ
+      end in
   match th with
-  | ?t = ?u =>
-    let hl := rename_hhead eq t in
-    let hlr := rename_hhead hl u in
-    fresh prefx "_" hlr
+  | _ => numerical_names prefx th
+  | ?f _ _ _ _ ?x ?y => fresh_3_gen tac prefx f x y
+  | ?f _ _ _ ?x ?y => fresh_3 prefx f x y
+  | ?f _ _ ?x ?y => fresh_3 prefx f x y
+  | ?f _ ?x ?y => fresh_3_gen tac prefx f x y
+  | ?f ?x ?y => fresh_3  prefx f x y
+  | ?f _ ?y => fresh_2 prefx f y
+  | ?f ?x => fresh_ prefx f x
+  | ?f => fresh_ prefx f
+  end
+
+(* Usual cases to shunt the default naming: x <> y ==> neq *)
+with rename_default prefx h th :=
+  match th with
   | ~ ?t = ?u =>
     let hl := rename_hhead eq t in
     let hlr := rename_hhead hl u in
     fresh prefx "_n" hlr
   | ~ ?t =>
     let newprefx := fresh prefx "_not" in
-    fallback_rename_hyp newprefx h t
+    fallback_rename_hyp true newprefx h t
+  | and ?t ?u =>
+    let hl := fallback_rename_hyp true and h t in
+    let hlr := fallback_rename_hyp true hl h u in
+    fresh prefx "_" hlr
   end
 
 (* go under binder and rebuild a term with a good name inside,
@@ -214,7 +245,7 @@ with build_dummy_quantified prfx h th :=
           exact res))
     end
   | _ =>
-    let nme := fallback_rename_hyp prfx h th in
+    let nme := fallback_rename_hyp true prfx h th in
     let frshnme := fresh nme in
     (* Build something catchable with mathc context *)
     constr:(forall frshnme:Prop, DUMMY frshnme)
@@ -224,7 +255,23 @@ with build_dummy_quantified prfx h th :=
     default namings if needed. [h] is the hypothesis (ident) to
     rename, [th] is its type. *)
 
-with fallback_rename_hyp prfx h th :=
+with fallback_rename_hyp_quantif prfx h th :=
+    match th with
+    | forall _ , _ =>
+      let dummyH := build_dummy_quantified prfx h th in
+      match dummyH with
+      | context [forall z:Prop, DUMMY z] =>
+        fresh z
+      end
+    | ex (fun _ => _) =>
+      let dummyH := build_dummy_quantified prfx h th in
+      match dummyH with
+      | context [forall z:Prop, DUMMY z] =>
+        fresh z
+      end
+    end
+
+with fallback_rename_hyp stop prfx h th :=
   match th with
     | _ =>
       (* The renaming tactic we expose to the user does not deal with
@@ -232,19 +279,11 @@ with fallback_rename_hyp prfx h th :=
       let sufx := rename_hyp h th in
       fresh prfx "_" sufx
     | _ => rename_default prfx h th
-    | forall _ , _ =>
-      let dummyH := build_dummy_quantified prfx h th in
-      match dummyH with
-      | context [forall z:Prop, DUMMY z] =>
-         fresh z
-      end
-    | ex (fun _ => _) =>
-      let dummyH := build_dummy_quantified prfx h th in
-      match dummyH with
-      | context [forall z:Prop, DUMMY z] =>
-         fresh z
-      end
-    | _ => rename_happ_only_prop prfx th
+    | _ => match stop with
+           | true => fail
+           | false => fallback_rename_hyp_quantif prfx h th
+           end
+    | _ => rename_app stop prfx h th
   end.
 
 
@@ -252,7 +291,7 @@ Ltac fallback_rename_hyp_prefx h th :=
     (* initial prefix, we must put something already so that the future
      calls to fresh do not collide with existing constants. *)
     let initial_prfx := initial_prefix h th in
-    let res := fallback_rename_hyp initial_prfx h th in
+    let res := fallback_rename_hyp false initial_prfx h th in
     res.
 
 

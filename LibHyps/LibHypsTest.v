@@ -143,6 +143,10 @@ Lemma dummy: forall x y,
     ~x = y ->
     ~1 < 0 ->
      (forall w w':nat , w = w' -> ~true=false) -> 
+     (forall w w':nat , w = w' -> true=false /\ True) -> 
+     (forall w w':nat , w = w' -> False /\ True) -> 
+     (exists w:nat , w = w -> ~(true=(andb false true)) /\ False) ->
+     (exists w:nat , w = w -> True /\ False) ->
      (forall w w':nat , w = w' -> true=false) -> 
      (forall w w':nat , w = w' -> Nat.eqb 3 4=Nat.eqb 4 3) -> 
     List.length (cons 3 nil) = (fun x => 0)1 ->
@@ -150,6 +154,9 @@ Lemma dummy: forall x y,
     plus 0 y = y ->
     (true=false) ->
     (False -> (true=false)) ->
+    forall (x : nat) (env : list nat),
+      ~ List.In x nil ->
+      cons x (cons 3 env) = cons 2 env -> 
     forall z t:nat, IDProp ->
       (0 < 1 -> 0 < 0 -> true = false -> ~(true=false)) ->
       (~(true=false)) ->
@@ -169,7 +176,7 @@ Lemma dummy: forall x y,
   Check h_neq_x_y : x <> y.
   Check h_Nateqb : true = (3 =? 4).
   Check h_Nateqb0 : (3 =? 4) = true.
-  Check h_eq_true_leb : true = (3 <=? 4).
+  Check h_eq_true_leb_3_4 : true = (3 <=? 4).
   Check h_eq_1_0 : 1 = 0.
   Check h_neq_x_y0 : x <> y.
   Check h_not_lt_1_0 : ~ 1 < 0.
