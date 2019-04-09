@@ -1,3 +1,4 @@
+
 Require Import Arith ZArith LibHyps.LibHyps LibHyps.LibSpecialize.
 
 (* Typical use, subst with all hyps created by inversion, and move
@@ -11,7 +12,7 @@ inversion H ;; subst_or_move_up.
 (* Examples of use: *)
 
 Lemma foo: forall x y:nat,
-    x = y -> forall  a t : nat, a+1 = t+2 ->forall u v, u+1 = v -> a+1 = t+2 -> False.
+    x = y -> forall  a t : nat, a+1 = t+2 ->forall u v, u+1 = v -> a+1 = t+2 -> True.
 Proof.
   intros.
   (* try to move all hyps with types in Type: *)
@@ -44,7 +45,10 @@ Proof.
   Undo.
   (* revert every new hyp except if subst can remove the hyp *)
   (destruct x eqn:heq;intros) ;!; subst_or_revert.
-Abort.
+  Undo.
+  intros.
+  apply I.
+Qed.
 
 (* Example of tactic notations to define shortcuts: =tac means "apply
    tac and try subst on all created hypothesis" *)
@@ -57,6 +61,8 @@ Proof.
   Undo.
   intros.
   =destruct x eqn:heq.
+  - subst;auto.
+  - subst;auto.
 Abort.
 
 
@@ -69,7 +75,9 @@ Lemma bar: forall x y a t u v : nat,
 Proof.
   intros.
   <=destruct x eqn:heq.
-Abort.
+  - intros;subst;auto.
+  - intros;subst;auto.
+Qed.
 
 
 
@@ -77,17 +85,17 @@ Abort.
    tac and try subst on all created hypothesis, revert when subst fails" *)
 Local Tactic Notation "<-" tactic3(Tac) := Tac ;!; subst_or_revert.
 
-Lemma bar: forall x y a t u v : nat,
+Lemma bar': forall x y a t u v : nat,
     x < v -> a = t -> u > x -> u = y -> x < y.
 Proof.
   <-intros.
   (* Some variable (ones on which subst worked) are not reverted *)
-Abort.
+Admitted.
 
 Definition test n := n = 1.
 Variable Q: nat -> bool -> list nat -> Prop.
 
-Lemma foo:
+Lemma foo':
   (forall n b l, b = true -> test n -> Q n b l) ->
   Q 1 true (cons 1 nil).
 Proof.
@@ -100,12 +108,7 @@ Qed.
 
 
 
-(* A full example of the auto renaming scheme: *)
 
-(* We add a custom renaming rule to the general naming scheme. h is
-   the name of the current hypothesis, th is its type. Generally one
-   only nee to use th.
- You can remove a line in this ltac to see what changes in the goals below. *)
 Ltac rename_hyp_2 h th :=
   match th with
   | true = false => fresh "trueEQfalse"
@@ -152,33 +155,39 @@ Lemma dummy: forall x y,
       (~(true=false)) ->
       (forall w w',w < w' -> ~(true=false)) ->
       (0 < 1 -> ~(1<0)) ->
-      (0 < 1 -> 1<0) -> 0 < z.
+      (0 < 1 -> 1<0) -> 0 < z -> True.
   (* auto naming at intro: *)
   !intros.
-  Undo.
-  (* auto naming + subst when possible at intro: *)
-  !!!intros.
-  Undo.
-  (* intros first, rename after: *)
-  intros.
-  rename_all_hyps.
-  Undo 2.
-  (* intros first, rename some hyp only: *)
-  intros.
-  autorename H0.
-  Undo 2.
-  (* put ;; between to tactics to apply the snd to all new hyps of all subgoals. *)
-  intros;; (fun h => substHyp h||(move_up_types h;autorename h)).
-  (* put ! before a (composed)tactic to rename all new hyps: *)
-  !generalize (le_n 8);intros. 
-  Undo 2.
-  intros until 3.
-  !destruct H eqn:?;intros.
-  Undo.
-  (* !! binds stronger than ";" *)
-  !!destruct H eqn:?;intros.
-  Undo.
-  ?!(destruct H eqn:?;intros).
-Abort.
-
-
+  Check x:nat.
+  Check y : nat.
+  Check h_le_0_1 : 0 <= 1.
+  Check h_le_0_0 : (0 <= 1)%Z.
+  Check h_le_x_y : x <= y.
+  Check h_eq_x_y : x = y.
+  Check h_eq_0_1 : 0 = 1.
+  Check h_eq_0_0 : 0%Z = 1%Z.
+  Check h_neq_x_y : x <> y.
+  Check h_Nateqb : true = (3 =? 4).
+  Check h_Nateqb0 : (3 =? 4) = true.
+  Check h_eq_true_leb : true = (3 <=? 4).
+  Check h_eq_1_0 : 1 = 0.
+  Check h_neq_x_y0 : x <> y.
+  Check h_not_lt_1_0 : ~ 1 < 0.
+  Check h_forall_neq_true_false : forall w w' : nat, w = w' -> true <> false.
+  Check h_forall_trueEQfalse : forall w w' : nat, w = w' -> true = false.
+  Check h_forall_Nateqb : forall w w' : nat, w = w' -> (3 =? 4) = (4 =? 3).
+  Check h_eq_length : length (3 :: nil) = (fun _ : nat => 0) 1.
+  Check h_eq_length_0 : length (3 :: nil) = 0.
+  Check h_eq_add_y : 0 + y = y.
+  Check h_trueEQfalse : true = false.
+  Check h_impl_trueEQfalse : False -> true = false.
+  Check z: nat.
+  Check t : nat.
+  Check h_IDProp : IDProp.
+  Check h_impl_neq_true_false : 0 < 1 -> 0 < 0 -> true = false -> true <> false.
+  Check h_neq_true_false : true <> false.
+  Check h_forall_neq_true_false0 : forall w w' : nat, w < w' -> true <> false.
+  Check h_impl_not_lt_1_0 : 0 < 1 -> ~ 1 < 0.
+  Check h_impl_lt_1_0 : 0 < 1 -> 1 < 0.
+  exact I.
+Qed.
