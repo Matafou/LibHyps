@@ -109,23 +109,24 @@ Qed.
 
 
 
-Ltac rename_hyp_2 h th :=
+Ltac rename_hyp_2 th :=
   match th with
+  | true <> false => fresh "trueNEQfalse"
   | true = false => fresh "trueEQfalse"
   end.
 
 Ltac rename_hyp ::= rename_hyp_2.
-
+(*
 (* Suppose I want to add later another naming rule: *)
-Ltac rename_hyp_3 h th :=
+Ltac rename_hyp_3 th :=
   match th with
   | Nat.eqb ?x ?y = _ => fresh "Nateqb"
   | _ = Nat.eqb ?x ?y => fresh "Nateqb"
-  | _ => rename_hyp_2 h th (* call the previously defined tactic *)
+  | _ => rename_hyp_2 th (* call the previously defined tactic *)
   end.
 
 Ltac rename_hyp ::= rename_hyp_3.
-
+*)
 Close Scope Z_scope.
 Open Scope nat_scope.
 Lemma dummy: forall x y,
