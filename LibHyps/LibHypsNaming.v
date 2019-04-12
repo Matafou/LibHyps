@@ -196,9 +196,7 @@ with build_dummy_quantified stop th :=
           let res := build_dummy_quantified stop th' in
           exact res))
     end
-  | _ =>
-    let newstop := decr stop in
-    fallback_rename_hyp newstop th
+  | _ => fallback_rename_hyp stop th
   end
 
 (** ** Calls the (user-defined) rename_hyp + and fallbacks to some
@@ -217,8 +215,9 @@ with fallback_rename_hyp_quantif stop th :=
     (* sufx_buried contains a list of dummies *)
     let sufx_buried := build_dummy_quantified newstop th in
     (* FIXME: a bit fragile *)
-    let sufx :=
-        match sufx_buried with
+    let sufx_buried' := eval lazy beta delta [List.app] iota in sufx_buried in
+    let sufx := 
+        match sufx_buried' with
         | context [ (@cons Prop ?x ?y)] => constr:(x::y)
         end
     in
@@ -269,7 +268,7 @@ Local Open Scope autonaming_scope.
 Ltac rename_hyp_default n th ::=
   let res := 
       match th with
-      | (@eq _ ?x ?y) => name (`_EQ` ++ x#n ++ y#n)
+      | (@eq _ ?x ?y) => name (`_eq` ++ x#n ++ y#n)
       | ?x <> ?y => name (`_neq` ++ x#n ++ y#n)
       | @cons _ ?x ?l => name (`_cons` ++ x#(S n) ++ l#0%nat)
       | _ => fail
@@ -284,7 +283,7 @@ Ltac rename_hyp ::= rename_hyp_default.
 Local Close Scope autonaming_scope.
 
 Ltac fallback_rename_hyp_name th :=
-  let l := fallback_rename_hyp 2 th in
+  let l := fallback_rename_hyp 3 th in
   let prfx := default_prefix in
   match prfx with
   | context [forall z:Prop, DUMMY z] =>
@@ -327,7 +326,7 @@ Ltac revert_if_norename H :=
 
 
 (* EXAMPLE *)
-
+(*
 Local Open Scope autonaming_scope.
 Ltac rename_hyp_trueeqfalse th :=
   let res := 
@@ -395,32 +394,12 @@ Lemma dummy: forall x y,
 Proof.
   intros.
   Debug Off.
-  let th := constr:(1%Z) in
-  
-  match th with
-  | ?f =>
-    let f' := numerical_names f in
-    let f'' := box_name_raw f' in
-    let c := constr:(f'') in
-    idtac c
-  end.
 
-  onAllHyps autorename.
+  (* onAllHyps autorename. *)
   
   Debug Off.
 
-(*
-  let th := type of H2 in
-  let res :=
-      match th with
-      | (@eq _ ?x ?y) => let a := constr:(+{_eq}) in a
-      end in
-  let h_ := fresh "h" in
-  (* let nme := build_name h_ res in *)
-  idtac res*)
-
-
-  let th := type of H2 in
+  let th := type of H17 in
   let newname := fallback_rename_hyp_name th in
   idtac newname.
 (*  let th := type of H2 in
