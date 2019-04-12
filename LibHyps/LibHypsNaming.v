@@ -59,37 +59,52 @@ Definition heq_:=Type.
 Definition noname:=Type.
 Definition DUMMY := fun x:Prop => x.
 
+Local Open Scope list.
+
+
+Ltac freshable t :=
+  let x := fresh t "_dummy_sufx" in
+  idtac.
 
 (* for hypothesis on numerical constants *)
-Ltac numerical_names prefx t :=
+Ltac numerical_names t :=
   match t with
-  | Z0 => fresh prefx "_0"
-  | 0%Z => fresh prefx "_0"
-  | (Zpos xH)%Z => fresh prefx "_1"
-  | 2%Z => fresh prefx "_2"
-  | 3%Z => fresh prefx "_3"
-  | 4%Z => fresh prefx "_4"
-  | 5%Z => fresh prefx "_5"
-  | 6%Z => fresh prefx "_6"
-  | 7%Z => fresh prefx "_7"
-  | 8%Z => fresh prefx "_8"
-  | 9%Z => fresh prefx "_9"
-  | 10%Z => fresh prefx "_10"
-  | O%nat => fresh prefx "_0"
-  | 1%nat => fresh prefx "_1"
-  | 2%nat => fresh prefx "_2"
-  | 3%nat => fresh prefx "_3"
-  | 4%nat => fresh prefx "_4"
-  | 5%nat => fresh prefx "_5"
-  | 6%nat => fresh prefx "_6"
-  | 7%nat => fresh prefx "_7"
-  | 8%nat => fresh prefx "_8"
-  | 9%nat => fresh prefx "_9"
-  | 10%nat => fresh prefx "_10"
+  | 0%Z => fresh "_0"
+  | (Zpos xH) => fresh "_1"
+  | 1%Z => fresh "_1"
+  | 2%Z => fresh "_2"
+  | 3%Z => fresh "_3"
+  | 4%Z => fresh "_4"
+  | 5%Z => fresh "_5"
+  | 6%Z => fresh "_6"
+  | 7%Z => fresh "_7"
+  | 8%Z => fresh "_8"
+  | 9%Z => fresh "_9"
+  | 10%Z => fresh "_10"
+  (* | Z0 => fresh "_0" *)
+  | O%nat => fresh "_0"
+  | 1%nat => fresh "_1"
+  | 2%nat => fresh "_2"
+  | 3%nat => fresh "_3"
+  | 4%nat => fresh "_4"
+  | 5%nat => fresh "_5"
+  | 6%nat => fresh "_6"
+  | 7%nat => fresh "_7"
+  | 8%nat => fresh "_8"
+  | 9%nat => fresh "_9"
+  | 10%nat => fresh "_10"
   end.
 
-Ltac box_name id :=
-  let id_ := fresh "_" id in constr:(forall id_:Prop, DUMMY id_).
+Ltac box_name_raw id := constr:(forall id:Prop, DUMMY id).
+Ltac box_name id :=  
+  let id_ :=
+      match id with
+      | _ => numerical_names id
+      | _ =>
+        let _ := freshable id in
+        fresh "_" id
+      end
+  in constr:(forall id_:Prop, DUMMY id_).
 
 Ltac build_name acc l :=
   let l := eval lazy beta delta [List.app] iota in l in
@@ -100,7 +115,6 @@ Ltac build_name acc l :=
     let res := build_name newacc l' in
     res
   end.
-
 
 
 Ltac impl_prefix := constr:(forall _impl, DUMMY _impl).
@@ -120,17 +134,25 @@ Ltac detect_prefix th :=
 
 (* This is the customizable naming tactic, by default it fails, giving
    control to default naming tactics. *)
-Ltac rename_hyp th := match th with
-                        | _ => fail
-                        end.
+Ltac rename_hyp th := fail.
 
-Ltac freshable t :=
-  let x := fresh t "_dummy_sufx" in
-  idtac.
 
-Ltac rename_append_piece t l :=
-    let res1 := constr:(@List.app Prop t l) in
-    eval lazy delta [List.app] beta iota in res1.
+Ltac rename_hyp_default stop th :=
+  fail.
+
+Ltac decr n :=
+  match n with
+  | S ?n' => n'
+  | 0 => 0
+  end.
+
+Ltac nextlevel n t :=
+  let tt := type of t in
+  match tt with
+  | Prop => n
+  | _ => decr n
+  end.
+
 
 (* Default naming of an application: we name the function if possible
    or fail, then we add all parameters that can be named either
@@ -138,19 +160,17 @@ Ltac rename_append_piece t l :=
    TODO: remove implicits? Don't know how to do that. *)
 Ltac rename_app stop acc th :=
   match th with
+  | ?f => let f'' := box_name f in
+          constr:(f''::acc)
   | (?f ?x) =>
-    let x'' := 
-    match stop with
-    | true => box_name x
-    | false => fallback_rename_hyp stop x
-    end in
-    let x''' := rename_append_piece x'' acc in
-    rename_app stop x''' f
-  | (?f ?x) => rename_app stop acc f
-  | ?f =>
-    let f' := freshable f in
-    let f'' := box_name f in
-    constr:(f''::acc)
+    let newstop := nextlevel stop x in
+    let namex := match true with
+                 | _ => fallback_rename_hyp newstop x
+                 | _ => constr:(@nil Prop)
+                 end in
+    let newacc := constr:(namex ++ acc) in
+    rename_app stop newacc f
+  | _ => constr:(@nil Prop)
   end
 
 (* go under binder and rebuild a term with a good name inside,
@@ -177,7 +197,8 @@ with build_dummy_quantified stop th :=
           exact res))
     end
   | _ =>
-    fallback_rename_hyp stop th
+    let newstop := decr stop in
+    fallback_rename_hyp newstop th
   end
 
 (** ** Calls the (user-defined) rename_hyp + and fallbacks to some
@@ -187,85 +208,83 @@ with build_dummy_quantified stop th :=
 with fallback_rename_hyp_quantif stop th :=
     let prefx :=
         match th with
+        | ?A -> ?B => impl_prefix
         | forall _ , _ => forall_prefix
         | ex (fun _ => _) => exists_prefix
-        | _ => false
+        | _ => fail
         end in
-    lazymatch prefx with
-    | false => fail
-    | _ =>
-      let sufx_buried := build_dummy_quantified stop th in
-      let sufx :=
-          match sufx_buried with
-          | context [ (@cons Prop ?x ?y)] => constr:(x::y)
-          end
-      in
-      constr:(prefx::sufx)
-    end
-
+    let newstop := decr stop in
+    (* sufx_buried contains a list of dummies *)
+    let sufx_buried := build_dummy_quantified newstop th in
+    (* FIXME: a bit fragile *)
+    let sufx :=
+        match sufx_buried with
+        | context [ (@cons Prop ?x ?y)] => constr:(x::y)
+        end
+    in
+    constr:(prefx::sufx)
+             
 with fallback_rename_hyp_specials stop th :=
+      let newstop := decr stop in
       match th with
       (* First see if user has something that applies *)
-      | _ => rename_hyp th
-(*      | ~ ?t = ?u =>
-        let hl := fallback_rename_hyp stop t in
-        let hr := fallback_rename_hyp stop u in
-        let res' := rename_append_piece hl hr in
-        constr:((forall _neq:Prop, DUMMY _neq) :: res')*)
-(*      | ?t = ?u => (* don't use the first arg of eq *)
-        let hl := fallback_rename_hyp stop t in
-        let hr := fallback_rename_hyp stop u in
-        let res' := rename_append_piece hl hr in
-            constr:((forall _eq:Prop, DUMMY _eq) :: res')*)
+      | _ => rename_hyp newstop th
+      (* if it fails try default specials *)
+      | _ => rename_hyp_default newstop th
       end
 
-
-(* stop is true if name is already long (i.e. some application has
-   been traversed). *)
 with fallback_rename_hyp stop th :=
-      match th with
-      | _ => fallback_rename_hyp_specials stop th
-         (* customizable naming tactic has priority. *)
-      (* | _ => rename_default h th (* some default ones may then happen *) *)
-      | _ => match stop with (* then we go through quantifiers only if at top *)
-             | true => fail
-             | false => fallback_rename_hyp_quantif stop th
-             end
-      | _ =>
-        let newstop :=
-            let typth := type of th in
-            match typth with
-            | Prop => stop
-            | _ => true
-            end in
-        rename_app newstop (@nil Prop) th (* default TODO: unify with above default? *)
-      end.
+        match stop with
+        | 0 => constr:(cons ltac:(box_name th) nil)
+        | 0 => constr:(@nil Prop)
+        | S ?n =>
+          match th with
+          | _ => fallback_rename_hyp_specials stop th
+          | _ => fallback_rename_hyp_quantif stop th
+          | _ =>
+            let newstop := nextlevel stop th in
+            rename_app newstop (@nil Prop) th
+          end
+        end.
 
 
-Notation "'`' id '`'" := (forall id, DUMMY id) (at level 1,id ident,only parsing): autonaming_scope.
-Notation "'#' X " := ltac:(let c := fallback_rename_hyp true X in exact c)
+(* create a simple part of a name from id, returns a list of constr *)
+Notation "'`' id '`'" := (@cons Prop (forall id, DUMMY id) nil) (at level 1,id ident,only parsing): autonaming_scope.
+
+(* create a complex part of name from term X, returns a list of constr *)
+Notation " X '#' n " := ltac:(
+                          let c := fallback_rename_hyp n X in exact c)
                             (at level 1,X constr, only parsing): autonaming_scope.
-Notation "'$' X " := ltac:(let c := fallback_rename_hyp false X in exact c)
+
+(* create a less complex part of name from term X, returns a list of constr *)
+Notation "'$' X " := ltac:(
+                       let c := fallback_rename_hyp 1 X in exact c)
                             (at level 1,X constr, only parsing): autonaming_scope.
 
 Ltac name c := (constr:(c)).
 
 Local Open Scope autonaming_scope.
-Local Open Scope list.
 
-Ltac rename_hyp_default th :=
+(* Redefining rename_hyp_default now that we have these usefull notations. *)
+Ltac rename_hyp_default n th ::=
   let res := 
       match th with
-      | (@eq _ ?x ?y) => name (`_eq` :: #x ++ #y)
-      | ?x <> ?y => name (`_neq` :: #true ++ #false)
-      | @cons _ ?x ?l => name (`_cons` :: #x ++ #l)
+      | (@eq _ ?x ?y) => name (`_EQ` ++ x#n ++ y#n)
+      | ?x <> ?y => name (`_neq` ++ x#n ++ y#n)
+      | @cons _ ?x ?l => name (`_cons` ++ x#(S n) ++ l#0%nat)
+      | _ => fail
       end in
   res.
 
+(* Default naming scheme, which can be extended by redefining
+   rename_hyp with a customized tactic, which can also call
+   rename_hyp_default. *)
 Ltac rename_hyp ::= rename_hyp_default.
 
+Local Close Scope autonaming_scope.
+
 Ltac fallback_rename_hyp_name th :=
-  let l := fallback_rename_hyp false th in
+  let l := fallback_rename_hyp 2 th in
   let prfx := default_prefix in
   match prfx with
   | context [forall z:Prop, DUMMY z] =>
@@ -306,15 +325,34 @@ Ltac revert_if_norename H :=
   | _ => idtac
   end.
 
-(*
+
+(* EXAMPLE *)
+
+Local Open Scope autonaming_scope.
+Ltac rename_hyp_trueeqfalse th :=
+  let res := 
+      match th with
+      (*| (@eq _ (@true) (@false)) => name (`_TRUEEQFALSE`)*)
+      (* | (@eq _ ?x ?y) => name (`_eq` ++ $x ++ $y) *)
+      (* | ?x <> ?y => name (`_neq` ++ $x ++ $y) *)
+      (* | _ => rename_hyp_default th *)
+        | _ => fail
+      end in
+  res.
+
+Ltac rename_hyp ::= rename_hyp_trueeqfalse.
+Local Close Scope autonaming_scope.
+
 Lemma dummy: forall x y,
     (forall nat : Type, (nat -> nat -> Prop) -> list nat -> Prop) ->
     0 <= 1 ->
+    0 = 1 ->
     (0%Z <= 1%Z)%Z ->
+    (0%Z <= 6%Z)%Z ->
     x <= y ->
     x = y ->
-    0 = 1 ->
-    (0 = 1)%Z ->
+    0 = 3 ->
+    (1 = 8)%Z ->
     ~x = y ->
     true = Nat.eqb 3 4  ->
     Nat.eqb 3 4 = true  ->
@@ -330,10 +368,13 @@ Lemma dummy: forall x y,
      (exists w:nat , w = w -> ~(true=(andb false true)) /\ False) ->
      (exists w:nat , w = w -> True /\ False) ->
      (forall w w':nat , w = w' -> true=false) -> 
+     (forall w:nat , w = w -> true=false) -> 
+     (forall w:nat, (Nat.eqb w w)=false) -> 
      (forall w w':nat , w = w' -> Nat.eqb 3 4=Nat.eqb 4 3) -> 
     List.length (cons 3 nil) = (fun x => 0)1 ->
     List.length (cons 3 nil) = x ->
     plus 0 y = y ->
+    plus (plus (plus x y) y) y = y ->
     (true=false) ->
     (true<>false) ->
     (False -> (true=false)) ->
@@ -346,16 +387,23 @@ Lemma dummy: forall x y,
       (0 < 1 -> 0 < 0 -> true = false -> ~(true=false)) ->
       (~(true=false)) ->
       (forall w w',w < w' -> ~(true=false)) ->
+      plus (plus (plus x y) a) b = t ->
+      plus (plus (plus x y) a) b < 0 ->
       (0 < 1 -> ~(1<0)) ->
       (0 < 1 -> 1<0) -> 0 < z -> True.
   (* auto naming at intro: *)
 Proof.
   intros.
-  Debug On.
-  let th := type of H12 in
-  let newname := fallback_rename_hyp_name th in
-  idtac newname.
-
+  Debug Off.
+  let th := constr:(1%Z) in
+  
+  match th with
+  | ?f =>
+    let f' := numerical_names f in
+    let f'' := box_name_raw f' in
+    let c := constr:(f'') in
+    idtac c
+  end.
 
   onAllHyps autorename.
   
