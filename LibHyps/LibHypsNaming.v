@@ -66,33 +66,34 @@ Ltac freshable t :=
   let x := fresh t "_dummy_sufx" in
   idtac.
 
-(* for hypothesis on numerical constants *)
+(* for hypothesis on numerical constants. The Z and N suffixes are
+   there to avoid messing with nulerical suffixes added by "fresh"
+   itself. *)
 Ltac numerical_names t :=
   match t with
-  | 0%Z => fresh "_0"
-  | (Zpos xH) => fresh "_1"
-  | 1%Z => fresh "_1"
-  | 2%Z => fresh "_2"
-  | 3%Z => fresh "_3"
-  | 4%Z => fresh "_4"
-  | 5%Z => fresh "_5"
-  | 6%Z => fresh "_6"
-  | 7%Z => fresh "_7"
-  | 8%Z => fresh "_8"
-  | 9%Z => fresh "_9"
+  | 0%Z => fresh "_0Z"
+  | 1%Z => fresh "_1Z"
+  | 2%Z => fresh "_2Z"
+  | 3%Z => fresh "_3Z"
+  | 4%Z => fresh "_4Z"
+  | 5%Z => fresh "_5Z"
+  | 6%Z => fresh "_6Z"
+  | 7%Z => fresh "_7Z"
+  | 8%Z => fresh "_8Z"
+  | 9%Z => fresh "_9Z"
   | 10%Z => fresh "_10"
   (* | Z0 => fresh "_0" *)
-  | O%nat => fresh "_0"
-  | 1%nat => fresh "_1"
-  | 2%nat => fresh "_2"
-  | 3%nat => fresh "_3"
-  | 4%nat => fresh "_4"
-  | 5%nat => fresh "_5"
-  | 6%nat => fresh "_6"
-  | 7%nat => fresh "_7"
-  | 8%nat => fresh "_8"
-  | 9%nat => fresh "_9"
-  | 10%nat => fresh "_10"
+  | O%nat => fresh "_0N"
+  | 1%nat => fresh "_1N"
+  | 2%nat => fresh "_2N"
+  | 3%nat => fresh "_3N"
+  | 4%nat => fresh "_4N"
+  | 5%nat => fresh "_5N"
+  | 6%nat => fresh "_6N"
+  | 7%nat => fresh "_7N"
+  | 8%nat => fresh "_8N"
+  | 9%nat => fresh "_9N"
+  | 10%nat => fresh "_10N"
   end.
 
 Ltac box_name_raw id := constr:(forall id:Prop, DUMMY id).
@@ -269,6 +270,7 @@ Ltac rename_hyp_default n th ::=
   let res := 
       match th with
       | (@eq _ ?x ?y) => name (`_eq` ++ x#n ++ y#n)
+      (* | Z.le ?A ?B => name (`_Zle` ++ A#n ++ B#n) *)
       | ?x <> ?y => name (`_neq` ++ x#n ++ y#n)
       | @cons _ ?x ?l => name (`_cons` ++ x#(S n) ++ l#0%nat)
       | _ => fail
@@ -282,8 +284,14 @@ Ltac rename_hyp ::= rename_hyp_default.
 
 Local Close Scope autonaming_scope.
 
+(* The number of applications that can be traversed.
+   This can be changed dynamically by using:
+   Ltac rename_depth ::= constr:(2). *)
+Ltac rename_depth := constr:(3).
+
 Ltac fallback_rename_hyp_name th :=
-  let l := fallback_rename_hyp 3 th in
+  let depth := rename_depth in
+  let l := fallback_rename_hyp depth th in
   let prfx := default_prefix in
   match prfx with
   | context [forall z:Prop, DUMMY z] =>
@@ -306,7 +314,6 @@ Ltac autorename H :=
   end.
   
 Ltac rename_new_hyps tac := tac_new_hyps tac autorename.
-
 (* Need a way to rename or revert but revert needs to be done in the
    other direction (so better do ";; autorename ;!; revertHyp"), and
    may fail if something depends on the reverted hyp. So we should
@@ -331,7 +338,7 @@ Local Open Scope autonaming_scope.
 Ltac rename_hyp_trueeqfalse th :=
   let res := 
       match th with
-      (*| (@eq _ (@true) (@false)) => name (`_TRUEEQFALSE`)*)
+      | (@eq _ (@true) (@false)) => name (`_TRUEEQFALSE`)
       (* | (@eq _ ?x ?y) => name (`_eq` ++ $x ++ $y) *)
       (* | ?x <> ?y => name (`_neq` ++ $x ++ $y) *)
       (* | _ => rename_hyp_default th *)
@@ -394,12 +401,16 @@ Lemma dummy: forall x y,
 Proof.
   intros.
   Debug Off.
-
-  (* onAllHyps autorename. *)
+  Ltac rename_depth ::= constr:(3).
+  onAllHyps autorename.
+  autorename H.
+  autorename H1.
   
   Debug Off.
+  let fr := fresh h_le_0_1 in
+  idtac fr.
 
-  let th := type of H17 in
+  let th := type of H1 in
   let newname := fallback_rename_hyp_name th in
   idtac newname.
 (*  let th := type of H2 in

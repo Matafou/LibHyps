@@ -63,32 +63,21 @@ Typical use, in increasing order of complexity, approximatively
 equivalent to the decreasing order of interest.
 
 ```
-(* 1 Define some tactic with specific name, which may
-     call previously defined similar tactic *)
-Ltac my_rename_hyp h th :=
-  match th with
-    | (ind1 _ _ _ _) => fresh "ind1"
-    | (ind2 _ _) => fresh "ind2"
-    | f1 _ _ = true => fresh "f_eq_true"
-    | f1 _ _ = false => fresh "f_eq_false"
-    | f1 _ _ = _ => fresh "f_eq"
-    | ind3 ?h ?x => fresh "ind3_" h
-    | ind3 _ ?x => fresh "ind3" (* if fresh h failed above *)
-
-    (* Sometime we want to look for the name of another hypothesis to
-       name h. For example here we want to rename hypothesis h into
-       "type_of_foo" if there is some H of type [type_of foo = Some
-       h]. *)
-    | type => (* See if we find something of which h is the type: *)
-              match reverse goal with
-              | H: type_of ?x = Some h => fresh "type_of_" x
-              end
+(* Redefining rename_hyp, first define a naming ltac . *)
+Ltac rename_hyp_default n th ::=
+  let res := 
+      match th with
+      | (ind1 _ _) => name (`ind1`)
+      | (ind1 _ _ ?x ?y) => name (`ind1` ++ x#n ++ y$n)
+      | f1 _ ?x = ?y => name (`f1` ++ x#n ++ y#n)
+      end in
+  res.
 
     | _ => previously_defined_renaming_tac1 th (* cumulative with previously defined renaming tactics *)
     | _ => previously_defined_renaming_tac2 th
   end.
 
-(* 2 Overwrite the definition of rename_hyp using the ::= operator. :*)
+(* 2 Then overwrite the definition of rename_hyp using the ::= operator. :*)
 
 Ltac rename_hyp ::= my_rename_hyp.
 ```
