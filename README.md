@@ -54,33 +54,34 @@ tactic allow to rename hypothesis automatically.
 
 ## How to cstomize the naming scheme
 
-Tactic `rename_hyp` should be redefined along a coq development, it
-should return a fresh name build from an hypothesis h and its type th.
-It should fail if no name is found, so that the fallback scheme is
-called.
-
-Typical use, in increasing order of complexity, approximatively
-equivalent to the decreasing order of interest.
+The naming engine analyzes the type of hypothesis and generates a name
+mimicking the first levels of term structure. At each level the
+customizable tactic `rename_hyp` is called. One can redefine it at
+will. It must be of the following form:
 
 ```
-(* Redefining rename_hyp, first define a naming ltac . *)
+(** Redefining rename_hyp*)
+(* First define a naming ltac. It takes the current level n and
+   the sub-term th being looked at. It returns a "name". *)
 Ltac rename_hyp_default n th ::=
-  let res := 
-      match th with
-      | (ind1 _ _) => name (`ind1`)
-      | (ind1 _ _ ?x ?y) => name (`ind1` ++ x#n ++ y$n)
-      | f1 _ ?x = ?y => name (`f1` ++ x#n ++ y#n)
-      end in
-  res.
+   match th with
+   | (ind1 _ _) => name (`ind1`)
+   | (ind1 _ _ ?x ?y) => name (`ind1` ++ x#(S n)x ++ y$n)
+   | f1 _ ?x = ?y => name (`f1` ++ x#n ++ y#n)
+   | _ => previously_defined_renaming_tac1 n th (* cumulative with previously defined renaming tactics *)
+   | _ => previously_defined_renaming_tac2 n th
+   end.
 
-    | _ => previously_defined_renaming_tac1 th (* cumulative with previously defined renaming tactics *)
-    | _ => previously_defined_renaming_tac2 th
-  end.
-
-(* 2 Then overwrite the definition of rename_hyp using the ::= operator. :*)
-
+(* Then overwrite the definition of rename_hyp using the ::= operator. :*)
 Ltac rename_hyp ::= my_rename_hyp.
 ```
+
+Where:
+
+- `` `id` `` to use the name id itself
+- `t$n` to recursively call the naming engine on term t, n being the maximum depth allowed
+- `name ++ name` to concatenate name parts.
+
 
 ## How to define variants of these tacticals?
 
