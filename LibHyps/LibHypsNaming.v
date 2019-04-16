@@ -256,11 +256,6 @@ Notation " X '#' n " := ltac:(
                           let c := fallback_rename_hyp n X in exact c)
                             (at level 1,X constr, only parsing): autonaming_scope.
 
-(* create a less complex part of name from term X, returns a list of constr *)
-Notation "'$' X " := ltac:(
-                       let c := fallback_rename_hyp 1 X in exact c)
-                            (at level 1,X constr, only parsing): autonaming_scope.
-
 Ltac name c := (constr:(c)).
 
 Local Open Scope autonaming_scope.
@@ -272,7 +267,16 @@ Ltac rename_hyp_default n th ::=
       | (@eq _ ?x ?y) => name (`_eq` ++ x#n ++ y#n)
       (* | Z.le ?A ?B => name (`_Zle` ++ A#n ++ B#n) *)
       | ?x <> ?y => name (`_neq` ++ x#n ++ y#n)
-      | @cons _ ?x ?l => name (`_cons` ++ x#(S n) ++ l#0%nat)
+      | @cons _ ?x (cons ?y ?l) =>
+        match n with
+        | S ?n' => name (`_cons` ++ x#n ++ y#n ++ l#n')
+        | 0 => name (`_cons` ++ x#n)
+        end
+      | @cons _ ?x ?l =>
+        match n with
+        | S ?n' => name (`_cons` ++ x#n ++ l#n')
+        | 0 => name (`_cons` ++ x#n)
+        end
       | _ => fail
       end in
   res.
@@ -280,7 +284,7 @@ Ltac rename_hyp_default n th ::=
 (* Default naming scheme, which can be extended by redefining
    rename_hyp with a customized tactic, which can also call
    rename_hyp_default. *)
-Ltac rename_hyp ::= rename_hyp_default.
+Ltac rename_hyp ::= fail.
 
 Local Close Scope autonaming_scope.
 
