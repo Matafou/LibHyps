@@ -119,11 +119,9 @@ Ltac build_name acc l :=
 
 
 Ltac impl_prefix := constr:(forall _impl, DUMMY _impl).
-Ltac forall_prefix := constr:(forall _forall, DUMMY _forall).
-Ltac exists_prefix := constr:(forall _exist, DUMMY _exist).
+Ltac forall_prefix := constr:(forall _all, DUMMY _all).
+Ltac exists_prefix := constr:(forall _ex, DUMMY _ex).
 Ltac default_prefix :=constr:(forall h, DUMMY h).
-Ltac eq_prefix :=constr:(forall eq, DUMMY eq).
-Ltac neq_prefix :=constr:(forall neq, DUMMY neq).
 
 Ltac detect_prefix th :=
   match th with
@@ -265,6 +263,10 @@ Ltac rename_hyp_default n th ::=
   let res := 
       match th with
       | (@eq _ ?x ?y) => name (`_eq` ++ x#n ++ y#n)
+      | (@or ?x ?y) => name (`_or` ++ x#n ++ `_` ++ y#n)
+      | (@iff ?x ?y) => name (`_iff` ++ x#n ++ y#n)
+      | (@and ?x ?y) => name (`_and` ++ x#n ++ `_` ++ y#n)
+      | (@not ?x) => name (`_n` ++ x#n)
       (* | Z.le ?A ?B => name (`_Zle` ++ A#n ++ B#n) *)
       | ?x <> ?y => name (`_neq` ++ x#n ++ y#n)
       | @cons _ ?x (cons ?y ?l) =>
@@ -339,14 +341,10 @@ Ltac revert_if_norename H :=
 (* EXAMPLE *)
 (*
 Local Open Scope autonaming_scope.
-Ltac rename_hyp_trueeqfalse th :=
+Ltac rename_hyp_trueeqfalse n th :=
   let res := 
       match th with
-      | (@eq _ (@true) (@false)) => name (`_TRUEEQFALSE`)
-      (* | (@eq _ ?x ?y) => name (`_eq` ++ $x ++ $y) *)
-      (* | ?x <> ?y => name (`_neq` ++ $x ++ $y) *)
-      (* | _ => rename_hyp_default th *)
-        | _ => fail
+      | (@eq _ true false) => name (`_TRUEEQFALSE`)
       end in
   res.
 
@@ -405,7 +403,7 @@ Lemma dummy: forall x y,
 Proof.
   intros.
   Debug Off.
-  Ltac rename_depth ::= constr:(3).
+  (* Ltac rename_depth ::= constr:(4). *)
   onAllHyps autorename.
   autorename H.
   autorename H1.

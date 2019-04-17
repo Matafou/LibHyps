@@ -1,5 +1,6 @@
 Require Export LibHyps.TacNewHyps.
 Require Export LibHyps.LibHypsNaming.
+Require Export LibHyps.LibSpecialize.
 
 (* Some usual tactics one may want to use with onNewHypsOf: *)
 (* apply subst using H if possible. *)
