@@ -9,7 +9,7 @@ Lemma foo: forall x y:nat,
     x = y -> forall  a t : nat, a+1 = t+2 ->forall u v, u+1 = v -> a+1 = v+2 -> True.
 Proof.
   intros.
-  (** try to move all hyps with types in Type: *)
+  (** try to move all hyps with types in Type. *)
   onAllHyps move_up_types.
   Undo.
   (** subst or revert all hypothesis older first: some hyps remain *)
@@ -39,8 +39,8 @@ Proof.
   apply I.
 Qed.
 
-(** Example of tactic notations to define shortcuts: =tac means "apply
-   tac and try subst on all created hypothesis" *)
+(** Example of tactic notations to define shortcuts for the examples
+   above: here =tac does "apply tac and try subst on all new hypothesis" *)
 Local Tactic Notation "=" tactic3(Tac) := Tac ;!; substHyp.
 
 Lemma bar: forall x y a t u v : nat,
@@ -141,30 +141,43 @@ Qed.
 
 
 
-(** Auto naming hypothesis *)
+(** 1 Auto naming hypothesis *)
 
+(** Let us custmize the naming scheme:  *)
+
+(* First open the some dedicated notations (namely `id` and x#n below). *)
 Local Open Scope autonaming_scope.
 Import ListNotations.
 
+(* Define the naming scheme as new tactic *)
 Ltac rename_hyp_2 n th :=
-  match th with
-  | true <> false => name(`_tNEQf`)
-  | true = false => name(`_tEQf`)
-  end.
-
-Ltac rename_hyp ::= rename_hyp_2.
-
-(* Suppose I want to add later another naming rule: *)
-Ltac rename_hyp_3 n th :=
   match th with
   | Nat.eqb ?x ?y = _ => name(`_Neqb` ++ x#n ++ x#n)
   | _ = Nat.eqb ?x ?y => name(`_Neqb` ++ x#n ++ x#n)
-  | _ => rename_hyp_2 n th (* call the previously defined tactic *)
   end.
 
+(* Then overwrite the customization hook of the naming tactic *)
+Ltac rename_hyp ::= rename_hyp_2.
+
+(** Suppose I want to add another naming rule: I need to cumulate the
+    previous scheme with the new one. First define a new tactic that
+    will replace the old one. it should call previous naming schemes
+    in case of failure of the new scheme *)
+Ltac rename_hyp_3 n th :=
+  match th with
+  | true <> false => name(`_tNEQf`)
+  | true = false => name(`_tEQf`)
+  (* if all failed, call the previously defined naming tactic, which
+     must not be rename_hyp since it will be overwritten: *)
+  | _ => rename_hyp_2 n th
+  end.
+
+(* Then update the customization hook *)
 Ltac rename_hyp ::= rename_hyp_3.
+(* Close the naming scope *)
 Local Close Scope autonaming_scope.
 
+(** 2 Example of uses of the naming schemes. *)
 Lemma dummy: forall x y,
     (forall nat : Type, (nat -> nat -> Prop) -> list nat -> Prop) ->
     0 <= 1 ->
@@ -217,18 +230,23 @@ Lemma dummy: forall x y,
   (* auto naming at intro: *)
 Proof.
   intros.
-  Debug Off.
-  (* Ltac rename_depth ::= constr:(4). *)
   onAllHyps autorename.
   Undo 2.
-  (* intro + naming of introduced variables *)
+  (* Shorter: the ! tactical aplpies a tactic and then applies
+     autorename on new hypothesis: *)
   !intros.
+  Undo.
+  (* combining ! and = defined previously (subst) *)
+  =!intros.
   Undo.
   (** Reduce renaming depth to 2: *)
   Ltac rename_depth ::= constr:(2).
-  (* naes are shorter, more collisions *)
+  (* names are shorter, more collisions *)
   !intros. 
+  Ltac rename_depth ::= constr:(3).
   (** move up all non prop hypothesis *)
+
+
   onAllHyps move_up_types.
   (* decompose and revert all new hyps *)
   decompose [ex and] h_ex_and_n_and_le_eq ;!; revertHyp.
