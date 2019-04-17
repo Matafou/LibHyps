@@ -71,17 +71,17 @@ Lemma dummy: forall x y,
   Check h_eq_x_y : x = y.
   Check   h_eq_0N_1N : 0 = 1.
   Check h_eq_0Z_1Z : 0%Z = 1%Z.
-  Check h_n_eq_x_y : x <> y.
+  Check h_neq_x_y : x <> y.
   Check h_Neqb_3N_3N : true = (3 =? 4).
   Check h_Neqb_3N_3N0 : (3 =? 4) = true.
   Check h_eq_true_leb : true = (3 <=? 4).
   Check h_eq_1N_0N : 1 = 0.
-  Check h_n_eq_x_y0 : x <> y.
-  Check h_n_lt_1N_0N : ~ 1 < 0.
+  Check h_neq_x_y0 : x <> y.
+  Check h_not_lt_1N_0N : ~ 1 < 0.
   Check h_all_tNEQf : forall w w' : nat, w = w' -> true <> false.
   Check h_all_and_tEQf_True : forall w w' : nat, w = w' -> true = false /\ True.
   Check h_all_and_False_True : forall w w' : nat, w = w' -> False /\ True.
-  Check h_ex_and_n_eq_False : exists w : nat, w = w -> true <> (false && true)%bool /\ False.
+  Check h_ex_and_neq_true_andb_False : exists w : nat, w = w -> true <> (false && true)%bool /\ False.
   Check   h_ex_and_True_False : exists w : nat, w = w -> True /\ False.
   Check h_all_tEQf : forall w w' : nat, w = w' -> true = false.
   Check h_all_Neqb_3N_3N : forall w w' : nat, w = w' -> (3 =? 4) = (4 =? 3).
@@ -92,7 +92,7 @@ Lemma dummy: forall x y,
   Check h_impl_tEQf : False -> true = false.
   Check x0 : nat.
   Check env : list nat.
-  Check h_n_In_nat_x0_nil : ~ In x0 [].
+  Check h_not_In_nat_x0_nil : ~ In x0 [].
   Check h_eq_cons_x0_3N_cons_2N : x0 :: 3 :: env = 2 :: env.
   Check z.
   Check t : nat.
@@ -100,7 +100,7 @@ Lemma dummy: forall x y,
   Check h_impl_tNEQf : 0 < 1 -> 0 < 0 -> true = false -> true <> false.
   Check h_tNEQf : true <> false.
   Check h_all_tNEQf0 : forall w w' : nat, w < w' -> true <> false.
-  Check h_impl_n_lt : 0 < 1 -> ~ 1 < 0.
+  Check h_impl_not_lt_1N_0N : 0 < 1 -> ~ 1 < 0.
   Check h_impl_lt_1N_0N : 0 < 1 -> 1 < 0.
   Check h_lt_0N_z : 0 < z.
   exact I.

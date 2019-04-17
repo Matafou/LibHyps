@@ -263,10 +263,6 @@ Ltac rename_hyp_default n th ::=
   let res := 
       match th with
       | (@eq _ ?x ?y) => name (`_eq` ++ x#n ++ y#n)
-      | (@or ?x ?y) => name (`_or` ++ x#n ++ `_` ++ y#n)
-      | (@iff ?x ?y) => name (`_iff` ++ x#n ++ y#n)
-      | (@and ?x ?y) => name (`_and` ++ x#n ++ `_` ++ y#n)
-      | (@not ?x) => name (`_n` ++ x#n)
       (* | Z.le ?A ?B => name (`_Zle` ++ A#n ++ B#n) *)
       | ?x <> ?y => name (`_neq` ++ x#n ++ y#n)
       | @cons _ ?x (cons ?y ?l) =>
@@ -279,6 +275,7 @@ Ltac rename_hyp_default n th ::=
         | S ?n' => name (`_cons` ++ x#n ++ l#n')
         | 0 => name (`_cons` ++ x#n)
         end
+      | (@Some _ ?x) => name (x#n)
       | _ => fail
       end in
   res.
@@ -381,6 +378,7 @@ Lemma dummy: forall x y,
      (forall w w':nat , w = w' -> Nat.eqb 3 4=Nat.eqb 4 3) -> 
     List.length (cons 3 nil) = (fun x => 0)1 ->
     List.length (cons 3 nil) = x ->
+    List.nth_error (cons 3 nil) x = Some 3 -> 
     plus 0 y = y ->
     plus (plus (plus x y) y) y = y ->
     (true=false) ->
