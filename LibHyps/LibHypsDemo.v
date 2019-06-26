@@ -180,6 +180,8 @@ Local Close Scope autonaming_scope.
 (** 2 Example of uses of the naming schemes. *)
 Lemma dummy: forall x y,
     (forall nat : Type, (nat -> nat -> Prop) -> list nat -> Prop) ->
+    (let a := 0 in a = 0) -> (* this is is not treated for renaming *)
+    (exists x, (let a := x in a = 0) /\ (x >=0)) -> (* this too, once decomposed *)
     0 <= 1 ->
     0 = 1 ->
     (0%Z <= 1%Z)%Z ->
@@ -196,17 +198,17 @@ Lemma dummy: forall x y,
     ~x = y ->
     ~1 < 0 ->
      (forall w w':nat , w = w' -> ~true=false)=(forall w w':nat , w = w' -> ~true=false) ->
-     (forall w w':nat , w = w' -> ~true=false) ->  
-     (forall w w':nat , w = w' -> true=false /\ True) -> 
-     (forall w w':nat , w = w' -> true=false) -> 
-     (forall w w':nat , w = w' -> False /\ True) -> 
+     (forall w w':nat , w = w' -> ~true=false) ->
+     (forall w w':nat , w = w' -> true=false /\ True) ->
+     (forall w w':nat , w = w' -> true=false) ->
+     (forall w w':nat , w = w' -> False /\ True) ->
      (exists w:nat , ~(true=(andb false true)) /\ le w w /\ w = x) ->
      (exists w:nat , w = w -> ~(true=(andb false true)) /\ False) ->
      (exists w:nat , w = w -> True /\ False) ->
-     (forall w w':nat , w = w' -> true=false) -> 
-     (forall w:nat , w = w -> true=false) -> 
-     (forall w:nat, (Nat.eqb w w)=false) -> 
-     (forall w w':nat , w = w' -> Nat.eqb 3 4=Nat.eqb 4 3) -> 
+     (forall w w':nat , w = w' -> true=false) ->
+     (forall w:nat , w = w -> true=false) ->
+     (forall w:nat, (Nat.eqb w w)=false) ->
+     (forall w w':nat , w = w' -> Nat.eqb 3 4=Nat.eqb 4 3) ->
     List.length (cons 3 nil) = (fun x => 0)1 ->
     List.length (cons 3 nil) = x ->
     plus 0 y = y ->
@@ -216,7 +218,7 @@ Lemma dummy: forall x y,
     (False -> (true=false)) ->
     forall (a b: nat) (env : list nat),
       ~ List.In a nil ->
-      cons a (cons 3 env) = cons 2 env -> 
+      cons a (cons 3 env) = cons 2 env ->
     forall z t:nat,
       IDProp ->
       a = b ->
@@ -242,31 +244,36 @@ Proof.
   (** Reduce renaming depth to 2: *)
   Ltac rename_depth ::= constr:(2).
   (* names are shorter, more collisions *)
-  !intros. 
+  !intros.
+  Undo.
   Ltac rename_depth ::= constr:(3).
+  !intros.
   (** move up all non prop hypothesis *)
 
 
   onAllHyps move_up_types.
   (* decompose and revert all new hyps *)
-  decompose [ex and] h_ex_and_n_and_le_eq ;!; revertHyp.
+  decompose [ex and] h_ex_and_neq_and ;!; revertHyp.
   Undo.
   (* decompose and subst or revert all new hyps *)
-  decompose [ex and] h_ex_and_n_and_le_eq ;!; subst_or_revert.
+  decompose [ex and] h_ex_and_neq_and ;!; subst_or_revert.
   Undo.
   (* decompose and rename all new hyps *)
-  decompose [ex and] h_ex_and_n_and_le_eq ;!; autorename.
+  decompose [ex and] h_ex_and_neq_and ;!; autorename.
   Undo.
   (* in short: *)
-  !decompose [ex and] h_ex_and_n_and_le_eq.
+  !decompose [ex and] h_ex_and_neq_and.
   Undo.
   (* decompose and subst or rename all new hyps *)
-  decompose [ex and] h_ex_and_n_and_le_eq ;!; revert_if_norename ;; autorename.
+  decompose [ex and] h_ex_and_neq_and ;; substHyp ;!; revert_if_norename ;; autorename.
+  Undo.
+  (* decompose and subst or rename all new hyps, revert if nothing applies *)
+  decompose [ex and] h_ex_and_ge ;; substHyp ;!; revert_if_norename ;; autorename.
   Undo.
   (* in short: *)
-  !!!decompose [ex and] h_ex_and_n_and_le_eq.
+  !!!decompose [ex and] h_ex_and_neq_and.
   Undo.
-
+  intro hlet.
   exact I.
 Qed.
 

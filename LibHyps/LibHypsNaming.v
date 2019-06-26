@@ -29,29 +29,18 @@ Require Import ZArith.
   equivalent to the decreasing order of interest.
 
 <<
-Ltac my_rename_hyp h th :=
+Ltac rename_hyp1 n th :=
   match th with
-    | (ind1 _ _ _ _) => fresh "ind1"
-    | (ind2 _ _) => fresh "ind2"
-    | f1 _ _ = true => fresh "f_eq_true"
-    | f1 _ _ = false => fresh "f_eq_false"
-    | f1 _ _ = _ => fresh "f_eq"
-    | ind3 ?h ?x => fresh "ind3_" h
-    | ind3 _ ?x => fresh "ind3" (* if fresh h failed above *)
-
-    (* Sometime we want to look for the name of another hypothesis to
-       name h. For example here we want to rename hypothesis h into
-       "type_of_foo" if there is some H of type [type_of foo = Some
-       h]. *)
-    | type => (* See if we find something of which h is the type: *)
-              match reverse goal with
-              | H: type_of ?x = Some h => fresh "type_of_" x
-              end
-
-    | _ => previously_defined_renaming_tac1 th (* cumulative with previously defined renaming tactics *)
-    | _ => previously_defined_renaming_tac2 th
+  | List.In ?e ?l => name ( `_lst_in` ++ e#n ++ l#O)
+  | InA _ ?e ?l => name( `_inA` ++ e#n ++ l#0)
+  | @StronglySorted _ ?ord ?l => name ( `_strgSorted` ++ l#(S (S n)))
+  | @Forall _ ?P ?x => name (`_lst_forall` ++ P#n ++ x#n)
+  | @Forall2 _ _ ?P ?x ?y => name (`_lst_forall2` ++ P#n ++ x#n ++ y#n)
+  | NoDupA _ ?l => name (`_NoDupA` ++ l#n)
+  | NoDup _ ?l => name (`_NoDup` ++ l#n)
+  | _ => rename_hyp_default n th
   end.
-
+>>
 (* Overwrite the definition of rename_hyp using the ::= operator. :*)
 
 Ltac rename_hyp ::= my_rename_hyp.>> *)
@@ -70,7 +59,7 @@ Ltac rename_hyp ::= my_rename_hyp.>> *)
    _foo) ]
 
    where DUMMY is an opaque function (in fact it is the identiy
-   function but we don"t care). *)
+   function but we don't care). *)
 
 
 (** We define DUMMY as an really opaque symbol. *)
@@ -81,14 +70,18 @@ Defined.
 (** Builds a chunk from an id (should be given by fresh). *)
 Ltac box_name_raw id := constr:(forall id:Prop, DUMMY id).
 
-(** Builds an id from a sequence of chunks. *)
-Ltac build_name acc l :=
+(** Builds an id from a sequence of chunks. fresh is not supposed to
+    add suffixes anywhere because all the ids we use start with "_".
+    As long as no constant or hyp name start with "_" it is ok. *)
+Ltac build_name l :=
   let l := eval lazy beta delta [List.app] iota in l in
   match l with
-  | nil => acc
+  | nil => fail
+  | (forall id1:Prop, DUMMY id1)::nil => fresh id1
   | (forall id1:Prop, DUMMY id1)::?l' =>
-    let newacc := fresh acc id1 in
-    let res := build_name newacc l' in
+    let recres := build_name l' in
+    (* id1 starts with "_", so fresh do not add any suffix *)
+    let res := fresh id1 recres in
     res
   end.
 
@@ -115,34 +108,43 @@ Ltac freshable t :=
   let x := fresh t "_dummy_sufx" in
   idtac.
 
-(** Generate fresh name for numerical constants. The Z and N suffixes
-   are there to avoid messing with numerical suffixes added by "fresh"
-   itself. *)
+(** Generate fresh name for numerical constants. *)
 Ltac numerical_names t :=
   match t with
-  | 0%Z => fresh "_0Z"
-  | 1%Z => fresh "_1Z"
-  | 2%Z => fresh "_2Z"
-  | 3%Z => fresh "_3Z"
-  | 4%Z => fresh "_4Z"
-  | 5%Z => fresh "_5Z"
-  | 6%Z => fresh "_6Z"
-  | 7%Z => fresh "_7Z"
-  | 8%Z => fresh "_8Z"
-  | 9%Z => fresh "_9Z"
+  | 0%Z => fresh "_0"
+  | 1%Z => fresh "_1"
+  | 2%Z => fresh "_2"
+  | 3%Z => fresh "_3"
+  | 4%Z => fresh "_4"
+  | 5%Z => fresh "_5"
+  | 6%Z => fresh "_6"
+  | 7%Z => fresh "_7"
+  | 8%Z => fresh "_8"
+  | 9%Z => fresh "_9"
   | 10%Z => fresh "_10"
   (* | Z0 => fresh "_0" *)
-  | O%nat => fresh "_0N"
-  | 1%nat => fresh "_1N"
-  | 2%nat => fresh "_2N"
-  | 3%nat => fresh "_3N"
-  | 4%nat => fresh "_4N"
-  | 5%nat => fresh "_5N"
-  | 6%nat => fresh "_6N"
-  | 7%nat => fresh "_7N"
-  | 8%nat => fresh "_8N"
-  | 9%nat => fresh "_9N"
-  | 10%nat => fresh "_10N"
+  | O%nat => fresh "_0"
+  | 1%nat => fresh "_1"
+  | 2%nat => fresh "_2"
+  | 3%nat => fresh "_3"
+  | 4%nat => fresh "_4"
+  | 5%nat => fresh "_5"
+  | 6%nat => fresh "_6"
+  | 7%nat => fresh "_7"
+  | 8%nat => fresh "_8"
+  | 9%nat => fresh "_9"
+  | 10%nat => fresh "_10"
+  | O%N => fresh "_0"
+  | 1%N => fresh "_1"
+  | 2%N => fresh "_2"
+  | 3%N => fresh "_3"
+  | 4%N => fresh "_4"
+  | 5%N => fresh "_5"
+  | 6%N => fresh "_6"
+  | 7%N => fresh "_7"
+  | 8%N => fresh "_8"
+  | 9%N => fresh "_9"
+  | 10%N => fresh "_10"
   end.
 
 (** Build a chunk from a simple term: either a number or a freshable
@@ -428,22 +430,19 @@ Ltac rename_hyp_default n th ::=
   res.
 Local Close Scope autonaming_scope.
 
-(* ENtry point of the renaming code. *)
+(* Entry point of the renaming code. *)
 Ltac fallback_rename_hyp_name th :=
   let depth := rename_depth in
   let l := fallback_rename_hyp depth th in
-  let prfx := default_prefix in
-  match prfx with
-  | context [forall z:Prop, DUMMY z] =>
-    build_name z l
-  end.
+  let sufx := build_name l in
+  fresh "h" sufx.
 
 (* Tactic renaming hypothesis H. *)
 Ltac autorename H :=
   match type of H with
   | ?th =>
     match type of th with
-    | Prop => 
+    | Prop =>
       let dummy_name := fresh "dummy" in
       rename H into dummy_name; (* this renaming makes the renaming more or less
                                    idempotent, it is backtracked if the
@@ -453,130 +452,4 @@ Ltac autorename H :=
     end
   | _ => idtac (* not in Prop or "no renaming pattern for " H *)
   end.
-
-(* Tactical to rename all new hypothesis. A hypothesis is new if its
-   name was not present in previous goal. *)
-Ltac rename_new_hyps tac := tac_new_hyps tac autorename.
-
-(* The default behaviour is to generalize hypothesis that we failed to
-   rename, so that no automatic names are introduced by mistake. Of
-   course one can do "intros" to reintroduce them.
-
-   Revert needs to be done in the other direction (so better do ";;
-   autorename ;!; revertHyp"), and may fail if something depends on
-   the reverted hyp. So we should revert everything depending on the
-   unrenamed hyp. *)
-Ltac revert_if_norename H :=
-  let t := type of H in
-  match type of t with
-  | Prop => match goal with
-            | _ =>  let x := fallback_rename_hyp_name t in idtac
-            (* since we are only in prop it is almost never the case
-               that something depends on H but if this happens we revert
-               everything that does. *)
-            | _ => try revert dependent H
-            end
-  | _ => idtac
-  end.
-
-
-(* EXAMPLE *)
-(*
-Local Open Scope autonaming_scope.
-Ltac rename_hyp_trueeqfalse n th :=
-  let res := 
-      match th with
-      | (@eq _ true false) => name (`_TRUEEQFALSE`)
-      end in
-  res.
-
-Ltac rename_hyp ::= rename_hyp_trueeqfalse.
-Local Close Scope autonaming_scope.
-
-Lemma dummy: forall x y,
-    (forall nat : Type, (nat -> nat -> Prop) -> list nat -> Prop) ->
-    0 <= 1 ->
-    0 = 1 ->
-    (0%Z <= 1%Z)%Z ->
-    (0%Z <= 6%Z)%Z ->
-    x <= y ->
-    x = y ->
-    0 = 3 ->
-    (1 = 8)%Z ->
-    ~x = y ->
-    true = Nat.eqb 3 4  ->
-    Nat.eqb 3 4 = true  ->
-    true = Nat.leb 3 4  ->
-    1 = 0 ->
-    ~x = y ->
-    ~1 < 0 ->
-     (forall w w':nat , w = w' -> ~true=false)=(forall w w':nat , w = w' -> ~true=false) ->
-     (forall w w':nat , w = w' -> ~true=false) ->  
-     (forall w w':nat , w = w' -> true=false /\ True) -> 
-     (forall w w':nat , w = w' -> true=false) -> 
-     (forall w w':nat , w = w' -> False /\ True) -> 
-     (exists w:nat , w = w -> ~(true=(andb false true)) /\ False) ->
-     (exists w:nat , w = w -> True /\ False) ->
-     (forall w w':nat , w = w' -> true=false) -> 
-     (forall w:nat , w = w -> true=false) -> 
-     (forall w:nat, (Nat.eqb w w)=false) -> 
-     (forall w w':nat , w = w' -> Nat.eqb 3 4=Nat.eqb 4 3) -> 
-    List.length (cons 3 nil) = (fun x => 0)1 ->
-    List.length (cons 3 nil) = x ->
-    List.nth_error (cons 3 nil) x = Some 3 -> 
-    plus 0 y = y ->
-    plus (plus (plus x y) y) y = y ->
-    (true=false) ->
-    (true<>false) ->
-    (False -> (true=false)) ->
-    forall (a b: nat) (env : list nat),
-      ~ List.In a nil ->
-      cons a (cons 3 env) = cons 2 env -> 
-    forall z t:nat,
-      IDProp ->
-      a = b ->
-      (0 < 1 -> 0 < 0 -> true = false -> ~(true=false)) ->
-      (~(true=false)) ->
-      (forall w w',w < w' -> ~(true=false)) ->
-      plus (plus (plus x y) a) b = t ->
-      plus (plus (plus x y) a) b < 0 ->
-      (0 < 1 -> ~(1<0)) ->
-      (0 < 1 -> 1<0) -> 0 < z -> True.
-  (* auto naming at intro: *)
-Proof.
-  intros.
-  Debug Off.
-  (* Ltac rename_depth ::= constr:(4). *)
-
-
-  Ltac rename_depth ::= constr:(3).
-  onAllHyps autorename.
-  Debug On.
-  autorename H14.
-  autorename H1.
-  
-  Debug Off.
-  let fr := fresh h_le_0_1 in
-  idtac fr.
-
-  let th := type of H1 in
-  let newname := fallback_rename_hyp_name th in
-  idtac newname.
-(*  let th := type of H2 in
-  match th with
-  | (@eq _ ?a ?b) => let res := constr:( {* x *}) in idtac res
-  end.*)
-
-
-
-  onAllHyps autorename.
-  let th10 := type of H2 in
-  let newname := fallback_rename_hyp_name th10 in
-  idtac newname.
-  let x := fallback_rename_hyp false th10 in
-  idtac x.
-*)
-(* ***************************************************** *)
-
-
 

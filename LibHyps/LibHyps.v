@@ -2,6 +2,31 @@ Require Export LibHyps.TacNewHyps.
 Require Export LibHyps.LibHypsNaming.
 Require Export LibHyps.LibSpecialize.
 
+(* Tactical to rename all new hypothesis. A hypothesis is new if its
+   name was not present in previous goal. *)
+Ltac rename_new_hyps tac := tac_new_hyps tac autorename.
+
+(* Default behaviour: generalize hypothesis that we failed to rename,
+   so that no automatic names are introduced by mistake. Of course one
+   can do "intros" to reintroduce them.
+
+   Revert needs to be done in the other direction (so better do ";;
+   autorename ;!; revertHyp"), and may fail if something depends on
+   the reverted hyp. So we should revert everything depending on the
+   unrenamed hyp. *)
+Ltac revert_if_norename H :=
+  let t := type of H in
+  match type of t with
+  | Prop => match goal with
+            | _ =>  let x := fallback_rename_hyp_name t in idtac
+            (* since we are only in prop it is almost never the case
+               that something depends on H but if this happens we revert
+               everything that does. *)
+            | _ => try revert dependent H
+            end
+  | _ => idtac
+  end.
+
 (* Some usual tactics one may want to use with onNewHypsOf: *)
 (* apply subst using H if possible. *)
 Ltac substHyp H :=
