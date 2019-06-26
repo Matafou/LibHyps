@@ -17,12 +17,13 @@ Ltac rename_hyp ::= rename_hyp_2.
 (* Suppose I want to add later another naming rule: *)
 Ltac rename_hyp_3 n th :=
   match th with
-  | Nat.eqb ?x ?y = _ => name(`_Neqb` ++ x#n ++ x#n)
-  | _ = Nat.eqb ?x ?y => name(`_Neqb` ++ x#n ++ x#n)
+  | Nat.eqb ?x ?y = true => name(`_Neqb` ++ x#n ++ y#n)
+  | true = Nat.eqb ?x ?y => name(`_Neqb` ++ x#n ++ y#n)
   | _ => rename_hyp_2 n th (* call the previously defined tactic *)
   end.
 
 Ltac rename_hyp ::= rename_hyp_3.
+Ltac rename_depth ::= constr:(3).
 
 Close Scope Z_scope.
 Open Scope nat_scope.
@@ -40,13 +41,13 @@ Lemma dummy: forall x y,
     1 = 0 ->
     ~x = y ->
     ~1 < 0 ->
-     (forall w w':nat , w = w' -> ~true=false) -> 
-     (forall w w':nat , w = w' -> true=false /\ True) -> 
-     (forall w w':nat , w = w' -> False /\ True) -> 
+     (forall w w':nat , w = w' -> ~true=false) ->
+     (forall w w':nat , w = w' -> true=false /\ True) ->
+     (forall w w':nat , w = w' -> False /\ True) ->
      (exists w:nat , w = w -> ~(true=(andb false true)) /\ False) ->
      (exists w:nat , w = w -> True /\ False) ->
-     (forall w w':nat , w = w' -> true=false) -> 
-     (forall w w':nat , w = w' -> Nat.eqb 3 4=Nat.eqb 4 3) -> 
+     (forall w w':nat , w = w' -> true=false) ->
+     (forall w w':nat , w = w' -> Nat.eqb 3 4=Nat.eqb 4 3) ->
     List.length (cons 3 nil) = (fun x => 0)1 ->
     List.length (cons 3 nil) = 0 ->
     plus 0 y = y ->
@@ -54,7 +55,7 @@ Lemma dummy: forall x y,
     (False -> (true=false)) ->
     forall (x : nat) (env : list nat),
       ~ List.In x nil ->
-      cons x (cons 3 env) = cons 2 env -> 
+      cons x (cons 3 env) = cons 2 env ->
     forall z t:nat, IDProp ->
       (0 < 1 -> 0 < 0 -> true = false -> ~(true=false)) ->
       (~(true=false)) ->
@@ -63,45 +64,44 @@ Lemma dummy: forall x y,
       (0 < 1 -> 1<0) -> 0 < z -> True.
   (* auto naming at intro: *)
   !intros.
-  Check x : nat.
-  Check y : nat.
-  Check   h_le_0N_1N : 0 <= 1.
-  Check   h_le_0Z_1Z : (0 <= 1)%Z.
-  Check h_le_x_y : x <= y.
-  Check h_eq_x_y : x = y.
-  Check   h_eq_0N_1N : 0 = 1.
-  Check h_eq_0Z_1Z : 0%Z = 1%Z.
-  Check h_neq_x_y : x <> y.
-  Check h_Neqb_3N_3N : true = (3 =? 4).
-  Check h_Neqb_3N_3N0 : (3 =? 4) = true.
-  Check h_eq_true_leb : true = (3 <=? 4).
-  Check h_eq_1N_0N : 1 = 0.
-  Check h_neq_x_y0 : x <> y.
-  Check h_not_lt_1N_0N : ~ 1 < 0.
-  Check h_all_tNEQf : forall w w' : nat, w = w' -> true <> false.
-  Check h_all_and_tEQf_True : forall w w' : nat, w = w' -> true = false /\ True.
-  Check h_all_and_False_True : forall w w' : nat, w = w' -> False /\ True.
-  Check h_ex_and_neq_true_andb_False : exists w : nat, w = w -> true <> (false && true)%bool /\ False.
-  Check   h_ex_and_True_False : exists w : nat, w = w -> True /\ False.
-  Check h_all_tEQf : forall w w' : nat, w = w' -> true = false.
-  Check h_all_Neqb_3N_3N : forall w w' : nat, w = w' -> (3 =? 4) = (4 =? 3).
-  Check h_eq_length : length [3] = (fun _ : nat => 0) 1.
-  Check h_eq_length0_0N : length [3] = 0.
-  Check h_eq_add_y : 0 + y = y.
-  Check h_tEQf : true = false.
-  Check h_impl_tEQf : False -> true = false.
-  Check x0 : nat.
-  Check env : list nat.
-  Check h_not_In_nat_x0_nil : ~ In x0 [].
-  Check h_eq_cons_x0_3N_cons_2N : x0 :: 3 :: env = 2 :: env.
-  Check z.
-  Check t : nat.
-  Check h_IDProp : IDProp.
-  Check h_impl_tNEQf : 0 < 1 -> 0 < 0 -> true = false -> true <> false.
-  Check h_tNEQf : true <> false.
-  Check h_all_tNEQf0 : forall w w' : nat, w < w' -> true <> false.
-  Check h_impl_not_lt_1N_0N : 0 < 1 -> ~ 1 < 0.
-  Check h_impl_lt_1N_0N : 0 < 1 -> 1 < 0.
-  Check h_lt_0N_z : 0 < z.
+
+  match type of x with nat => idtac | _ => fail "test failed!" end.
+  match type of y with nat => idtac | _ => fail "test failed!" end.
+  match type of h_le_0n_1n with 0 <= 1 => idtac | _ => fail "test failed!" end.
+  match type of h_le_0z_1z with (0 <= 1)%Z => idtac | _ => fail "test failed!" end.
+  match type of h_le_x_y with x <= y => idtac | _ => fail "test failed!" end.
+  match type of h_eq_x_y with x = y => idtac | _ => fail "test failed!" end.
+  match type of h_eq_0n_1n with 0 = 1 => idtac | _ => fail "test failed!" end.
+  match type of h_eq_0z_1z with 0%Z = 1%Z => idtac | _ => fail "test failed!" end.
+  match type of h_neq_x_y with x <> y => idtac | _ => fail "test failed!" end.
+  match type of h_Neqb_3n_4n with true = (3 =? 4) => idtac | _ => fail "test failed!" end.
+  match type of h_Neqb_3n_4n0 with (3 =? 4) = true => idtac | _ => fail "test failed!" end.
+  match type of h_eq_true_leb_3n_4n with true = (3 <=? 4) => idtac | _ => fail "test failed!" end.
+  match type of h_eq_1n_0n with 1 = 0 => idtac | _ => fail "test failed!" end.
+  match type of h_neq_x_y0 with x <> y => idtac | _ => fail "test failed!" end.
+  match type of h_not_lt_1n_0n with ~ 1 < 0 => idtac | _ => fail "test failed!" end.
+  match type of h_all_tNEQf with forall w w' : nat, w = w' -> true <> false => idtac | _ => fail "test failed!" end.
+  match type of h_all_and_tEQf_True with forall w w' : nat, w = w' -> true = false /\ True => idtac | _ => fail "test failed!" end.
+  match type of h_all_and_False_True with forall w w' : nat, w = w' -> False /\ True => idtac | _ => fail "test failed!" end.
+  match type of h_ex_and_neq_False with exists w : nat, w = w -> true <> (false && true)%bool /\ False => idtac | _ => fail "test failed!" end.
+  match type of h_ex_and_True_False with exists w : nat, w = w -> True /\ False => idtac | _ => fail "test failed!" end.
+  match type of h_all_tEQf with forall w w' : nat, w = w' -> true = false => idtac | _ => fail "test failed!" end.
+  match type of h_all_eq_eqb_eqb with forall w w' : nat, w = w' -> (3 =? 4) = (4 =? 3) => idtac | _ => fail "test failed!" end.
+  match type of h_eq_length_cons with length [3] = (fun _ : nat => 0) 1 => idtac | _ => fail "test failed!" end.
+  match type of h_eq_length_cons_0n with length [3] = 0 => idtac | _ => fail "test failed!" end.
+  match type of h_eq_add_0n_y_y with 0 + y = y => idtac | _ => fail "test failed!" end.
+  match type of h_tEQf with true = false => idtac | _ => fail "test failed!" end.
+  match type of h_impl_tEQf with False -> true = false => idtac | _ => fail "test failed!" end.
+  match type of x0 with nat => idtac | _ => fail "test failed!" end.
+  match type of env with list nat => idtac | _ => fail "test failed!" end.
+  match type of h_not_In_x0_nil with ~ In x0 [] => idtac | _ => fail "test failed!" end.
+  match type of h_eq_cons_x0_3n_cons_2n with x0 :: 3 :: env = 2 :: env => idtac | _ => fail "test failed!" end.
+  match type of h_IDProp with IDProp => idtac | _ => fail "test failed!" end.
+  match type of h_impl_tNEQf with 0 < 1 -> 0 < 0 -> true = false -> true <> false => idtac | _ => fail "test failed!" end.
+  match type of h_tNEQf with true <> false => idtac | _ => fail "test failed!" end.
+  match type of h_all_tNEQf0 with forall w w' : nat, w < w' -> true <> false => idtac | _ => fail "test failed!" end.
+  match type of h_impl_not_lt with 0 < 1 -> ~ 1 < 0 => idtac | _ => fail "test failed!" end.
+  match type of h_impl_lt_1n_0n with 0 < 1 -> 1 < 0 => idtac | _ => fail "test failed!" end.
+  match type of h_lt_0n_z with 0 < z => idtac | _ => fail "test failed!" end.
   exact I.
 Qed.

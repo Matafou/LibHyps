@@ -1,5 +1,5 @@
 opam-version: "1.2"
-maintainer: "b.a.w.spitters@gmail.com"
+maintainer: "Pierre.Courtieu@lecnam.net"
 
 homepage: "https://github.com/Matafou/LibHyps"
 dev-repo: "https://github.com/Matafou/LibHyps.git"
