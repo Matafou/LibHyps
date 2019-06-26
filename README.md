@@ -79,7 +79,7 @@ mimicking the first levels of term structure. At each level the
 customizable tactic `rename_hyp` is called. One can redefine it at
 will. It must be of the following form:
 
-```
+```coq
 (** Redefining rename_hyp*)
 (* First define a naming ltac. It takes the current level n and
    the sub-term th being looked at. It returns a "name". *)
@@ -108,7 +108,7 @@ Where:
 Some more example of tacticals performing cleaning and renaming on new
 hypothesis.
 
-```
+```coq
 (* subst or revert *)
 Tactic Notation (at level 4) "??" tactic4(tac1) :=
   (tac1 ;; substHyp ;!; revertHyp).
