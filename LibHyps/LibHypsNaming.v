@@ -5,6 +5,8 @@
 ***************************************************************************)
 Require Import Arith ZArith List LibHyps.TacNewHyps.
 Import ListNotations.
+Local Open Scope list.
+
 (** This file is a set of tactical (mainly "!! t" where t is a tactic)
     and tactics (!intros, !destruct etc), that automatically rename
     new hypothesis after applying a tactic. The names chosen for
@@ -53,21 +55,68 @@ Ltac my_rename_hyp h th :=
 (* Overwrite the definition of rename_hyp using the ::= operator. :*)
 
 Ltac rename_hyp ::= my_rename_hyp.>> *)
-(* Dummy constant *)
-(* Definition h_:=Type. *)
-Definition heq_:=Type.
-Definition noname:=Type.
-Definition DUMMY := fun x:Prop => x.
-
-Local Open Scope list.
 
 
+(** * Implementation principle:
+
+   The name of the hypothesis will be a sequence of chunks. A chunk is
+   a word generally starting with "_".
+
+   Internally this sequence is represented by a list of small terms.
+   One term of the form (∀ <chunk>, DUMMY <chunk>) per chunk. For
+   instance the sequence "h_eq_foo" is represented by the coq term:
+
+   [ (∀ h:Prop,DUMMY h) (∀ _eq:Prop,DUMMY _eq); (∀ _foo:Prop, DUMMY
+   _foo) ]
+
+   where DUMMY is an opaque function (in fact it is the identiy
+   function but we don"t care). *)
+
+
+(** We define DUMMY as an really opaque symbol. *)
+Definition DUMMY: Prop -> Prop.
+  exact (fun x:Prop => x).
+Defined.
+
+(** Builds a chunk from an id (should be given by fresh). *)
+Ltac box_name_raw id := constr:(forall id:Prop, DUMMY id).
+
+(** Builds an id from a sequence of chunks. *)
+Ltac build_name acc l :=
+  let l := eval lazy beta delta [List.app] iota in l in
+  match l with
+  | nil => acc
+  | (forall id1:Prop, DUMMY id1)::?l' =>
+    let newacc := fresh acc id1 in
+    let res := build_name newacc l' in
+    res
+  end.
+
+(** A few default chunks *)
+Ltac impl_prefix := constr:(forall _impl, DUMMY _impl).
+Ltac forall_prefix := constr:(forall _all, DUMMY _all).
+Ltac exists_prefix := constr:(forall _ex, DUMMY _ex).
+Ltac default_prefix :=constr:(forall h, DUMMY h).
+
+(** * Definition of a naming strategy.
+
+   To compute the name of a hypothesis we look inside its type and
+   build a list of chunks. We analyse recursively the type until we
+   reach a fixed depth, defined below. This depth determines the
+   number of layers we traverse to build the chunk list. *)
+
+Ltac rename_depth := constr:(3).
+
+
+
+(** Check if t is an eligible argument for fresh function. For instance
+   if t is (forall foo, ...), it is not eligible. *)
 Ltac freshable t :=
   let x := fresh t "_dummy_sufx" in
   idtac.
 
-(* for hypothesis on numerical constants. The Z and N suffixes are
-   there to avoid messing with nulerical suffixes added by "fresh"
+(** Generate fresh name for numerical constants. The Z and N suffixes
+   are there to avoid messing with numerical suffixes added by "fresh"
    itself. *)
 Ltac numerical_names t :=
   match t with
@@ -96,46 +145,24 @@ Ltac numerical_names t :=
   | 10%nat => fresh "_10N"
   end.
 
-Ltac box_name_raw id := constr:(forall id:Prop, DUMMY id).
-Ltac box_name id :=  
+(** Build a chunk from a simple term: either a number or a freshable
+   term. *)
+Ltac box_name t :=
   let id_ :=
-      match id with
-      | _ => numerical_names id
+      match t with
+      | _ => numerical_names t
       | _ =>
-        let _ := freshable id in
-        fresh "_" id
+        let _ := freshable t in
+        fresh "_" t
       end
   in constr:(forall id_:Prop, DUMMY id_).
 
-Ltac build_name acc l :=
-  let l := eval lazy beta delta [List.app] iota in l in
-  match l with
-  | nil => acc
-  | (forall id1:Prop, DUMMY id1)::?l' =>
-    let newacc := fresh acc id1 in
-    let res := build_name newacc l' in
-    res
-  end.
 
-
-Ltac impl_prefix := constr:(forall _impl, DUMMY _impl).
-Ltac forall_prefix := constr:(forall _all, DUMMY _all).
-Ltac exists_prefix := constr:(forall _ex, DUMMY _ex).
-Ltac default_prefix :=constr:(forall h, DUMMY h).
-
-Ltac detect_prefix th :=
-  match th with
-  | ?A -> ?B => impl_prefix
-  | forall z:?A , ?B => forall_prefix
-  | exists z:?A , ?B => exists_prefix
-  | _ => default_prefix
-  end.
-
-(* This is the customizable naming tactic, by default it fails, giving
+(** This is the customizable naming tactic, by default it fails, giving
    control to default naming tactics. *)
 Ltac rename_hyp stop th := fail.
 
-
+(** This will later contain a few default fallback naming strategy. *)
 Ltac rename_hyp_default stop th :=
   fail.
 
@@ -145,6 +172,9 @@ Ltac decr n :=
   | 0 => 0
   end.
 
+(* This computes the way we decrement our depth counter when we go
+   inside of t. For now we forget the idea of traversing Prop sorted
+   terms indefinitely. It gives too long names. *)
 Ltac nextlevel n t :=
   let tt := type of t in
   match tt with
@@ -153,17 +183,123 @@ Ltac nextlevel n t :=
   end.
 
 
-(* Default naming of an application: we name the function if possible
-   or fail, then we add all parameters that can be named either
-   recursively or simply.
-   TODO: remove implicits? Don't know how to do that. *)
+(* Determines the number of "head" implicit arguments, i.e. implicit
+   arguments that are before any explicit one. This shall be ignored
+   when naming an application. This is done in very ugly way. Any
+   better solution welcome. *)
+Ltac count_impl th :=
+  lazymatch th with
+  | (?z ?a ?b ?c ?d ?e ?f ?g ?h ?i ?j ?k) =>
+    match th with
+    | _ => let foo := constr:(z _ _ _ _ _ _ _ _ _ _ k) in constr:(1%nat)
+    | _ => let foo := constr:(z _ _ _ _ _ _ _ _ _ j k) in constr:(2%nat)
+    | _ => let foo := constr:(z _ _ _ _ _ _ _ _ i j k) in constr:(3%nat)
+    | _ => let foo := constr:(z _ _ _ _ _ _ _ h i j k) in constr:(4%nat)
+    | _ => let foo := constr:(z _ _ _ _ _ _ g h i j k) in constr:(5%nat)
+    | _ => let foo := constr:(z _ _ _ _ _ f g h i j k) in constr:(6%nat)
+    | _ => let foo := constr:(z _ _ _ _ e f g h i j k) in constr:(7%nat)
+    | _ => let foo := constr:(z _ _ _ d e f g h i j k) in constr:(8%nat)
+    | _ => let foo := constr:(z _ _ c d e f g h i j k) in constr:(9%nat)
+    | _ => let foo := constr:(z _ b c d e f g h i j k) in constr:(10%nat)
+    | _ => let foo := constr:(z a b c d e f g h i j k) in constr:(10%nat)
+    end
+  | (?z ?b ?c ?d ?e ?f ?g ?h ?i ?j ?k) =>
+    match th with
+    | _ => let foo := constr:(z _ _ _ _ _ _ _ _ _ k) in constr:(1%nat)
+    | _ => let foo := constr:(z _ _ _ _ _ _ _ _ j k) in constr:(2%nat)
+    | _ => let foo := constr:(z _ _ _ _ _ _ _ i j k) in constr:(3%nat)
+    | _ => let foo := constr:(z _ _ _ _ _ _ h i j k) in constr:(4%nat)
+    | _ => let foo := constr:(z _ _ _ _ _ g h i j k) in constr:(5%nat)
+    | _ => let foo := constr:(z _ _ _ _ f g h i j k) in constr:(6%nat)
+    | _ => let foo := constr:(z _ _ _ e f g h i j k) in constr:(7%nat)
+    | _ => let foo := constr:(z _ _ d e f g h i j k) in constr:(8%nat)
+    | _ => let foo := constr:(z _ c d e f g h i j k) in constr:(9%nat)
+    | _ => let foo := constr:(z b c d e f g h i j k) in constr:(10%nat)
+    end
+  | (?z ?c ?d ?e ?f ?g ?h ?i ?j ?k) =>
+    match th with
+    | _ => let foo := constr:(z _ _ _ _ _ _ _ _ k) in constr:(1%nat)
+    | _ => let foo := constr:(z _ _ _ _ _ _ _ j k) in constr:(2%nat)
+    | _ => let foo := constr:(z _ _ _ _ _ _ i j k) in constr:(3%nat)
+    | _ => let foo := constr:(z _ _ _ _ _ h i j k) in constr:(4%nat)
+    | _ => let foo := constr:(z _ _ _ _ g h i j k) in constr:(5%nat)
+    | _ => let foo := constr:(z _ _ _ f g h i j k) in constr:(6%nat)
+    | _ => let foo := constr:(z _ _ e f g h i j k) in constr:(7%nat)
+    | _ => let foo := constr:(z _ d e f g h i j k) in constr:(8%nat)
+    | _ => let foo := constr:(z c d e f g h i j k) in constr:(9%nat)
+    end
+  | (?z ?d ?e ?f ?g ?h ?i ?j ?k) =>
+    match th with
+    | _ => let foo := constr:(z _ _ _ _ _ _ _ k) in constr:(1%nat)
+    | _ => let foo := constr:(z _ _ _ _ _ _ j k) in constr:(2%nat)
+    | _ => let foo := constr:(z _ _ _ _ _ i j k) in constr:(3%nat)
+    | _ => let foo := constr:(z _ _ _ _ h i j k) in constr:(4%nat)
+    | _ => let foo := constr:(z _ _ _ g h i j k) in constr:(5%nat)
+    | _ => let foo := constr:(z _ _ f g h i j k) in constr:(6%nat)
+    | _ => let foo := constr:(z _ e f g h i j k) in constr:(7%nat)
+    | _ => let foo := constr:(z d e f g h i j k) in constr:(8%nat)
+    end
+  | (?z ?e ?f ?g ?h ?i ?j ?k) =>
+    match th with
+    | _ => let foo := constr:(z _ _ _ _ _ _ k) in constr:(1%nat)
+    | _ => let foo := constr:(z _ _ _ _ _ j k) in constr:(2%nat)
+    | _ => let foo := constr:(z _ _ _ _ i j k) in constr:(3%nat)
+    | _ => let foo := constr:(z _ _ _ h i j k) in constr:(4%nat)
+    | _ => let foo := constr:(z _ _ g h i j k) in constr:(5%nat)
+    | _ => let foo := constr:(z _ f g h i j k) in constr:(6%nat)
+    | _ => let foo := constr:(z e f g h i j k) in constr:(7%nat)
+    end
+  | (?z ?f ?g ?h ?i ?j ?k) =>
+    match th with
+    | _ => let foo := constr:(z _ _ _ _ _ k) in constr:(1%nat)
+    | _ => let foo := constr:(z _ _ _ _ j k) in constr:(2%nat)
+    | _ => let foo := constr:(z _ _ _ i j k) in constr:(3%nat)
+    | _ => let foo := constr:(z _ _ h i j k) in constr:(4%nat)
+    | _ => let foo := constr:(z _ g h i j k) in constr:(5%nat)
+    | _ => let foo := constr:(z f g h i j k) in constr:(6%nat)
+    end
+  | (?z ?g ?h ?i ?j ?k) =>
+    match th with
+    | _ => let foo := constr:(z _ _ _ _ k) in constr:(1%nat)
+    | _ => let foo := constr:(z _ _ _ j k) in constr:(2%nat)
+    | _ => let foo := constr:(z _ _ i j k) in constr:(3%nat)
+    | _ => let foo := constr:(z _ h i j k) in constr:(4%nat)
+    | _ => let foo := constr:(z g h i j k) in constr:(5%nat)
+    end
+  | (?z ?h ?i ?j ?k) =>
+    match th with
+    | _ => let foo := constr:(z _ _ _ k) in constr:(1%nat)
+    | _ => let foo := constr:(z _ _ j k) in constr:(2%nat)
+    | _ => let foo := constr:(z _ i j k) in constr:(3%nat)
+    | _ => let foo := constr:(z h i j k) in constr:(4%nat)
+    end
+  | (?z ?i ?j ?k) =>
+    match th with
+    | _ => let foo := constr:(z _ _ k) in constr:(1%nat)
+    | _ => let foo := constr:(z _ j k) in constr:(2%nat)
+    | _ => let foo := constr:(z i j k) in constr:(3%nat)
+    end
+  | (?z ?j ?k) =>
+    match th with
+    | _ => let foo := constr:(z _ k) in constr:(1%nat)
+    | _ => let foo := constr:(z j k) in constr:(2%nat)
+    end
+  | (?z ?j) => constr:(1%nat)
+  | _ => constr:(0%nat)
+  end.
+
+
+(** Default naming of an application: we name the function if possible
+   or fail, then we name all parameters that can be named either
+   recursively or simply. Parameters at positions below nonimpl are
+   considered implicit and not considered. *)
 Ltac rename_app nonimpl stop acc th :=
   match th with
   | ?f => let f'' := box_name f in
           constr:(f''::acc)
   | (?f ?x) =>
     match nonimpl with
-    | (S ?nonimpl') => 
+    | (S ?nonimpl') =>
       let newstop := nextlevel stop x in
       let namex := match true with
                    | _ => fallback_rename_hyp newstop x
@@ -176,107 +312,6 @@ Ltac rename_app nonimpl stop acc th :=
     end
   | _ => constr:(@nil Prop)
   end
-
-      with count_impl th :=
-    lazymatch th with
-    | (?z ?a ?b ?c ?d ?e ?f ?g ?h ?i ?j ?k) =>
-      match th with
-      | _ => let foo := constr:(z _ _ _ _ _ _ _ _ _ _ k) in constr:(1%nat)
-      | _ => let foo := constr:(z _ _ _ _ _ _ _ _ _ j k) in constr:(2%nat)
-      | _ => let foo := constr:(z _ _ _ _ _ _ _ _ i j k) in constr:(3%nat)
-      | _ => let foo := constr:(z _ _ _ _ _ _ _ h i j k) in constr:(4%nat)
-      | _ => let foo := constr:(z _ _ _ _ _ _ g h i j k) in constr:(5%nat)
-      | _ => let foo := constr:(z _ _ _ _ _ f g h i j k) in constr:(6%nat)
-      | _ => let foo := constr:(z _ _ _ _ e f g h i j k) in constr:(7%nat)
-      | _ => let foo := constr:(z _ _ _ d e f g h i j k) in constr:(8%nat)
-      | _ => let foo := constr:(z _ _ c d e f g h i j k) in constr:(9%nat)
-      | _ => let foo := constr:(z _ b c d e f g h i j k) in constr:(10%nat)
-      | _ => let foo := constr:(z a b c d e f g h i j k) in constr:(10%nat)
-      end
-    | (?z ?b ?c ?d ?e ?f ?g ?h ?i ?j ?k) =>
-      match th with
-      | _ => let foo := constr:(z _ _ _ _ _ _ _ _ _ k) in constr:(1%nat)
-      | _ => let foo := constr:(z _ _ _ _ _ _ _ _ j k) in constr:(2%nat)
-      | _ => let foo := constr:(z _ _ _ _ _ _ _ i j k) in constr:(3%nat)
-      | _ => let foo := constr:(z _ _ _ _ _ _ h i j k) in constr:(4%nat)
-      | _ => let foo := constr:(z _ _ _ _ _ g h i j k) in constr:(5%nat)
-      | _ => let foo := constr:(z _ _ _ _ f g h i j k) in constr:(6%nat)
-      | _ => let foo := constr:(z _ _ _ e f g h i j k) in constr:(7%nat)
-      | _ => let foo := constr:(z _ _ d e f g h i j k) in constr:(8%nat)
-      | _ => let foo := constr:(z _ c d e f g h i j k) in constr:(9%nat)
-      | _ => let foo := constr:(z b c d e f g h i j k) in constr:(10%nat)
-      end
-    | (?z ?c ?d ?e ?f ?g ?h ?i ?j ?k) =>
-      match th with
-      | _ => let foo := constr:(z _ _ _ _ _ _ _ _ k) in constr:(1%nat)
-      | _ => let foo := constr:(z _ _ _ _ _ _ _ j k) in constr:(2%nat)
-      | _ => let foo := constr:(z _ _ _ _ _ _ i j k) in constr:(3%nat)
-      | _ => let foo := constr:(z _ _ _ _ _ h i j k) in constr:(4%nat)
-      | _ => let foo := constr:(z _ _ _ _ g h i j k) in constr:(5%nat)
-      | _ => let foo := constr:(z _ _ _ f g h i j k) in constr:(6%nat)
-      | _ => let foo := constr:(z _ _ e f g h i j k) in constr:(7%nat)
-      | _ => let foo := constr:(z _ d e f g h i j k) in constr:(8%nat)
-      | _ => let foo := constr:(z c d e f g h i j k) in constr:(9%nat)
-      end
-    | (?z ?d ?e ?f ?g ?h ?i ?j ?k) =>
-      match th with
-      | _ => let foo := constr:(z _ _ _ _ _ _ _ k) in constr:(1%nat)
-      | _ => let foo := constr:(z _ _ _ _ _ _ j k) in constr:(2%nat)
-      | _ => let foo := constr:(z _ _ _ _ _ i j k) in constr:(3%nat)
-      | _ => let foo := constr:(z _ _ _ _ h i j k) in constr:(4%nat)
-      | _ => let foo := constr:(z _ _ _ g h i j k) in constr:(5%nat)
-      | _ => let foo := constr:(z _ _ f g h i j k) in constr:(6%nat)
-      | _ => let foo := constr:(z _ e f g h i j k) in constr:(7%nat)
-      | _ => let foo := constr:(z d e f g h i j k) in constr:(8%nat)
-      end
-    | (?z ?e ?f ?g ?h ?i ?j ?k) =>
-      match th with
-      | _ => let foo := constr:(z _ _ _ _ _ _ k) in constr:(1%nat)
-      | _ => let foo := constr:(z _ _ _ _ _ j k) in constr:(2%nat)
-      | _ => let foo := constr:(z _ _ _ _ i j k) in constr:(3%nat)
-      | _ => let foo := constr:(z _ _ _ h i j k) in constr:(4%nat)
-      | _ => let foo := constr:(z _ _ g h i j k) in constr:(5%nat)
-      | _ => let foo := constr:(z _ f g h i j k) in constr:(6%nat)
-      | _ => let foo := constr:(z e f g h i j k) in constr:(7%nat)
-      end
-    | (?z ?f ?g ?h ?i ?j ?k) =>
-      match th with
-      | _ => let foo := constr:(z _ _ _ _ _ k) in constr:(1%nat)
-      | _ => let foo := constr:(z _ _ _ _ j k) in constr:(2%nat)
-      | _ => let foo := constr:(z _ _ _ i j k) in constr:(3%nat)
-      | _ => let foo := constr:(z _ _ h i j k) in constr:(4%nat)
-      | _ => let foo := constr:(z _ g h i j k) in constr:(5%nat)
-      | _ => let foo := constr:(z f g h i j k) in constr:(6%nat)
-      end
-    | (?z ?g ?h ?i ?j ?k) =>
-      match th with
-      | _ => let foo := constr:(z _ _ _ _ k) in constr:(1%nat)
-      | _ => let foo := constr:(z _ _ _ j k) in constr:(2%nat)
-      | _ => let foo := constr:(z _ _ i j k) in constr:(3%nat)
-      | _ => let foo := constr:(z _ h i j k) in constr:(4%nat)
-      | _ => let foo := constr:(z g h i j k) in constr:(5%nat)
-      end
-    | (?z ?h ?i ?j ?k) =>
-      match th with
-      | _ => let foo := constr:(z _ _ _ k) in constr:(1%nat)
-      | _ => let foo := constr:(z _ _ j k) in constr:(2%nat)
-      | _ => let foo := constr:(z _ i j k) in constr:(3%nat)
-      | _ => let foo := constr:(z h i j k) in constr:(4%nat)
-      end
-    | (?z ?i ?j ?k) =>
-      match th with
-      | _ => let foo := constr:(z _ _ k) in constr:(1%nat)
-      | _ => let foo := constr:(z _ j k) in constr:(2%nat)
-      | _ => let foo := constr:(z i j k) in constr:(3%nat)
-      end
-    | (?z ?j ?k) =>
-      match th with
-      | _ => let foo := constr:(z _ k) in constr:(1%nat)
-      | _ => let foo := constr:(z j k) in constr:(2%nat)
-      end
-    | (?z ?j) => constr:(1%nat)
-    | _ => constr:(0%nat)
-    end
 
 (* go under binder and rebuild a term with a good name inside,
    catchable by a match context. *)
@@ -321,13 +356,13 @@ with fallback_rename_hyp_quantif stop th :=
    let sufx_buried := build_dummy_quantified newstop th in
    (* FIXME: a bit fragile *)
    let sufx_buried' := eval lazy beta delta [List.app] iota in sufx_buried in
-       let sufx := 
+       let sufx :=
            match sufx_buried' with
            | context [ (@cons Prop ?x ?y)] => constr:(x::y)
            end
        in
        constr:(prefx::sufx)
-             
+
 with fallback_rename_hyp_specials stop th :=
      let newstop := decr stop in
      match th with
@@ -352,22 +387,27 @@ with fallback_rename_hyp stop th :=
        end
      end.
 
+(** * Notation to define specific naming strategy *)
 
-(* create a simple part of a name from id, returns a list of constr *)
+(** Notation to build a singleton chunk list *)
 Notation "'`' id '`'" := (@cons Prop (forall id, DUMMY id) nil) (at level 1,id ident,only parsing): autonaming_scope.
 
-(* create a complex part of name from term X, returns a list of constr *)
+(** Notation to call naming on a term X, with a given depth n. *)
 Notation " X '#' n " := ltac:(
                           let c := fallback_rename_hyp n X in exact c)
                             (at level 1,X constr, only parsing): autonaming_scope.
 
+(** It is nicer to write name t than constr:t, see below. *)
 Ltac name c := (constr:(c)).
 
-Local Open Scope autonaming_scope.
 
-(* Redefining rename_hyp_default now that we have these usefull notations. *)
+(** * Default fallback renaming strategy
+
+  (Re)defining it now that we have everything we need. *)
+
+Local Open Scope autonaming_scope.
 Ltac rename_hyp_default n th ::=
-  let res := 
+  let res :=
       match th with
       (* | (@eq _ ?x ?y) => name (`_eq` ++ x#n ++ y#n) *)
       (* | Z.le ?A ?B => name (`_Zle` ++ A#n ++ B#n) *)
@@ -386,15 +426,9 @@ Ltac rename_hyp_default n th ::=
       | _ => fail
       end in
   res.
-
-
 Local Close Scope autonaming_scope.
 
-(* The number of applications that can be traversed.
-   This can be changed dynamically by using:
-   Ltac rename_depth ::= constr:(2). *)
-Ltac rename_depth := constr:(3).
-
+(* ENtry point of the renaming code. *)
 Ltac fallback_rename_hyp_name th :=
   let depth := rename_depth in
   let l := fallback_rename_hyp depth th in
@@ -404,6 +438,7 @@ Ltac fallback_rename_hyp_name th :=
     build_name z l
   end.
 
+(* Tactic renaming hypothesis H. *)
 Ltac autorename H :=
   match type of H with
   | ?th =>
@@ -418,12 +453,19 @@ Ltac autorename H :=
     end
   | _ => idtac (* not in Prop or "no renaming pattern for " H *)
   end.
-  
+
+(* Tactical to rename all new hypothesis. A hypothesis is new if its
+   name was not present in previous goal. *)
 Ltac rename_new_hyps tac := tac_new_hyps tac autorename.
-(* Need a way to rename or revert but revert needs to be done in the
-   other direction (so better do ";; autorename ;!; revertHyp"), and
-   may fail if something depends on the reverted hyp. So we should
-   revert everything depending on the unrenamed hyp. *)
+
+(* The default behaviour is to generalize hypothesis that we failed to
+   rename, so that no automatic names are introduced by mistake. Of
+   course one can do "intros" to reintroduce them.
+
+   Revert needs to be done in the other direction (so better do ";;
+   autorename ;!; revertHyp"), and may fail if something depends on
+   the reverted hyp. So we should revert everything depending on the
+   unrenamed hyp. *)
 Ltac revert_if_norename H :=
   let t := type of H in
   match type of t with
