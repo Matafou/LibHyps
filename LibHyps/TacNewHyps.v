@@ -1,16 +1,26 @@
-(**************************************************************************
-* A user-customizable auto-naming scheme for hypothesis in Coq            *
-* Author: Pierre Courtieu                                                 *
-* credits: Jonathan Leivant                                               *
-* Distributed under the terms of the LGPL-v3 license                      *
-***************************************************************************)
+(* Copyright 2017-2019 Pierre Courtieu *)
+(* Credits to: Jonathan Leivant *)
+(* This file is part of LibHyps.
+
+    Foobar is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Foobar is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Foobar.  If not, see <https://www.gnu.org/licenses/>. *)
 
 (** This file defined three tacticals for iterating a tactic on sets
     of hypothesis.
-    
+
     [onAllHyp tac] applies [tac H] for each H of the proof context
     (natural order: newer hyps first).
-    
+
     [onAllHypRev tac] applies [tac H] for each H of the proof context
     (reverse order).
 
@@ -25,13 +35,13 @@
 (* Credit for the harvesting of hypothesis: Jonathan Leivant *)
 Ltac harvest_hyps harvester := constr:(ltac:(harvester; constructor) : True).
 
-Ltac revert_clearbody_all := 
+Ltac revert_clearbody_all :=
   repeat lazymatch goal with H:_ |- _ => try clearbody H; revert H end.
 
 Ltac all_hyps := harvest_hyps revert_clearbody_all.
 
-Ltac next_hyp hs step last := 
-  lazymatch hs with 
+Ltac next_hyp hs step last :=
+  lazymatch hs with
   | (?hs' ?H) => step H hs'
   | _ => last
   end.
@@ -70,7 +80,7 @@ Ltac tac_new_hyps tac1 tac2 :=
   let hyps_after_tac := all_hyps in
   map_hyps tac2_if_new hyps_after_tac.
 
-(* Same thig but newer first (better e.g. when tac2 is revert) *)
+(* Same thing but newer first (better e.g. when tac2 is revert) *)
 Ltac tac_new_hyps_rev tac1 tac2 :=
   let hyps_before_tac := all_hyps in
   let tac2_if_new H := tac_if_not_old tac2 hyps_before_tac H in
