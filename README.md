@@ -3,6 +3,26 @@
 This Library provides several coq tactics and tacticals to deal with
 hypothesis during a proof.
 
+# Quick testing:
+
+Clone the github repository:
+
+```bash
+git clone https://github.com/Matafou/LibHyps
+```
+
+then compile:
+
+```bash
+configure.sh
+make
+```
+
+then open the file `LibHyps/LibHypsDemo.v` with any coq IDE and see
+the examples there.
+
+A short description of the features follows.
+
 # Iterator on all hypothesis
 
 - `onAllHyps tac` does `tac H` for each hypothesis `H` of the current goal.
