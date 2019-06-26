@@ -31,5 +31,19 @@ Tactic Notation "especialize" hyp(H) "at" integer(i) :=
   let idprem := fresh H "_prem" in
   proveprem_ H i idprem.
 
+(* TEST *)
+(*
+Definition eq_one (i:nat) := i = 1.
+(* eq_one is delta_reducible but I don't want it to be reduced. *)
+Lemma foo: (eq_one 1 -> False) -> False.
+Proof.
+  intros H.
+  especialize H at 1 as h.
+  { reflexivity. }
+  match type of h with False => idtac "OK" | _ => fail end.
+  assumption.
+Qed.
+*)
+
 
 
