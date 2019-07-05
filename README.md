@@ -3,7 +3,13 @@
 This Library provides several coq tactics and tacticals to deal with
 hypothesis during a proof.
 
-# Quick testing:
+# Quick install using opam
+
+```bash
+opam install coq-libhyps
+```
+
+# Quick start using github:
 
 Clone the github repository:
 
@@ -18,8 +24,45 @@ configure.sh
 make
 ```
 
-then open the file `LibHyps/LibHypsDemo.v` with any coq IDE and see
-the examples there.
+# quick test
+
+Try the following script (see also [file](https://github.com/Matafou/LibHyps/blob/master/LibHyps/LibHypsDemo.v)) and look at the changes in the goal after each line:
+
+```coq
+Lemma foo: forall x y:nat,
+    x = y -> forall  a t : nat, a+1 = t+2 ->forall u v, u+1 = v -> a+1 = v+2 -> True.
+Proof.
+  !intros.
+  (** try to move all hyps with types in Type. *)
+  onAllHyps move_up_types.
+  Undo.
+  (** subst or revert all hypothesis older first: some hyps remain *)
+  onAllHyps subst_or_revert.
+  Undo.
+  (** better newer first: *)
+  onAllHypsRev subst_or_revert.
+  Undo 2.
+  intros until 1.
+  (** Do subst on new hyps only, notice how x=y is not subst and
+    remains as 0 = y. Contrary to u+1=v which is substituted. *)
+  (destruct x eqn:heq;intros);; substHyp.
+  Undo.
+  (** same + move up new hyps of Sort Type *)
+  (destruct x eqn:heq;intros) ;; (fun h => substHyp h || move_up_types h).
+  Undo.
+  (** First attempt to revert all new hyps: wrong order *)
+  (destruct x eqn:heq;intros) ;; revertHyp.
+  Undo.
+  (** Works better if we go in reverse order: *)
+  (destruct x eqn:heq;intros) ;!; revertHyp.
+  Undo.
+  (** revert each new hyp except if subst can remove it *)
+  (destruct x eqn:heq;intros) ;!; subst_or_revert.
+  Undo.
+  intros.
+  apply I.
+Qed.
+```
 
 A short description of the features follows.
 
