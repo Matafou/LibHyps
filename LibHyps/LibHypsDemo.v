@@ -246,7 +246,7 @@ Proof.
   intros.
   onAllHyps autorename.
   Undo 2.
-  (* Shorter: the ! tactical aplpies a tactic and then applies
+  (* Shorter: the ! tactical applies a tactic and then applies
      autorename on new hypothesis: *)
   !intros.
   Undo.
