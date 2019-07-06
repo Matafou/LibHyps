@@ -3,9 +3,10 @@
 # install target.
 
 post-all::
-	echo building test:
+	echo building tests:
 	$(SHOW)COQC LibHyps/LibHypsTest.v
-	echo test OK.
+	$(SHOW)COQC LibHyps/LibHypsDemo.v
+	echo tests OK.
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $(COQLIBS) ./LibHyps/LibHypsTest.v $(TIMING_EXTRA) 
 
 ### Local Variables: ***
