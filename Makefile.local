@@ -1,0 +1,13 @@
+
+# This adds compilation of a test file, without adding it to the
+# install target.
+
+post-all::
+	echo building test:
+	$(SHOW)COQC LibHyps/LibHypsTest.v
+	echo test OK.
+	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $(COQLIBS) ./LibHyps/LibHypsTest.v $(TIMING_EXTRA) 
+
+### Local Variables: ***
+### mode: makefile ***
+### End: ***
