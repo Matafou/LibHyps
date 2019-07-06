@@ -29,38 +29,35 @@ make
 Try the following script (see also [file](https://github.com/Matafou/LibHyps/blob/master/LibHyps/LibHypsDemo.v)) and look at the changes in the goal after each line:
 
 ```coq
-Lemma foo: forall x y:nat,
-    x = y -> forall  a t : nat, a+1 = t+2 ->forall u v, u+1 = v -> a+1 = v+2 -> True.
+Lemma foo: forall x y z:nat,
+    x = y -> forall  a b t : nat, a+1 = t+2 -> b + 5 = t - 7 ->  (forall u v, v+1 = 1 -> u+1 = 1 -> a+1 = z+2)  -> z = b-> True.
 Proof.
+  intros.
+  (* ugly names *)
+  Undo.
+  intros ;; autorename. (* ;; here means "apply to all new hyps" *)
+  (* better names *)
+  Undo.
+  (* short syntax: *)
   !intros.
-  (** try to move all hyps with types in Type. *)
-  onAllHyps move_up_types.
   Undo.
-  (** subst or revert all hypothesis older first: some hyps remain *)
-  onAllHyps subst_or_revert.
+  (* same thing but use subst if possible, and push non prop hyps to the top. *)
+  intros;; substHyp;; autorename;;move_up_types.
   Undo.
-  (** better newer first: *)
-  onAllHypsRev subst_or_revert.
-  Undo 2.
+  (* short syntax: *)  
+  !!!intros.
+  (* Let us instantiate the 2nd premis of h_all_eq_add_add without copying its type: *)
+  especialize h_all_eq_add_add at 2.
+  { apply Nat.add_0_l. }
+  (* now h_all_eq_add_add is specialized *)
+
+  Undo 6.
   intros until 1.
   (** Do subst on new hyps only, notice how x=y is not subst and
     remains as 0 = y. Contrary to u+1=v which is substituted. *)
   (destruct x eqn:heq;intros);; substHyp.
-  Undo.
-  (** same + move up new hyps of Sort Type *)
-  (destruct x eqn:heq;intros) ;; (fun h => substHyp h || move_up_types h).
-  Undo.
-  (** First attempt to revert all new hyps: wrong order *)
-  (destruct x eqn:heq;intros) ;; revertHyp.
-  Undo.
-  (** Works better if we go in reverse order: *)
-  (destruct x eqn:heq;intros) ;!; revertHyp.
-  Undo.
-  (** revert each new hyp except if subst can remove it *)
-  (destruct x eqn:heq;intros) ;!; subst_or_revert.
-  Undo.
-  intros.
-  apply I.
+  - apply I.
+  - apply I.
 Qed.
 ```
 
