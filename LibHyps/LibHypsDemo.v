@@ -21,7 +21,7 @@ Require Import Arith ZArith LibHyps.LibHyps List.
 
 
 Lemma foo: forall x y z:nat,
-    x = y -> forall  a b t : nat, a+1 = t+2 -> b + 5 = t - 7 ->  (forall u v, v+1 = 1 -> u+1 = 1 -> a+1 = z+2)  -> z = b-> True.
+    x = y -> forall  a b t : nat, a+1 = t+2 -> b + 5 = t - 7 ->  (forall u v, v+1 = 1 -> u+1 = 1 -> a+1 = z+2)  -> z = b + x-> True.
 Proof.
   intros.
   (* ugly names *)
@@ -45,7 +45,7 @@ Proof.
   Undo 6.
   intros until 1.
   (** Do subst on new hyps only, notice how x=y is not subst and
-    remains as 0 = y. Contrary to u+1=v which is substituted. *)
+    remains as 0 = y. Contrary to z = b  + x which is substituted. *)
   (destruct x eqn:heq;intros);; substHyp.
   - apply I.
   - apply I.
