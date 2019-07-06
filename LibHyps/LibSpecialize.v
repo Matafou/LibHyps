@@ -33,17 +33,17 @@ Ltac proveprem_ H i idpremis :=
   assert (idpremis:ev);
   [|specialize H with (i:=idpremis)].
 
-Tactic Notation "especialize" hyp(H) "at" integer(i) ":" ident(idprem) "as" ident(idH)  :=
+Tactic Notation "especialize" constr(H) "at" integer(i) ":" ident(idprem) "as" ident(idH)  :=
   proveprem_named_ H i idprem idH.
 
-Tactic Notation "especialize" hyp(H) "at" integer(i) "as" ident(idH)  :=
+Tactic Notation "especialize" constr(H) "at" integer(i) "as" ident(idH)  :=
   let idprem := fresh H "_prem" in
   proveprem_named_ H i idprem idH.
 
-Tactic Notation "especialize" hyp(H) "at" integer(i) ":" ident(idprem) :=
+Tactic Notation "especialize" constr(H) "at" integer(i) ":" ident(idprem) :=
   proveprem_ H i idprem.
 
-Tactic Notation "especialize" hyp(H) "at" integer(i) :=
+Tactic Notation "especialize" constr(H) "at" integer(i) :=
   let idprem := fresh H "_prem" in
   proveprem_ H i idprem.
 
