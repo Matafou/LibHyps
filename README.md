@@ -1,32 +1,52 @@
-# LibHyps
-
 This Library provides several coq tactics and tacticals to deal with
 hypothesis during a proof.
 
-# Quick install using opam
+Main page and documentation: https://github.com/Matafou/LibHyps
+
+## Quick install using opam
 
 ```bash
 opam install coq-libhyps
 ```
 
-# Quick start using github:
+## Quick install using github:
 
 Clone the github repository:
 
 ```bash
 git clone https://github.com/Matafou/LibHyps
 ```
-
 then compile:
-
 ```bash
 configure.sh
 make
+make install
 ```
 
-# quick test
+## Quick test:
 
-Try the following script (see also [file](https://github.com/Matafou/LibHyps/blob/master/LibHyps/LibHypsDemo.v)) and look at the changes in the goal after each line:
+```coq
+Require Import LibHyps.LibHyps.
+```
+Demo file [LibHypsDemo.v](https://github.com/Matafou/LibHyps/blob/master/LibHyps/LibHypsDemo.v).
+
+## Short description:
+
+Among manipulations on hypothesis we provide:
+
+- Automatically give better names to hypothesis. The name is computed from the type of the hypothesis so that it resists lots of script changes.
+- specialize the nth premis of a hypothesis (forward reasoning without copy-paste).
+- move up non-prop hypothesis, to focus on properties
+- apply subst on the fly.
+- ...
+
+These manipulations can be applied:
+- to one hyp
+- to all hyps
+- to "new" hyps after some tactics.
+
+
+### Example
 
 ```coq
 Lemma foo: forall x y z:nat,
@@ -63,20 +83,20 @@ Qed.
 
 A short description of the features follows.
 
-# Iterator on all hypothesis
+### Iterator on all hypothesis
 
 - `onAllHyps tac` does `tac H` for each hypothesis `H` of the current goal.
 - `onAllHypsRev tac` same as `onAllHyps tac` but in reverse order
   (good for reverting for instance).
 
-# Tacticals to apply on each NEW hypothesis
+### Tacticals to apply on each NEW hypothesis
 
 - `tac1 ;; tac2` applies `tac1` to current goal and then `tac2` to
   each new hypothesis in each subgoal (iteration: newest first).
 - `tac1 ;!; tac2` applies `tac1` to current goal and then `tac2` to
   each new hypothesis in each subgoal (older first).
 
-# Cleaning tactics
+### Cleaning tactics
 
 This tactics are best used in conjunction with the tacticals above.
 For instance `tac ;; subst_or_revert` allows to have all new
@@ -88,14 +108,14 @@ hypothesis reverted, except the ones that are `subst`able.
   Type-Sorted (i.e. not in Prop). This is generally a good heuristic
   to push away non interesting parts of the proof context.
 
-# Specializing a premiss of a hypothesis by its number
+### Specializing a premiss of a hypothesis by its number
 
 - `especialize H at n.` create a subgoal to prove the nth dependent
   hypothesis of `H`, creating necessary evars for non unifiable
   variables. Once proved the subgoal is used to remove the nth
   hypothesis of `H`.
 
-# Customizable hypothesis auto naming system
+### Customizable hypothesis auto naming system
 
 Using previous taticals (in particular the `;!;` tactical), some
 tactic allow to rename hypothesis automatically.
@@ -112,7 +132,7 @@ tactic allow to rename hypothesis automatically.
 - `!!tac` same as `!tac` with lesser priority (less than `;`) to apply
   renaming after a group of chained tactics.
 
-## How to cstomize the naming scheme
+#### How to cstomize the naming scheme
 
 The naming engine analyzes the type of hypothesis and generates a name
 mimicking the first levels of term structure. At each level the
@@ -143,7 +163,7 @@ Where:
 - `name ++ name` to concatenate name parts.
 
 
-## How to define variants of these tacticals?
+#### How to define variants of these tacticals?
 
 Some more example of tacticals performing cleaning and renaming on new
 hypothesis.
