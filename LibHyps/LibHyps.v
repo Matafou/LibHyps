@@ -48,7 +48,8 @@ Ltac revert_if_norename H :=
 (* apply subst using H if possible. *)
 Ltac substHyp H :=
   match type of H with
-  | ?x = ?y => once (subst x + subst y)
+  | ?x = ?y => move H at top; (* to ensure subst will take this hyp *)
+               once (subst x + subst y)
   end.
 
 (* revert, fails if impossible, should not fail if hyps are ordered in the right order *)
