@@ -442,6 +442,7 @@ Ltac rename_hyp_default n th ::=
         | 0 => name (`_cons` ++ x#n)
         end
       | (@Some _ ?x) => name (x#n)
+      | (@None _) => name (`_None`)
       | _ => fail
       end in
   res.
