@@ -67,7 +67,7 @@ Proof.
 Qed.
 
 
-(** Example of tactic notations to define shortcuts: =tac means "apply
+(** Example of tactic notations to define shortcuts: <=tac means "apply
    tac and reverts all created hypothesis" *)
 Local Tactic Notation "<=" tactic3(Tac) := Tac ;!; revertHyp.
 
@@ -261,30 +261,34 @@ Proof.
   Ltac rename_depth ::= constr:(3).
   !intros.
   (** move up all non prop hypothesis *)
-
-
+  Undo.
+  (* Let us have really big names. *)
+  Ltac rename_depth ::= constr:(5).
+  !intros.
   onAllHyps move_up_types.
   (* decompose and revert all new hyps *)
-  decompose [ex and] h_ex_and_neq_true_andb_and_le_w_w_eq_w_x ;!; revertHyp.
+  decompose [ex and] h_ex_and_neq_true_andb_false_true_and_le_w_w_eq_w_x ;!; revertHyp.
   Undo.
   (* decompose and subst or revert all new hyps *)
-  decompose [ex and] h_ex_and_neq_true_andb_and_le_w_w_eq_w_x ;!; subst_or_revert.
+  decompose [ex and] h_ex_and_neq_true_andb_false_true_and_le_w_w_eq_w_x ;!; subst_or_revert.
   Undo.
   (* decompose and rename all new hyps *)
-  decompose [ex and] h_ex_and_neq_true_andb_and_le_w_w_eq_w_x ;!; autorename.
+  decompose [ex and] h_ex_and_neq_true_andb_false_true_and_le_w_w_eq_w_x ;!; autorename.
   Undo.
   (* in short: *)
-  !decompose [ex and] h_ex_and_neq_true_andb_and_le_w_w_eq_w_x.
+  !decompose [ex and] h_ex_and_neq_true_andb_false_true_and_le_w_w_eq_w_x.
   Undo.
   (* decompose and subst or rename all new hyps *)
-  decompose [ex and] h_ex_and_neq_true_andb_and_le_w_w_eq_w_x ;; substHyp ;!; revert_if_norename ;; autorename.
+  decompose [ex and] h_ex_and_neq_true_andb_false_true_and_le_w_w_eq_w_x ;; substHyp ;!; revert_if_norename ;; autorename.
   Undo.
   (* decompose and subst or rename all new hyps, revert if nothing applies *)
-  decompose [ex and] h_ex_and_ge_x_0N ;; substHyp ;!; revert_if_norename ;; autorename.
+  decompose [ex and] h_ex_and_ge_x_0n ;; substHyp ;!; revert_if_norename ;; autorename.
   Undo.
   (* in short: *)
-  !!!decompose [ex and] h_ex_and_neq_true_andb_and_le_w_w_eq_w_x.
+  !!!decompose [ex and] h_ex_and_neq_true_andb_false_true_and_le_w_w_eq_w_x.
   Undo.
+  (* introducing the hypothesis that was not autonamed: *)
+  intro h.
   exact I.
 Qed.
 
