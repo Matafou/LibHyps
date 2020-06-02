@@ -4,5 +4,4 @@
 ./LibHyps/TacNewHyps.v
 ./LibHyps/LibHyps.v
 ./LibHyps/LibHypsNaming.v
-./LibHyps/TacNonDep.v
 ./LibHyps/LibSpecialize.v
