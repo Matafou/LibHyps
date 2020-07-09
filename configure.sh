@@ -1,3 +1,4 @@
+#!/bin/sh
 
 FILES=`find . -name "*.v" -exec echo {} \;`
 echo "-R LibHyps LibHyps" > _CoqProject
