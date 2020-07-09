@@ -1,7 +1,7 @@
 -R LibHyps LibHyps
 
+./LibHyps/LibHyps.v
 ./LibHyps/LibDecomp.v
 ./LibHyps/TacNewHyps.v
-./LibHyps/LibHyps.v
-./LibHyps/LibHypsNaming.v
 ./LibHyps/LibSpecialize.v
+./LibHyps/LibHypsNaming.v

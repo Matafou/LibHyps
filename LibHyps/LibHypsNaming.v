@@ -407,7 +407,7 @@ with fallback_rename_hyp stop th :=
      end.
 
 (** * Notation to define specific naming strategy *)
-
+Declare Scope autonaming_scope.
 (** Notation to build a singleton chunk list *)
 Notation "'`' id '`'" := (@cons Prop (forall id, DUMMY id) nil) (at level 1,id ident,only parsing): autonaming_scope.
 
