@@ -5,7 +5,6 @@
 post-all::
 	echo building tests:
 	$(SHOW)COQC LibHyps/LibHypsTest.v
-	$(SHOW)COQC LibHyps/LibHypsDemo.v
 	echo tests OK.
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $(COQLIBS) ./LibHyps/LibHypsTest.v $(TIMING_EXTRA) 
 
