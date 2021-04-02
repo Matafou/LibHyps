@@ -1,12 +1,12 @@
 (* Copyright 2017-2019 Pierre Courtieu *)
 (* This file is part of LibHyps.
 
-    Foobar is free software: you can redistribute it and/or modify
+    LibHyps is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    Foobar is distributed in the hope that it will be useful,
+    LibHyps is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
@@ -44,15 +44,16 @@ Lemma foo: (IF_then_else False True False) -> False.
 Proof.
   intros H.
   decomp_logicals H.
+Admitted.
 
-Lemma foo : { aa:False & True  } -> False.
+Lemma foo2 : { aa:False & True  } -> False.
 Proof.
   intros H.
   decomp_logicals H.
-Abort.
+Admitted.
 
 
-Lemma foo : { aa:False & True & False  } -> False.
+Lemma foo3 : { aa:False & True & False  } -> False.
 Proof.
   intros H.
   decomp_logicals H.

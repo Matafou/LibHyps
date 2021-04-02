@@ -19,34 +19,80 @@
 
 Require Import Arith ZArith LibHyps.LibHyps List.
 
+(* 1 the ";;" TACTICAL and auto(re)naming of hypothesis *)
 
-Lemma foo: forall x y z:nat,
-    x = y -> forall  a b t : nat, a+1 = t+2 -> b + 5 = t - 7 ->  (forall u v, v+1 = 1 -> u+1 = 1 -> a+1 = z+2)  -> z = b + x-> True.
+Lemma foo: forall x y:nat,
+    x = y
+    -> forall  a b t : nat,
+      a+1 = t+2
+      -> b + 5 = t - 7
+      -> forall z z',
+          (forall u v, v+1 = 1 -> u+1 = 1 -> a+1 = z+2)
+          -> z = b + x-> z' + 1 = b + x-> True.
 Proof.
+  
+  (* intros gives bad names: *)
   intros.
-  (* ugly names *)
+  (* We can auto rename tactics afterwards: *)
+  autorename H3.
+  autorename H1.
+
+  Undo 3. (* Be careful this may not be supported by your ide. *)
+  Show.
+  (* Better: apply autorename to each new hyps using the ;; tactical: *)
+  intros ;; autorename.
+
   Undo.
-  intros ;; autorename. (* ;; here means "apply to all new hyps" *)
-  (* better names *)
-  Undo.
-  (* short syntax: *)
+  (* [!tac] is a shortcut for [tac ;; autorename]. Actually it
+     performs a bit more: it would reverts hyps for which it could not
+     compute a name for. *)
   !intros.
   Undo.
-  (* same thing but use subst if possible, and push non prop hyps to the top. *)
+
+  (* same but also use subst if possible, and push non prop hyps to the top. *)
+  intros;; substHyp;; autorename.
+  Undo.
+
+  (* Shortcut (also reverts when no name is found): *)
+  !!!intros.
+  Undo.
+
+  (* same but also push non-prop hyps to the top of the goal (i.e. out
+     of sight). *)
   intros;; substHyp;; autorename;;move_up_types.
   Undo.
-  (* short syntax: *)  
-  !!!intros.
-  (* Let us instantiate the 2nd premis of h_all_eq_add_add without copying its type: *)
+
+  (* This can be done like this too:  *)
+  !!!intros;; move_up_types.
+  Undo.
+
+  (* the "tac1 ;; tac2" tactical can be used after any tactic tac1.
+  The only restriction is that tac2 should expect a (single)
+  hypothesis name as argument *)
+  induction z ;; substHyp;;autorename.
+  Undo.
+
+  (* shortcut also aplly to any tacitc. *)
+  !!!induction z.
+  Undo.
+
+  (* Finally see at the end of this demo for customizing the
+     autonaming heuristic. *)
+
+  (* # USING ESPECIALIZE. *)
+  !intros.
+
+  (* Let us start a proof to instantiate the 2nd premis (u+1=1) of
+     h_all_eq_add_add without a verbose assert: *)
   especialize h_all_eq_add_add at 2.
   { apply Nat.add_0_l. }
   (* now h_all_eq_add_add is specialized *)
 
   Undo 6.
-  intros until 1.
+  !intros until 1.
   (** Do subst on new hyps only, notice how x=y is not subst and
     remains as 0 = y. Contrary to z = b  + x which is substituted. *)
-  (destruct x eqn:heq;intros);; substHyp.
+  !!!(destruct x eqn:heq;intros).
   - apply I.
   - apply I.
 Qed.
@@ -96,24 +142,18 @@ Qed.
 
 (** 1 especialize allows to do forward reasoning without copy pasting statements.
    from a goal of the form 
-
 H: forall ..., h1 -> h2 ... hn-1 -> hn -> hn+1 ... -> concl.
 ========================
 G
-
 especialize H at n.
 gives two subgoals:
-
 H: forall ..., h1 -> h2 ... hn-1 -> hn+1 ... -> concl.
 ========================
 G
-
 ========================
 hn
-
 this creates as much evars as necessary for all parameters of H that
 need to be instantiated.
-
 Example: *)
 
 Definition test n := n = 1.
@@ -161,7 +201,8 @@ Qed.
 Local Open Scope autonaming_scope.
 Import ListNotations.
 
-(* Define the naming scheme as new tactic *)
+(* Define the naming scheme as new tactic pattern matching on the type
+th of the hypothesis (h being the hyp name): *)
 Ltac rename_hyp_2 n th :=
   match th with
   | Nat.eqb ?x ?y = _ => name(`_Neqb` ++ x#n ++ x#n)
@@ -291,7 +332,3 @@ Proof.
   intro h.
   exact I.
 Qed.
-
-
-
-

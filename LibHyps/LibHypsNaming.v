@@ -82,7 +82,7 @@ Ltac rename_hyp ::= my_rename_hyp.>> *)
 (** We define DUMMY as an really opaque symbol. *)
 Definition DUMMY: Prop -> Prop.
   exact (fun x:Prop => x).
-Defined.
+Qed.
 
 (** Builds a chunk from an id (should be given by fresh). *)
 Ltac box_name_raw id := constr:(forall id:Prop, DUMMY id).
@@ -332,25 +332,25 @@ Ltac rename_app nonimpl stop acc th :=
   | _ => constr:(@nil Prop)
   end
 
-(* go under binder and rebuild a term with a good name inside,
+(* Go under binder and rebuild a term with a good name inside,
    catchable by a match context. *)
 with build_dummy_quantified stop th :=
       lazymatch th with
-      | forall z:?A , ?B =>
+      | forall __z:?A , ?B =>
         constr:(
-          fun z:A =>
+          fun __z:A =>
             ltac:(
-              let th' := constr:((fun z => B) z) in
+              let th' := constr:((fun __z => B) __z) in
               let th' := eval lazy beta in th' in
                   let res := build_dummy_quantified stop th' in
                   exact res))
       | ex ?f =>
         match f with
-        | (fun z:?A => ?B) =>
+        | (fun __z:?A => ?B) =>
           constr:(
-            fun z:A =>
+            fun __z:A =>
               ltac:(
-                let th' := constr:((fun z => B) z) in
+                let th' := constr:((fun __z => B) __z) in
                 let th' := eval lazy beta in th' in
                     let res := build_dummy_quantified stop th' in
                     exact res))
