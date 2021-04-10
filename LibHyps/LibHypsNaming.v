@@ -1,18 +1,18 @@
 (* Copyright 2017-2019 Pierre Courtieu *)
 (* This file is part of LibHyps.
 
-    Foobar is free software: you can redistribute it and/or modify
+    LibHyps is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    Foobar is distributed in the hope that it will be useful,
+    LibHyps is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with Foobar.  If not, see <https://www.gnu.org/licenses/>.
+    along with LibHyps.  If not, see <https://www.gnu.org/licenses/>.
 *)
 
 (**************************************************************************
@@ -24,11 +24,9 @@ Require Import Arith ZArith List LibHyps.TacNewHyps.
 Import ListNotations.
 Local Open Scope list.
 
-(** This file is a set of tactical (mainly "!! t" where t is a tactic)
-    and tactics (!intros, !destruct etc), that automatically rename
-    new hypothesis after applying a tactic. The names chosen for
-    hypothesis is programmable using Ltac. See examples in comment
-    below.
+(** This file defines a tactic "autorename h" (and "autorename_strict
+    h") that automatically rename hypothesis h followinh a systematic,
+    but customizable heuristic.
 
     Comments welcome. *)
 
@@ -37,8 +35,9 @@ Local Open Scope list.
 Require Import ZArith.
 
 (** ** The custom renaming tactic
-  This tactic should be redefined along a coq development, it should
-  return a fresh name build from an hypothesis h and its type th. It
+
+  The tactic "rename_hyp" should be redefined along a coq development,
+  it should return a fresh name build from a type th and a depth. It
   should fail if no name is found, so that the fallback scheme is
   called.
 
@@ -55,12 +54,13 @@ Ltac rename_hyp1 n th :=
   | @Forall2 _ _ ?P ?x ?y => name (`_lst_forall2` ++ P#n ++ x#n ++ y#n)
   | NoDupA _ ?l => name (`_NoDupA` ++ l#n)
   | NoDup _ ?l => name (`_NoDup` ++ l#n)
-  | _ => rename_hyp_default n th
   end.
 >>
 (* Overwrite the definition of rename_hyp using the ::= operator. :*)
 
-Ltac rename_hyp ::= my_rename_hyp.>> *)
+<<
+Ltac rename_hyp ::= my_rename_hyp.
+>> *)
 
 
 (** * Implementation principle:
@@ -68,24 +68,62 @@ Ltac rename_hyp ::= my_rename_hyp.>> *)
    The name of the hypothesis will be a sequence of chunks. A chunk is
    a word generally starting with "_".
 
-   Internally this sequence is represented by a list of small terms.
-   One term of the form (∀ <chunk>, DUMMY <chunk>) per chunk. For
-   instance the sequence "h_eq_foo" is represented by the coq term:
+   Internally (not seen by the user) this sequence is represented by a
+   list of small terms. One term of the form (∀ <chunk>:Prop, DUMMY
+   <chunk>) per chunk. For instance the sequence "h_eq_foo" is
+   represented by the following coq term:
 
-   [ (∀ h:Prop,DUMMY h) (∀ _eq:Prop,DUMMY _eq); (∀ _foo:Prop, DUMMY
-   _foo) ]
+   [(∀ h,DUMMY h) ; (∀ _eq,DUMMY _eq) ; (∀ _foo, DUMMY _foo)]
 
-   where DUMMY is an opaque function (in fact it is the identiy
-   function but we don't care). *)
+   where DUMMY is an opaque (identity) function but we don't care. *)
 
 
-(** We define DUMMY as an really opaque symbol. *)
+(** We define DUMMY as an opaque symbol. *)
 Definition DUMMY: Prop -> Prop.
   exact (fun x:Prop => x).
 Qed.
 
-(** Builds a chunk from an id (should be given by fresh). *)
-Ltac box_name_raw id := constr:(forall id:Prop, DUMMY id).
+(* ********** CUSTOMIZATION ********** *)
+
+(** If this is true, then all hyps names will have a trailing "_". In
+    case of names ending with a digit (like in "le_1_2" or "le_x1_x2")
+    this additional suffix avoids Coq's fresh name generation to
+    *replace* the digit. Although this is esthetically bad, it makes
+    things more predictable. You may set this to true for backward
+    compatility. *)
+Ltac add_suffix := constr:(true).
+
+(* This sets the way numerical constants are displayed, default value
+   is set below to numerical_names_nosufx, which will give the same
+   name to (O<1)%nat and (O<1)%Z and (O<1)%N, i.e. h_lt_0_1_.
+
+   but you can use this in your development to change it
+   h_lt_0n_1n_/h_lt_0z_1z_/h_lt_0N_1N_:
+   Ltac numerical_names ::= numerical_names_sufx *)
+Ltac numerical_names := fail.
+
+(** This determines the depth of the recursive analysis of a type to
+    compute the corresponding hypothesis name. generally 2 or 3 is
+    enough. More gives too log names, less may give identical names
+    too often. *)
+Ltac rename_depth := constr:(3).
+
+(** Default prefix for hypothesis names. *)
+Ltac default_prefix :=constr:(forall h, DUMMY h).
+
+(** A few special default chunks, for special cases in the naming heuristic. *)
+Ltac impl_prefix := constr:(forall _impl, DUMMY _impl).
+Ltac forall_prefix := constr:(forall _all, DUMMY _all).
+Ltac exists_prefix := constr:(forall _ex, DUMMY _ex).
+
+(** This is the customizable naming tactic that the user should
+    REDEFINE along his development. See above for an example of such
+    redefinition. It should always fail when no name suggestion is
+    found, to give a chance to the default naming scheme to apply. *)
+
+ Ltac rename_hyp stop th := fail.
+
+(* ************************************** *)
 
 (** Builds an id from a sequence of chunks. fresh is not supposed to
     add suffixes anywhere because all the ids we use start with "_".
@@ -94,7 +132,11 @@ Ltac build_name l :=
   let l := eval lazy beta delta [List.app] iota in l in
   match l with
   | nil => fail
-  | (forall id1:Prop, DUMMY id1)::nil => fresh id1
+  | (forall id1:Prop, DUMMY id1)::nil =>
+    match add_suffix with
+    | true => fresh id1 "_"
+    | false => fresh id1
+    end
   | (forall id1:Prop, DUMMY id1)::?l' =>
     let recres := build_name l' in
     (* id1 starts with "_", so fresh do not add any suffix *)
@@ -102,31 +144,58 @@ Ltac build_name l :=
     res
   end.
 
-(** A few default chunks *)
-Ltac impl_prefix := constr:(forall _impl, DUMMY _impl).
-Ltac forall_prefix := constr:(forall _all, DUMMY _all).
-Ltac exists_prefix := constr:(forall _ex, DUMMY _ex).
-Ltac default_prefix :=constr:(forall h, DUMMY h).
-
-(** * Definition of a naming strategy.
-
-   To compute the name of a hypothesis we look inside its type and
-   build a list of chunks. We analyse recursively the type until we
-   reach a fixed depth, defined below. This depth determines the
-   number of layers we traverse to build the chunk list. *)
-
-Ltac rename_depth := constr:(3).
-
-
-
 (** Check if t is an eligible argument for fresh function. For instance
    if t is (forall foo, ...), it is not eligible. *)
 Ltac freshable t :=
   let x := fresh t "_dummy_sufx" in
   idtac.
 
-(** Generate fresh name for numerical constants. *)
-Ltac numerical_names t :=
+(** Generate fresh name for numerical constants.
+
+   Warning: problem here: hyps names may end with a digit: Coq may
+   *replace* the digit in case of name clash. If you are bitten by
+   this, you should switch to "Ltac add_suffix ::= constr:(true)." so
+   that every hyp name ends with "_", so that coq never mangle with
+   the digits *)
+Ltac numerical_names_nosufx t :=
+  match t with
+  | 0%Z => fresh "_0"
+  | 1%Z => fresh "_1"
+  | 2%Z => fresh "_2"
+  | 3%Z => fresh "_3"
+  | 4%Z => fresh "_4"
+  | 5%Z => fresh "_5"
+  | 6%Z => fresh "_6"
+  | 7%Z => fresh "_7"
+  | 8%Z => fresh "_8"
+  | 9%Z => fresh "_9"
+  | 10%Z => fresh "_10"
+  (* | Z0 => fresh "_0" *)
+  | O%nat => fresh "_0"
+  | 1%nat => fresh "_1"
+  | 2%nat => fresh "_2"
+  | 3%nat => fresh "_3"
+  | 4%nat => fresh "_4"
+  | 5%nat => fresh "_5"
+  | 6%nat => fresh "_6"
+  | 7%nat => fresh "_7"
+  | 8%nat => fresh "_8"
+  | 9%nat => fresh "_9"
+  | 10%nat => fresh "_10"
+  | O%N => fresh "_0"
+  | 1%N => fresh "_1"
+  | 2%N => fresh "_2"
+  | 3%N => fresh "_3"
+  | 4%N => fresh "_4"
+  | 5%N => fresh "_5"
+  | 6%N => fresh "_6"
+  | 7%N => fresh "_7"
+  | 8%N => fresh "_8"
+  | 9%N => fresh "_9"
+  | 10%N => fresh "_10"
+  end.
+
+Ltac numerical_names_sufx t :=
   match t with
   | 0%Z => fresh "_0z"
   | 1%Z => fresh "_1z"
@@ -164,6 +233,11 @@ Ltac numerical_names t :=
   | 10%N => fresh "_10N"
   end.
 
+(* Default value, see above for another possible one.
+Ltac numerical_names ::= numerical_names_sufx *)
+Ltac numerical_names ::= numerical_names_nosufx.
+  
+
 (** Build a chunk from a simple term: either a number or a freshable
    term. *)
 Ltac box_name t :=
@@ -176,10 +250,6 @@ Ltac box_name t :=
       end
   in constr:(forall id_:Prop, DUMMY id_).
 
-
-(** This is the customizable naming tactic, by default it fails, giving
-   control to default naming tactics. *)
-Ltac rename_hyp stop th := fail.
 
 (** This will later contain a few default fallback naming strategy. *)
 Ltac rename_hyp_default stop th :=
@@ -409,7 +479,12 @@ with fallback_rename_hyp stop th :=
 (** * Notation to define specific naming strategy *)
 Declare Scope autonaming_scope.
 (** Notation to build a singleton chunk list *)
-Notation "'`' id '`'" := (@cons Prop (forall id, DUMMY id) nil) (at level 1,id ident,only parsing): autonaming_scope.
+
+(* from coq-8.13 we should use name instead of ident. But let us wait
+   a few versions before this change. *)
+Notation "'`' idx '`'" := (@cons Prop (forall idx:Prop, DUMMY idx) (@nil Prop))
+                           (at level 1,idx ident,only parsing): autonaming_scope.
+
 
 (** Notation to call naming on a term X, with a given depth n. *)
 Notation " X '#' n " := ltac:(
@@ -430,7 +505,7 @@ Ltac rename_hyp_default n th ::=
       match th with
       (* | (@eq _ ?x ?y) => name (`_eq` ++ x#n ++ y#n) *)
       (* | Z.le ?A ?B => name (`_Zle` ++ A#n ++ B#n) *)
-      | ?x <> ?y => name (`_neq` ++ x#n ++ y#n)
+      | ?x <> ?y => name ( `_neq` ++ x#(decr n) ++ y#(decr n))
       | @cons _ ?x (cons ?y ?l) =>
         match n with
         | S ?n' => name (`_cons` ++ x#n ++ y#n ++ l#n')
@@ -446,28 +521,89 @@ Ltac rename_hyp_default n th ::=
       | _ => fail
       end in
   res.
+
+(* Call this in your own renaming scheme if you want the "hneg" prefix
+   on negated properties *)
+Ltac rename_hyp_neg n th :=
+  match th with
+  | ~ (_ = _) => fail 1(* h_neq already dealt by fallback *)
+  | ~ ?th' => name (`neq` ++ th'#(S n))
+  | _ => fail
+  end.
+
 Local Close Scope autonaming_scope.
 
 (* Entry point of the renaming code. *)
 Ltac fallback_rename_hyp_name th :=
   let depth := rename_depth in
+  let h := constr:(ltac:(let x := default_prefix in exact x)) in
   let l := fallback_rename_hyp depth th in
-  let sufx := build_name l in
-  fresh "h" sufx.
+  match l with
+    nil => fail 1
+  | _ => let nme := build_name (h::l) in
+         fresh nme
+  end.
 
-(* Tactic renaming hypothesis H. *)
-Ltac autorename H :=
+(* Formating Error message *)
+Inductive LHMsg t (h:t) := LHMsgC: LHMsg t h.
+
+Notation "h : t" := (LHMsgC t h) (at level 1,only printing, format
+"'[ ' h ':' '/' '[' t ']' ']'").
+
+(* Tactic renaming hypothesis H. Ignore Type-sorted hyps, fails if no
+renaming can be computed. Example of failing type: H:((fun x => True) true). *)
+Ltac autorename_strict H :=
   match type of H with
   | ?th =>
     match type of th with
     | Prop =>
       let dummy_name := fresh "dummy" in
-      rename H into dummy_name; (* this renaming makes the renaming more or less
-                                   idempotent, it is backtracked if the
-                                   rename_hyp below fails. *)
+      rename H into dummy_name; (* this renaming makes the renaming
+                                   more or less idempotent by freeing
+                                   the current name of H, it is
+                                   backtracked if the rename_hyp below
+                                   fails. *)
       let newname := fallback_rename_hyp_name th in
       rename dummy_name into newname
+    | Prop =>
+      let c := constr:(LHMsgC th H) in
+      fail 1 "no renaming pattern for " c (* "no renaming pattern for " H *)
+    | _ => idtac (* not in Prop or "no renaming pattern for " H *)
     end
-  | _ => idtac (* not in Prop or "no renaming pattern for " H *)
   end.
 
+(* Tactic renaming hypothesis H. *)
+Ltac autorename H := try autorename_strict H.
+
+(*
+Print Visibility.
+Open Scope autonaming_scope.
+Ltac rename_hyp1 n th :=
+  match th with
+    (* | (?min <= ?x) /\ (?x < ?max) => name (x#n ++ `_bounded_` ++ min#n ++ `_` ++ max#n) *)
+  | ((?min <= ?x) /\ (?x <= ?max))%nat => name (x#n ++ `_bounded` ++ min#n ++ max#n)
+  | (?x = ?z + ?z)%nat => name (x#n ++ `_bounded` ++ z#n ++ z#n)
+  end.
+Close Scope autonaming_scope.
+
+Ltac rename_hyp n th ::=
+  match th with
+  | _ => rename_hyp1 n th
+  end.
+
+Goal forall x1 x3:bool, forall a z e : nat,
+      z+e = a
+      -> forall SEP:(True -> True),
+        a = z+z
+        -> z+z <= a <= e + e
+        -> ((fun f => z = e) true)
+        -> forall b1 b2 b3 b4: bool,
+          True -> True.
+Proof.
+  (* Set Ltac Debug. *)
+  (* then_nh_rev ltac:(intros) ltac:(subst_or_idtac).   *)
+  intros.
+  autorename H1.
+  Fail autorename_strict H2.
+
+*)

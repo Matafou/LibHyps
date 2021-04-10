@@ -1,23 +1,25 @@
 (* Copyright 2017-2019 Pierre Courtieu *)
 (* This file is part of LibHyps.
 
-    Foobar is free software: you can redistribute it and/or modify
+    LibHyps is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    Foobar is distributed in the hope that it will be useful,
+    LibHyps is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with Foobar.  If not, see <https://www.gnu.org/licenses/>.
+    along with LibHyps.  If not, see <https://www.gnu.org/licenses/>.
 *)
 
 Require Import Arith ZArith LibHyps.LibHyps LibHyps.LibSpecialize List.
 
 
+Import TacNewHyps.Notations.
+Import LibHyps.Notations.
 
 Local Open Scope autonaming_scope.
 Import ListNotations.
@@ -43,7 +45,21 @@ Ltac rename_depth ::= constr:(3).
 
 Close Scope Z_scope.
 Open Scope nat_scope.
-Lemma dummy: forall x y,
+
+Ltac test h th :=
+  match type of h with
+  | th => idtac
+  | ?actual => fail "test failed: expected " h ": " th "but got: " h ": " actual
+  end.
+
+Ltac testg tg :=
+  match goal with
+  | |- tg => idtac
+  | |- ?actual => fail "test failed: expected goal" tg "but got: " actual
+  end.
+
+
+Lemma test_autorename: forall x y,
     0 <= 1 ->
     (0%Z <= 1%Z)%Z ->
     x <= y ->
@@ -79,45 +95,479 @@ Lemma dummy: forall x y,
       (0 < 1 -> ~(1<0)) ->
       (0 < 1 -> 1<0) -> 0 < z -> True.
   (* auto naming at intro: *)
-  !intros.
-
-  match type of x with nat => idtac | _ => fail "test failed!" end.
-  match type of y with nat => idtac | _ => fail "test failed!" end.
-  match type of h_le_0n_1n with 0 <= 1 => idtac | _ => fail "test failed!" end.
-  match type of h_le_0z_1z with (0 <= 1)%Z => idtac | _ => fail "test failed!" end.
-  match type of h_le_x_y with x <= y => idtac | _ => fail "test failed!" end.
-  match type of h_eq_x_y with x = y => idtac | _ => fail "test failed!" end.
-  match type of h_eq_0n_1n with 0 = 1 => idtac | _ => fail "test failed!" end.
-  match type of h_eq_0z_1z with 0%Z = 1%Z => idtac | _ => fail "test failed!" end.
-  match type of h_neq_x_y with x <> y => idtac | _ => fail "test failed!" end.
-  match type of h_Neqb_3n_4n with true = (3 =? 4) => idtac | _ => fail "test failed!" end.
-  match type of h_Neqb_3n_4n0 with (3 =? 4) = true => idtac | _ => fail "test failed!" end.
-  match type of h_eq_true_leb_3n_4n with true = (3 <=? 4) => idtac | _ => fail "test failed!" end.
-  match type of h_eq_1n_0n with 1 = 0 => idtac | _ => fail "test failed!" end.
-  match type of h_neq_x_y0 with x <> y => idtac | _ => fail "test failed!" end.
-  match type of h_not_lt_1n_0n with ~ 1 < 0 => idtac | _ => fail "test failed!" end.
-  match type of h_all_tNEQf with forall w w' : nat, w = w' -> true <> false => idtac | _ => fail "test failed!" end.
-  match type of h_all_and_tEQf_True with forall w w' : nat, w = w' -> true = false /\ True => idtac | _ => fail "test failed!" end.
-  match type of h_all_and_False_True with forall w w' : nat, w = w' -> False /\ True => idtac | _ => fail "test failed!" end.
-  match type of h_ex_and_neq_False with exists w : nat, w = w -> true <> (false && true)%bool /\ False => idtac | _ => fail "test failed!" end.
-  match type of h_ex_and_True_False with exists w : nat, w = w -> True /\ False => idtac | _ => fail "test failed!" end.
-  match type of h_all_tEQf with forall w w' : nat, w = w' -> true = false => idtac | _ => fail "test failed!" end.
-  match type of h_all_eq_eqb_eqb with forall w w' : nat, w = w' -> (3 =? 4) = (4 =? 3) => idtac | _ => fail "test failed!" end.
-  match type of h_eq_length_cons with length [3] = (fun _ : nat => 0) 1 => idtac | _ => fail "test failed!" end.
-  match type of h_eq_length_cons_0n with length [3] = 0 => idtac | _ => fail "test failed!" end.
-  match type of h_eq_add_0n_y_y with 0 + y = y => idtac | _ => fail "test failed!" end.
-  match type of h_tEQf with true = false => idtac | _ => fail "test failed!" end.
-  match type of h_impl_tEQf with False -> true = false => idtac | _ => fail "test failed!" end.
-  match type of x0 with nat => idtac | _ => fail "test failed!" end.
-  match type of env with list nat => idtac | _ => fail "test failed!" end.
-  match type of h_not_In_x0_nil with ~ In x0 [] => idtac | _ => fail "test failed!" end.
-  match type of h_eq_cons_x0_3n_cons_2n with x0 :: 3 :: env = 2 :: env => idtac | _ => fail "test failed!" end.
-  match type of h_IDProp with IDProp => idtac | _ => fail "test failed!" end.
-  match type of h_impl_tNEQf with 0 < 1 -> 0 < 0 -> true = false -> true <> false => idtac | _ => fail "test failed!" end.
-  match type of h_tNEQf with true <> false => idtac | _ => fail "test failed!" end.
-  match type of h_all_tNEQf0 with forall w w' : nat, w < w' -> true <> false => idtac | _ => fail "test failed!" end.
-  match type of h_impl_not_lt with 0 < 1 -> ~ 1 < 0 => idtac | _ => fail "test failed!" end.
-  match type of h_impl_lt_1n_0n with 0 < 1 -> 1 < 0 => idtac | _ => fail "test failed!" end.
-  match type of h_lt_0n_z with 0 < z => idtac | _ => fail "test failed!" end.
+  intros /n.
+  test x nat.
+  test y nat.
+  test h_le_0_1_ (0 <= 1).
+  test h_le_0_1_0 ((0 <= 1)%Z).
+  test h_le_x_y_ (x <= y).
+  test h_eq_x_y_ (x = y).
+  test h_eq_0_1_ (0 = 1).
+  test h_eq_0_1_0 (0%Z = 1%Z).
+  test h_neq_x_y_ (x <> y).
+  test h_Neqb_3_4_ (true = (3 =? 4)).
+  test h_Neqb_3_4_0 ((3 =? 4) = true).
+  test h_eq_true_leb_3_4_ (true = (3 <=? 4)).
+  test h_eq_1_0_ (1 = 0).
+  test h_neq_x_y_ (x <> y).
+  test h_not_lt_1_0_ (~ 1 < 0).
+  test h_all_tNEQf_ (forall w w' : nat, w = w' -> true <> false).
+  test h_all_and_tEQf_True_ (forall w w' : nat, w = w' -> true = false /\ True).
+  test h_all_and_False_True_ (forall w w' : nat, w = w' -> False /\ True).
+  test h_ex_and_neq_False_ (exists w : nat, w = w -> true <> (false && true)%bool /\ False).
+  test h_ex_and_True_False_ (exists w : nat, w = w -> True /\ False).
+  test h_all_tEQf_ (forall w w' : nat, w = w' -> true = false).
+  test h_all_eq_eqb_eqb_ (forall w w' : nat, w = w' -> (3 =? 4) = (4 =? 3)).
+  test h_eq_length_cons_ (length [3] = (fun _ : nat => 0) 1).
+  test h_eq_length_cons_0_ (length [3] = 0).
+  test h_eq_add_0_y_y_ (0 + y = y).
+  test h_tEQf_ (true = false).
+  test h_impl_tEQf_ (False -> true = false).
+  test x0 (nat).
+  test env (list nat).
+  test h_not_In_x0_nil_ (~ In x0 []).
+  test h_eq_cons_x0_3_cons_2_ (x0 :: 3 :: env = 2 :: env).
+  test h_IDProp_ (IDProp).
+  test h_impl_tNEQf_ (0 < 1 -> 0 < 0 -> true = false -> true <> false).
+  test h_tNEQf_ (true <> false).
+  test h_all_tNEQf_0 ((forall w w' : nat, w < w' -> true <> false)).
+  test h_impl_not_lt_ (0 < 1 -> ~ 1 < 0).
+  test h_impl_lt_1_0_ (0 < 1 -> 1 < 0).
+  test h_lt_0_z_ (0 < z).
   exact I.
 Qed.
+
+
+Lemma test_autorename_failing: forall x y:nat,
+    ((fun f => x = y) true)
+    -> forall a b: bool, forall z:nat,
+    0 <= 1 ->
+    (0%Z <= 1%Z)%Z ->
+    x <= y ->
+    x = y ->
+      (0 < 1 -> 1<0) -> 0 < z -> True.
+Proof.
+  (* Fails beause the ((fun f => x = y) true) is not renamable. *)
+  Fail intros /n!.
+  intros ; { autorename }. (* autorename does not fail if no renaming found *)
+  test H ((fun _ : bool => x = y) true).
+  auto.
+Qed.
+
+Lemma test_autorename_failing2: forall x y:nat,
+    ((fun f => x = y) true)
+    -> forall a b: bool, forall z:nat,
+    0 <= 1 ->
+    (0%Z <= 1%Z)%Z ->
+    x <= y ->
+    x = y ->
+      (0 < 1 -> 1<0) -> 0 < z -> True.
+Proof.
+  intros /n. (* /n does not fail, even if a hyp is not renamed *)  
+  test x (nat).
+  test y (nat).
+  test H (((fun _ : bool => x = y) true)).  
+  test h_le_0_1_ (0 <= 1).
+  test h_le_0_1_0 ((0 <= 1)%Z).
+  test h_le_x_y_ (x <= y).
+  test h_eq_x_y_ (x = y).
+  test h_impl_lt_1_0_ (0 < 1 -> 1 < 0).
+  test h_lt_0_z_ (0 < z).
+  exact I.
+Qed.
+
+Lemma test_rename_or_revert: forall x y:nat,
+    ((fun f => x = y) true)
+    -> forall a b: bool, forall z:nat,
+    0 <= 1 ->
+    (0%Z <= 1%Z)%Z ->
+    x <= y ->
+    x = y ->
+      (0 < 1 -> 1<0) -> 0 < z -> True.
+Proof.
+  intros ; { rename_or_revert }.
+  testg ((fun _ : bool => x = y) true -> True).
+  auto.
+Qed.
+
+Lemma test_rename_or_revert2: forall x y:nat,
+    ((fun f => x = y) true)
+    -> forall a b: bool, forall z:nat,
+    0 <= 1 ->
+    (0%Z <= 1%Z)%Z ->
+    x <= y ->
+    x = y ->
+      (0 < 1 -> 1<0) -> 0 < z -> True.
+Proof.
+  intros /n?.
+  testg ((fun _ : bool => x = y) true -> True).
+  test x (nat).
+  test y (nat).
+  (* Checking that hyps after the failed rename are introduced. *)
+  test h_le_0_1_ (0 <= 1).
+  test h_le_0_1_0 ((0 <= 1)%Z).
+  test h_le_x_y_ (x <= y).
+  test h_eq_x_y_ (x = y).
+  test h_impl_lt_1_0_ (0 < 1 -> 1 < 0).
+  test h_lt_0_z_ (0 < z).
+  intro.
+  exact I.
+Qed.
+
+Lemma test_revertHyp: forall x y:nat,
+    ((fun f => x = y) true)
+    -> forall a b: bool, forall z:nat,
+    0 <= 1 ->
+    (0%Z <= 1%Z)%Z ->
+    x <= y ->
+    x = y ->
+      (0 < 1 -> 1<0) -> 0 < z -> True.
+Proof.
+  (* Wrong order for revert. *)
+  Fail intros ; { revertHyp }.
+  intros ; {< revertHyp }.
+  testg (forall x y : nat,
+            (fun _ : bool => x = y) true ->
+            bool ->
+            bool ->
+            forall z : nat,
+              0 <= 1 -> (0 <= 1)%Z -> x <= y -> x = y -> (0 < 1 -> 1 < 0) -> 0 < z -> True).
+  intros.
+  exact I.
+Qed.
+
+
+(* group_up_list is faster (called on the whole list of new hyps) and should be prefered. *)
+Lemma test_group_up_list2: forall x y:nat,
+    ((fun f => x = y) true)
+    -> forall a b: bool, forall z:nat,
+    0 <= 1 ->
+    (0%Z <= 1%Z)%Z ->
+    x <= y ->
+    x = y ->
+      (0 < 1 -> 1<0) -> 0 < z -> True.
+Proof.
+  intros ; {! group_up_list }. 
+  lazymatch reverse goal with
+    | Hb:_, Ha:_,Hz : _ , Hy:_ , Hx:_ |- True =>
+      let t := constr:((ltac:(reflexivity)): Hb=b) in
+      let t := constr:((ltac:(reflexivity)): Ha=a) in
+      let t := constr:((ltac:(reflexivity)): Hz=z) in
+      let t := constr:((ltac:(reflexivity)): Hy=y) in
+      let t := constr:((ltac:(reflexivity)): Hx=x) in
+      idtac
+    | _ => fail "test failed (wrong order of hypothesis)!"
+  end.
+  lazymatch goal with
+    | hH1:_, hH2:_,hH3 : _ , hH4:_ , hH5:_ |- True =>
+      let t := constr:((ltac:(reflexivity)):H1=hH1) in
+      let t := constr:((ltac:(reflexivity)): H2=hH2) in
+      let t := constr:((ltac:(reflexivity)): H3=hH3) in
+      let t := constr:((ltac:(reflexivity)): H4=hH4) in
+      let t := constr:((ltac:(reflexivity)): H5=hH5) in
+      idtac
+    | _ => fail "test failed (wrong order of hypothesis)!"
+  end.
+  exact I.
+Qed.
+
+
+Lemma test_group_up_list21: forall x y:nat,
+    ((fun f => x = y) true)
+    -> forall a b: bool, forall z:nat,
+    0 <= 1 ->
+    (0%Z <= 1%Z)%Z ->
+    x <= y ->
+    x = y ->
+      (0 < 1 -> 1<0) -> 0 < z -> True.
+Proof.
+  intros /g.
+  lazymatch reverse goal with
+    | Hb:_, Ha:_,Hz : _ , Hy:_ , Hx:_ |- True =>
+      let t := constr:((ltac:(reflexivity)): Hb=b) in
+      let t := constr:((ltac:(reflexivity)): Ha=a) in
+      let t := constr:((ltac:(reflexivity)): Hz=z) in
+      let t := constr:((ltac:(reflexivity)): Hy=y) in
+      let t := constr:((ltac:(reflexivity)): Hx=x) in
+      idtac
+    | _ => fail "test failed (wrong order of hypothesis)!"
+  end.
+  lazymatch goal with
+    | hH1:_, hH2:_,hH3 : _ , hH4:_ , hH5:_ |- True =>
+      let t := constr:((ltac:(reflexivity)):H1=hH1) in
+      let t := constr:((ltac:(reflexivity)): H2=hH2) in
+      let t := constr:((ltac:(reflexivity)): H3=hH3) in
+      let t := constr:((ltac:(reflexivity)): H4=hH4) in
+      let t := constr:((ltac:(reflexivity)): H5=hH5) in
+      idtac
+    | _ => fail "test failed (wrong order of hypothesis)!"
+  end.
+  exact I.
+Qed.
+
+(* This is a nonregression test but the current behaviour is not
+completely satisfying (b <-> a). So we may make it a bit different
+some day. *)
+Lemma test_group_up_list1_rev: forall x y:nat,
+    ((fun f => x = y) true)
+    -> forall a b: bool, forall z:nat,
+    0 <= 1 ->
+    (0%Z <= 1%Z)%Z ->
+    x <= y ->
+    x = y ->
+      (0 < 1 -> 1<0) -> 0 < z -> True.
+Proof.
+  intros ; {!< group_up_list }.
+  lazymatch reverse goal with
+    | Ha:_, Hb:_,Hz : _ , Hy:_ , Hx:_ |- True =>
+      let t := constr:((ltac:(reflexivity)): Hb=b) in
+      let t := constr:((ltac:(reflexivity)): Ha=a) in
+      let t := constr:((ltac:(reflexivity)): Hz=z) in
+      let t := constr:((ltac:(reflexivity)): Hy=y) in
+      let t := constr:((ltac:(reflexivity)): Hx=x) in
+      idtac
+    | _ => fail "test failed (wrong order of hypothesis)!"
+  end.
+  lazymatch goal with
+    | hH1:_, hH2:_,hH3 : _ , hH4:_ , hH5:_ |- True =>
+      let t := constr:((ltac:(reflexivity)):H1=hH1) in
+      let t := constr:((ltac:(reflexivity)): H2=hH2) in
+      let t := constr:((ltac:(reflexivity)): H3=hH3) in
+      let t := constr:((ltac:(reflexivity)): H4=hH4) in
+      let t := constr:((ltac:(reflexivity)): H5=hH5) in
+      idtac
+    | _ => fail "test failed (wrong order of hypothesis)!"
+  end.
+  exact I.
+Qed.
+
+(* Two more tests for the case where the top hyp is Prop-sorted. *)
+
+Lemma test_group_up_list3:
+  ((fun f => 0 = 1) true)
+  ->
+  forall x y:nat,
+  forall a b: bool, forall z:nat,
+      0 <= 1 ->
+      (0%Z <= 1%Z)%Z ->
+      x <= y ->
+      x = y ->
+      (0 < 1 -> 1<0) -> 0 < z -> True.
+Proof.
+  intros ; { move_up_types }.
+  lazymatch reverse goal with
+  | Hb:_, Ha:_,Hz : _ , Hy:_ , Hx:_ |- True =>
+    let t := constr:((ltac:(reflexivity)): Hb=b) in
+    let t := constr:((ltac:(reflexivity)): Ha=a) in
+    let t := constr:((ltac:(reflexivity)): Hz=z) in
+    let t := constr:((ltac:(reflexivity)): Hy=y) in
+    let t := constr:((ltac:(reflexivity)): Hx=x) in
+    idtac
+  | _ => fail "test failed (wrong order of hypothesis)!"
+  end.
+  lazymatch goal with
+    | hH1:_, hH2:_,hH3 : _ , hH4:_ , hH5:_ |- True =>
+      let t := constr:((ltac:(reflexivity)):H1=hH1) in
+      let t := constr:((ltac:(reflexivity)): H2=hH2) in
+      let t := constr:((ltac:(reflexivity)): H3=hH3) in
+      let t := constr:((ltac:(reflexivity)): H4=hH4) in
+      let t := constr:((ltac:(reflexivity)): H5=hH5) in
+      idtac
+    | _ => fail "test failed (wrong order of hypothesis)!"
+  end.
+  exact I.
+Qed.
+
+
+
+Lemma test_group_up_list2_rev: 
+  ((fun f => 0 = 1) true)
+  ->
+  forall x y:nat,
+  forall a b: bool, forall z:nat,
+      0 <= 1 ->
+      (0%Z <= 1%Z)%Z ->
+      x <= y ->
+      x = y ->
+      (0 < 1 -> 1<0) -> 0 < z -> True.
+Proof.
+  intros ; {< move_up_types }.
+  lazymatch reverse goal with
+  | Ha:_, Hb:_,Hx : _ , Hy:_ , Hz:_ |- True =>
+    let t := constr:((ltac:(reflexivity)): Hb=b) in
+    let t := constr:((ltac:(reflexivity)): Ha=a) in
+    let t := constr:((ltac:(reflexivity)): Hz=z) in
+    let t := constr:((ltac:(reflexivity)): Hy=y) in
+    let t := constr:((ltac:(reflexivity)): Hx=x) in
+    idtac
+  | _ => fail "test failed (wrong order of hypothesis)!"
+  end.
+  lazymatch goal with
+    | hH1:_, hH2:_,hH3 : _ , hH4:_ , hH5:_ |- True =>
+      let t := constr:((ltac:(reflexivity)):H1=hH1) in
+      let t := constr:((ltac:(reflexivity)): H2=hH2) in
+      let t := constr:((ltac:(reflexivity)): H3=hH3) in
+      let t := constr:((ltac:(reflexivity)): H4=hH4) in
+      let t := constr:((ltac:(reflexivity)): H5=hH5) in
+      idtac
+    | _ => fail "test failed (wrong order of hypothesis)!"
+  end.
+  exact I.
+Qed.
+
+(* Test for substHyp, the order in which subst are done *)
+
+Lemma test_subst: 
+  ((fun f => 0 = 1) true)
+  ->
+  forall x y:nat,
+  forall a b: bool, forall z:nat,
+      0 <= 1 ->
+      x = z ->
+      (0%Z <= 1%Z)%Z ->
+      x <= y ->
+      x = y ->
+      (0 < 1 -> 1<0) -> 0 < z -> True.
+Proof.
+  intros ; { substHyp }.
+  (* x = z is subst first, and y = y remains *)
+  lazymatch reverse goal with
+  | H: y <= y |- True => idtac
+  | _ => fail "test failed!"
+  end.
+  exact I.
+Qed.
+
+
+(* Testing . *)
+Lemma test_subst_reverse: 
+  ((fun f => 0 = 1) true)
+  ->
+  forall x y:nat,
+  forall a b: bool, forall z:nat,
+      0 <= 1 ->
+      x = z ->
+      (0%Z <= 1%Z)%Z ->
+      x <= y ->
+      x = y ->
+      (0 < 1 -> 1<0) -> 0 < z -> True.
+Proof.
+  intros ; {< substHyp }.
+  (* x = y is subst first, and z = z remains *)
+  lazymatch reverse goal with
+  | H: z <= z |- True => idtac
+  | _ => fail "test failed!"
+  end.
+  exact I.
+Qed.
+
+
+(* Legacy Notations tac ;!; tac2. *)
+Import TacNewHyps.SimpleNotations.
+Lemma test_tactical_semi: forall x y:nat,
+    ((fun f => x = y) true)
+    -> forall a b: bool, forall z:nat,
+    0 <= 1 ->
+    (0%Z <= 1%Z)%Z ->
+    x <= y ->
+    x = y ->
+      (0 < 1 -> 1<0) -> 0 < z -> True.
+Proof.
+  (* move_up_types is there for backward compatibility. It moves Type-Sorted hyps up. *)
+  intros ;; move_up_types.
+  lazymatch reverse goal with
+    | Hb:_, Ha:_,Hz : _ , Hy:_ , Hx:_ |- True =>
+      let t := constr:((ltac:(reflexivity)): Hb=b) in
+      let t := constr:((ltac:(reflexivity)): Ha=a) in
+      let t := constr:((ltac:(reflexivity)): Hz=z) in
+      let t := constr:((ltac:(reflexivity)): Hy=y) in
+      let t := constr:((ltac:(reflexivity)): Hx=x) in
+      idtac
+    | _ => fail "test failed (wrong order of hypothesis)!"
+  end.
+  lazymatch goal with
+    | hH1:_, hH2:_,hH3 : _ , hH4:_ , hH5:_ |- True =>
+      let t := constr:((ltac:(reflexivity)): H1=hH1) in
+      let t := constr:((ltac:(reflexivity)): H2=hH2) in
+      let t := constr:((ltac:(reflexivity)): H3=hH3) in
+      let t := constr:((ltac:(reflexivity)): H4=hH4) in
+      let t := constr:((ltac:(reflexivity)): H5=hH5) in
+      idtac
+    | _ => fail "test failed (wrong order of hypothesis)!"
+  end.
+  auto.
+Qed.
+
+(* Legacy Notations tac ;; tac2. *)
+Import TacNewHyps.SimpleNotations.
+Lemma test_tactical_semi_rev: forall x y:nat,
+    ((fun f => x = y) true)
+    -> forall a b: bool, forall z:nat,
+    0 <= 1 ->
+    (0%Z <= 1%Z)%Z ->
+    x <= y ->
+    x = y ->
+      (0 < 1 -> 1<0) -> 0 < z -> True.
+Proof.
+  (* move_up_types is there for backward compatibility. It moves Type-Sorted hyps up. *)
+  intros ;!; move_up_types.
+  lazymatch reverse goal with
+    | Ha:_, Hb:_,Hz : _ , Hx:_ , Hy:_ |- True =>
+      let t := constr:((ltac:(reflexivity)): Hb=b) in
+      let t := constr:((ltac:(reflexivity)): Ha=a) in
+      let t := constr:((ltac:(reflexivity)): Hz=z) in
+      let t := constr:((ltac:(reflexivity)): Hy=y) in
+      let t := constr:((ltac:(reflexivity)): Hx=x) in
+      idtac
+    | _ => fail "test failed (wrong order of hypothesis)!"
+  end.
+  lazymatch goal with
+    | hH1:_, hH2:_,hH3 : _ , hH4:_ , hH5:_ |- True =>
+      let t := constr:((ltac:(reflexivity)): H1=hH1) in
+      let t := constr:((ltac:(reflexivity)): H2=hH2) in
+      let t := constr:((ltac:(reflexivity)): H3=hH3) in
+      let t := constr:((ltac:(reflexivity)): H4=hH4) in
+      let t := constr:((ltac:(reflexivity)): H5=hH5) in
+      idtac
+    | _ => fail "test failed (wrong order of hypothesis)!"
+  end.
+  auto.
+Qed.
+
+
+(* Legacy Notations !!!!tac. *)
+Import LibHyps.LegacyNotations.
+Lemma test_group_up_list_legacy: forall x y:nat,
+    ((fun f => x = y) true)
+    -> forall a b: bool, forall z:nat,
+    0 <= 1 ->
+    (0%Z <= 1%Z)%Z ->
+    x <= y ->
+    x = y ->
+      (0 < 1 -> 1<0) -> 0 < z -> True.
+Proof.
+  (* move_up_types is there for backward compatibility. It moves Type-Sorted hyps up. *)
+  !!!! intros.
+  lazymatch reverse goal with
+    | Hb:_, Ha:_,Hz : _ , Hy:_ , Hx:_ |- True =>
+      let t := constr:((ltac:(reflexivity)): Hb=b) in
+      let t := constr:((ltac:(reflexivity)): Ha=a) in
+      let t := constr:((ltac:(reflexivity)): Hz=z) in
+      let t := constr:((ltac:(reflexivity)): Hy=y) in
+      let t := constr:((ltac:(reflexivity)): Hx=x) in
+      idtac
+    | _ => fail "test failed (wrong order of hypothesis)!"
+  end.
+  lazymatch goal with
+    | hH1:_, hH2:_,hH3 : _ , hH4:_ , hH5:_ |- True =>
+      let t := constr:((ltac:(reflexivity)): h_le_0_1_=hH1) in
+      let t := constr:((ltac:(reflexivity)): h_le_0_1_0=hH2) in
+      let t := constr:((ltac:(reflexivity)): h_le_y_y_=hH3) in
+      let t := constr:((ltac:(reflexivity)): h_impl_lt_1_0_=hH4) in
+      let t := constr:((ltac:(reflexivity)): h_lt_0_z_=hH5) in
+      idtac
+    | _ => fail "test failed (wrong order of hypothesis)!"
+  end.
+  auto.
+Qed.
+

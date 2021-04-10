@@ -1,33 +1,40 @@
 (* Copyright 2017-2019 Pierre Courtieu *)
 (* This file is part of LibHyps.
 
-    Foobar is free software: you can redistribute it and/or modify
+    LibHyps is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    Foobar is distributed in the hope that it will be useful,
+    LibHyps is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with Foobar.  If not, see <https://www.gnu.org/licenses/>.
+    along with LibHyps.  If not, see <https://www.gnu.org/licenses/>.
 *)
 
-(** Demonstration file for LibHyps tactics and tacticals.  *)
+(** Demonstration file for LibHyps tactics and tacticals. this makes
+    use of the old syntax !tac and !!tac. Se the LibHypsTest.v file
+    for up to date examples. *)
 
 Require Import Arith ZArith LibHyps.LibHyps List.
+Import TacNewHyps.Notations.
+Import LibHyps.Notations.
 
-(* 1 the ";;" TACTICAL and auto(re)naming of hypothesis *)
+(* 1 the "tac1;{ tac2}" TACTICAL (and its synonym "tac1;;tac2") and
+   auto(re)naming of hypothesis *)
+Ltac rename_depth ::= constr:(3).
 
-Lemma foo: forall x y:nat,
+Lemma foo: forall (x:nat) (b1:bool) (y:nat) (b2:bool),
     x = y
-    -> forall  a b t : nat,
+    -> forall  a b:nat, forall b3:bool, forall t : nat,
+      let aa := a + 1 in 
       a+1 = t+2
       -> b + 5 = t - 7
-      -> forall z z',
-          (forall u v, v+1 = 1 -> u+1 = 1 -> a+1 = z+2)
+      -> forall z, forall b4:bool, forall z',
+          (forall u v, v+1 = 1 -> u+1 = 1 -> aa = z+2)
           -> z = b + x-> z' + 1 = b + x-> True.
 Proof.
   
@@ -40,31 +47,48 @@ Proof.
   Undo 3. (* Be careful this may not be supported by your ide. *)
   Show.
   (* Better: apply autorename to each new hyps using the ;; tactical: *)
-  intros ;; autorename.
+  intros ;{ autorename }.
+
+  Undo.
+  (* Other syntax *)
+  intros ;; autorename .
 
   Undo.
   (* [!tac] is a shortcut for [tac ;; autorename]. Actually it
      performs a bit more: it would reverts hyps for which it could not
      compute a name for. *)
-  !intros.
+  intros /n.
   Undo.
 
-  (* same but also use subst if possible, and push non prop hyps to the top. *)
+  (* same but also use subst if possible. *)
   intros;; substHyp;; autorename.
   Undo.
 
   (* Shortcut (also reverts when no name is found): *)
-  !!!intros.
+  intros /s/n.
+  Undo.
+
+  (* shorter *)
+  intros /sn.
   Undo.
 
   (* same but also push non-prop hyps to the top of the goal (i.e. out
      of sight). *)
-  intros;; substHyp;; autorename;;move_up_types.
+  intros;;substHyp;;autorename;;move_up_types.
+  Undo.
+  
+  (* This can be done like this too:  *)
+  intros /n/g;; move_up_types.
   Undo.
 
-  (* This can be done like this too:  *)
-  !!!intros;; move_up_types.
+  (* or even shorter: *)
+  intros /s/n/g.
   Undo.
+
+  (* or even: *)
+  intros /sng.
+  Undo.
+
 
   (* the "tac1 ;; tac2" tactical can be used after any tactic tac1.
   The only restriction is that tac2 should expect a (single)
@@ -72,34 +96,35 @@ Proof.
   induction z ;; substHyp;;autorename.
   Undo.
 
-  (* shortcut also aplly to any tacitc. *)
-  !!!induction z.
+  (* shortcut also apply to any tactic. *)
+  induction z /sn.
   Undo.
 
   (* Finally see at the end of this demo for customizing the
      autonaming heuristic. *)
 
   (* # USING ESPECIALIZE. *)
-  !intros.
+  intros /n.
 
   (* Let us start a proof to instantiate the 2nd premis (u+1=1) of
      h_all_eq_add_add without a verbose assert: *)
-  especialize h_all_eq_add_add at 2.
+  especialize h_all_eq_aa_add_ at 2.
   { apply Nat.add_0_l. }
   (* now h_all_eq_add_add is specialized *)
 
   Undo 6.
-  !intros until 1.
+  Show.
+  intros ? ? ? ? ? /n.
   (** Do subst on new hyps only, notice how x=y is not subst and
     remains as 0 = y. Contrary to z = b  + x which is substituted. *)
-  !!!(destruct x eqn:heq;intros).
+  destruct x eqn:heq;intros / s.
   - apply I.
   - apply I.
 Qed.
 
 (** Example of tactic notations to define shortcuts for the examples
    above: here =tac does "apply tac and try subst on all new hypothesis" *)
-Local Tactic Notation "=" tactic3(Tac) := Tac ;!; substHyp.
+Local Tactic Notation "=" tactic3(Tac) := Tac ;{< substHyp }.
 
 Lemma bar: forall x y a t u v : nat,
     x = v -> a = t -> u = x -> u = y -> x = y.
@@ -107,7 +132,7 @@ Proof.
   =intros.
   Undo.
   intros.
-  =destruct x eqn:heq.
+  =destruct x eqn:heq. (* heq subst'ed *)
   - subst;auto.
   - subst;auto.
 Qed.
@@ -121,7 +146,10 @@ Lemma bar2: forall x y a t u v : nat,
     x = v -> a = t -> u = x -> u = y -> x = y.
 Proof.
   intros.
-  <=destruct x eqn:heq.
+  revert dependent x.
+  intro x.
+  <=destruct (x). (* Careful, if "x" is reused (destruct x.),
+                           then it is not detected as "new". *)
   - intros;subst;auto.
   - intros;subst;auto.
 Qed.
@@ -164,7 +192,7 @@ Lemma foo':
   Q 1 true (cons 1 nil).
 Proof.
   intro hyp.
-  (* I want to prove the (test n) hypothesis of hyp, without knwing n
+  (* I want to prove the (test n) hypothesis of hyp, without knowing n
      yet, and specialize hyp with it immediately. *)
 
   especialize hyp at 2.
@@ -202,11 +230,14 @@ Local Open Scope autonaming_scope.
 Import ListNotations.
 
 (* Define the naming scheme as new tactic pattern matching on the type
-th of the hypothesis (h being the hyp name): *)
+th of the hypothesis (h being the hyp name), and the depth n of the
+recursive naming analysis. Here we state that a type starting with
+Nat.eqb should start with _Neqb, followed by the name of both
+arguments. #n here means normal decrement of depth. *)
 Ltac rename_hyp_2 n th :=
   match th with
-  | Nat.eqb ?x ?y = _ => name(`_Neqb` ++ x#n ++ x#n)
-  | _ = Nat.eqb ?x ?y => name(`_Neqb` ++ x#n ++ x#n)
+  | Nat.eqb ?x ?y = _ => name(`_Neqb` ++ x#n ++ y#n)
+  | _ = Nat.eqb ?x ?y => name(`_Neqb` ++ x#n ++ y#n)
   end.
 
 (* Then overwrite the customization hook of the naming tactic *)
@@ -229,6 +260,11 @@ Ltac rename_hyp_3 n th :=
 Ltac rename_hyp ::= rename_hyp_3.
 (* Close the naming scope *)
 Local Close Scope autonaming_scope.
+
+(* Fix the naming depth 2 should be ok in most situations. 3 gives
+very long names by default *)
+Ltac rename_depth ::= constr:(2).
+
 
 (** 2 Example of uses of the naming schemes. *)
 Lemma dummy: forall x y,
@@ -289,46 +325,43 @@ Proof.
   Undo 2.
   (* Shorter: the ! tactical applies a tactic and then applies
      autorename on new hypothesis: *)
-  !intros.
+  intros/n.
   Undo.
   (* combining ! and = defined previously (subst) *)
-  =!intros.
+  =intros/n.
   Undo.
   (** Reduce renaming depth to 2: *)
-  Ltac rename_depth ::= constr:(2).
+  Ltac rename_depth ::= constr:(1).
   (* names are shorter, more collisions *)
-  !intros.
+  intros/n.
   Undo.
   Ltac rename_depth ::= constr:(3).
-  !intros.
+  intros/n.
   (** move up all non prop hypothesis *)
   Undo.
   (* Let us have really big names. *)
   Ltac rename_depth ::= constr:(5).
-  !intros.
-  onAllHyps move_up_types.
+  intros/n.
+  Undo 2.
+  Ltac rename_depth ::= constr:(3).
+  intros/n.
   (* decompose and revert all new hyps *)
-  decompose [ex and] h_ex_and_neq_true_andb_false_true_and_le_w_w_eq_w_x ;!; revertHyp.
+  decompose [ex and] h_ex_and_neq_and_ ;!; revertHyp.
   Undo.
   (* decompose and subst or revert all new hyps *)
-  decompose [ex and] h_ex_and_neq_true_andb_false_true_and_le_w_w_eq_w_x ;!; subst_or_revert.
+  decompose [ex and] h_ex_and_neq_and_ ;!; subst_or_revert.
   Undo.
   (* decompose and rename all new hyps *)
-  decompose [ex and] h_ex_and_neq_true_andb_false_true_and_le_w_w_eq_w_x ;!; autorename.
+  decompose [ex and] h_ex_and_neq_and_ ;!; autorename.
   Undo.
   (* in short: *)
-  !decompose [ex and] h_ex_and_neq_true_andb_false_true_and_le_w_w_eq_w_x.
+  decompose [ex and] h_ex_and_neq_and_ /n.
   Undo.
   (* decompose and subst or rename all new hyps *)
-  decompose [ex and] h_ex_and_neq_true_andb_false_true_and_le_w_w_eq_w_x ;; substHyp ;!; revert_if_norename ;; autorename.
+  decompose [ex and] h_ex_and_neq_and_;; substHyp.
   Undo.
   (* decompose and subst or rename all new hyps, revert if nothing applies *)
-  decompose [ex and] h_ex_and_ge_x_0n ;; substHyp ;!; revert_if_norename ;; autorename.
-  Undo.
-  (* in short: *)
-  !!!decompose [ex and] h_ex_and_neq_true_andb_false_true_and_le_w_w_eq_w_x.
-  Undo.
-  (* introducing the hypothesis that was not autonamed: *)
-  intro h.
+  decompose [ex and] h_ex_and_ge_ /s ;!; revert_if_norename /n.
+  intros h1.
   exact I.
 Qed.
