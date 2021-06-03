@@ -1,0 +1,151 @@
+Small proof maintenance enhancements with Coq and IDE (e.g. Proofgeneral)
+
+* Dealing with new hyps
+** ssreflect spirit
+   Operate on hypothesis *before* introducing them.
+   post-treatment (administrative) *while* introducing.
+   
+** Ltac spirit
+   Deal with hypothesis *after* introducing them.
+   => idea: provide post-treatment tyding tactics
+   => apply them to "recent" hyps.
+
+** General tactical ";;"
+#+begin_src coq
+  tac1 ;; tac2. 
+#+end_src
+ + applies tac1, then applies tac2 on each new hypothesis from tac1.
+ + Example:
+#+begin_src coq
+   intros ;; (fun h => idtac h)
+#+end_src
+   outputs the name of each new hyp.
+ + *Important*: "new hyp" means "new hyp *name*".
+   If tac1 reuses a name, it is not "new".
+
+** Tactical ;!; (reverse order)
+** Tactical onAllHyp
+#+begin_src coq
+  onAllhyp tac.
+#+end_src
++ applies tac on each hypothesis of the goal.
++ degenerate case of ";;". One-time use.
+
+** DEMO: different use cases
+   + revert new hyps
+   + subst new hyps
+   + move uninteresting new hyps to the top
+   + name new hyps
+   + ...
+* Dealing with big goals (demo)
+** IDE can help
+*** hide big hyps
+*** help read the goal
+*** copy hyps names easily
+
+** use case for ";;"
+move hypothesis to focus on intersting (i.e. Prop-sorted) stuff.
+
+* Hypothesis names
+** Problem not really interesting
+** Been there for decades now
+** Known solutions
+*** "smack" à la Chlipala
+    Maintain adhoc automatic tactics, never perform the proof directly.
+    Few adopters?
+*** ssrefelct partial solution
+    Less use of introduced hyps.
+    New hyps never introduced automatically.
+    Still need names.
+*** others
+**** coq-label aka Cortouche
+     https://github.com/pedagand/coq-label
+     Great idea: never use the name of a hypothesis, use a non
+     ambiguous pattern instead:
+#+begin_src coq
+     Lemma example_patt:
+       forall t e1 e2 ,
+         is_foo e1 t -> is_foo e2 t -> is_foo e1 t.
+     Proof.
+       intros.
+       exact (\< is_foo e1 _ \>).
+     Qed.
+#+end_src
+   Needs:
+   - automatic pattern generation
+   - still a bit hard to read.
+   - but promising
+   - Maintained?
+
+**** haystac
+     https://ptival.github.io/2017/04/10/nameless-tactic-programming-with-haystac/
+   - Designate a hyp by an ident appearing in its type
+   - Needs more
+   - Maintained?
+
+**** LibHyps (present work) Automatic naming from the type of the hyp
+***** Idea
+     Simple recursive procedure on the type. PROP SORTED ONLY.
+     Pseudo-code (th = type of the hypothesis, n = "depth"):
+#+begin_src coq
+     Ltac name n th :=
+       match n with
+       | 0 => fresh "" (*max depth reached, empty name *)
+       | S n =>
+           match th with
+           | f t1 t2 t3 => fresh "_f" ^ name n t1 ^ name n t2 ^ name n t3
+           | <special cases> => ...
+           end
+       end.
+#+end_src
+***** Details
+     + prefix "h_", suffix "_" (optional, avoids bad interaction with Coq hacking names)
+     + omit implicits
+     + special cases for equality and negation and quantifiers
+     + USER DEFINED NAMING LTAC
+     + keep using "rename" and "as" and "intros" for non-Prop hyps
+
+** Use case for ";;"
+   rename new hyps!
+** Demo
+
+* Conclusion
+** A distributed Ltac plugin
+   opam install coq-libhyps
+   older than what I showed today. Release soon.
+   Old syntax:
+#+begin_src coq
+!intros.  (* = intros /n. *)
+!!!intros. (* = intros /s/n. *)
+!!!!intros. (* = intros /s/n/g. *)
+#+end_src
+** Need of an ocaml plugin?
+*** Efficiency problem on big goals
+    + Lots of terms building (and typing) to do all this in Ltac.
+    + Speed up with a tactical applying to the *list* of new hyps.
+      other syntax:
+      #+begin_src coq
+        tac ; { fun h => ... }. (* equivalent to tac1 ;; tac2. *)
+        tac ; {< fun h => ... }. (* tac1 ;!; tac2 *)
+        tac ; {! fun lh => ... }. 
+        tac ; {!< fun lh => ... }.
+      #+end_src
+    + But still slow on big goals.
+*** implicit detection slow
+*** program a new "as" for new hyps - difficult in ltac
+*** Nicer custmization syntax.
+There is already this:
+   #+begin_src coq
+   Arguments my_relation {A} {R} x y z : rename. 
+   #+end_src
+
+Maybe we can add:
+#+begin_src coq
+   Naming my_relation _ _ x _ z: "_mr" x z.
+   Naming my_relation2 _ _ x _ z: "_mr2" x#(n-1) z#n.
+#+end_src
+
+or maybe merge both declarations?
+   
+** Give it a try.
+*** testers and comments welcome
