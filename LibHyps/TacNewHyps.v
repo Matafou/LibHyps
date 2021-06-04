@@ -218,15 +218,11 @@ Module Notations.
   (* single-goal-minded tach (most common use case). *)
   Tactic Notation (at level 4) tactic4(tac)";" "{" tactic(tach)"}":= then_eachnh tac tach.
   Tactic Notation (at level 4) tactic4(tac)";" "{<" tactic(tach)"}":= then_eachnh_rev tac tach.
+  (* Legacy tacticals.
+     Warning: not applicable for tactic operating directly on a list of hyps *)
+  Tactic Notation (at level 4) tactic4(tac) ";;" tactic4(tach) := then_eachnh tac tach.
+  Tactic Notation (at level 4) tactic4(tac) ";!;" tactic4(tach) := (then_eachnh_rev tac tach).
 End Notations.
-
-Module SimpleNotations.
-(* Legacy tacticals.
-   Warning: not applicable for tactic operating directly on a list of hyps *)
-Tactic Notation (at level 4) tactic4(tac) ";;" tactic4(tach) := then_eachnh tac tach.
-Tactic Notation (at level 4) tactic4(tac) ";!;" tactic4(tach) := (then_eachnh_rev tac tach).
-End SimpleNotations.
-
 
 (*
 (* Tests. *)

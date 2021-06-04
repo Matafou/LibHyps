@@ -9,7 +9,6 @@ Require Import Arith ZArith LibHyps.LibHyps LibHyps.LibSpecialize List.
 
 
 Import TacNewHyps.Notations.
-Import LibHyps.Notations.
 Import LibHyps.LegacyNotations.
 
 (* This settings should reproduce the naming scheme of libhypps-1.0.0
@@ -119,4 +118,4 @@ Lemma dummy: forall x y,
   match type of h_impl_lt_1n_0n with 0 < 1 -> 1 < 0 => idtac | _ => fail "test failed!" end.
   match type of h_lt_0n_z with 0 < z => idtac | _ => fail "test failed!" end.
   exact I.
-Qed.
+Qed. 

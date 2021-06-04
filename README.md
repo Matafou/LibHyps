@@ -3,6 +3,8 @@ hypothesis during a proof.
 
 Main page and documentation: https://github.com/Matafou/LibHyps
 
+# Install
+
 ## Quick install using opam
 
 ```bash
@@ -30,23 +32,40 @@ Require Import LibHyps.LibHyps.
 ```
 Demo file [LibHypsDemo.v](https://github.com/Matafou/LibHyps/blob/master/LibHyps/LibHypsDemo.v).
 
-## Short description:
+# Short description:
 
-Among manipulations on hypothesis we provide:
+LibHyps provides utilities for hypothesis manipulations. In particular
+a new tactic `especialize H` and a set of tacticals to appy or iterate
+tactics either on all hypothesis of a goalor on "new' hypothesis after
+a tactic. It also provide syntax for a few predefined such iterators.
 
-- Automatically give better names to hypothesis. The name is computed from the type of the hypothesis so that it resists lots of script changes.
-- specialize the nth premis of a hypothesis (forward reasoning without copy-paste).
-- move up non-prop hypothesis, to focus on properties
-- apply subst on the fly.
-- ...
+## QUICK REF: especialize
 
-These manipulations can be applied:
-- to one hyp
-- to all hyps
-- to "new" hyps after some tactics.
++ `especialize H at n.` create a subgoal to prove the nth dependent
+    hypothesis of `H`, creating necessary evars for non unifiable
+    variables. Once proved the subgoal is used to remove the nth
+    hypothesis of `H`.
 
+## QUICK REF: Pre-defined tacticals /s /n...
 
-### Example
+The most useful user-dedicated tacticals are the following
+
+  + `tac /s` try to apply `subst` on each new hyp.
+  + `tac /r` revert each new hyp.
+  + `tac /n` auto-rename each new hyp.
+  + `tac /g` group all non-Prop new hyp at the top of the goal.
+  + combine the above, as in `tac /s/n/g`.
+  + usual combinations have shortcuts: `\sng`, `\sn`,`\ng`,`\sg`...
+
+## Deprecation from 1.0.x to 2.0.x
+
+  + "!tac", "!!tac" etc are now only loaded if you do: `Import
+    LibHyps.LegacyNotations.`, the composable tacticals described
+    above are preferred.
+  + "tac1 ;; tac2" remains, but you can also use "tac1; { tac2 }".
+  + "tac1 ;!; tac2" remains, but you can also use "tac1; {< tac2 }".
+
+## Examples
 
 ```coq
 Lemma foo: forall x y z:nat,
@@ -55,65 +74,66 @@ Proof.
   intros.
   (* ugly names *)
   Undo.
-  intros ;; autorename. (* ;; here means "apply to all new hyps" *)
-  (* better names *)
+  (* Example of using the iterator on new hyps: this prints each new hyp name. *)
+  intros; {fun h => idtac h}.
+  Undo.
+  (* This gives sensible names to each new hyp. *)
+  intros ; { autorename }.
   Undo.
   (* short syntax: *)
-  !intros.
+  intros /n.
   Undo.
-  (* same thing but use subst if possible, and push non prop hyps to the top. *)
-  intros;; substHyp;; autorename;;move_up_types.
+  (* same thing but use subst if possible, and group non prop hyps to the top. *)
+  intros ; { substHyp }; { autorename}; {move_up_types}.
   Undo.
   (* short syntax: *)  
-  !!!intros.
+  intros /s/n/g.
+  Undo.
+  (* Even shorter: *)  
+  intros /s/n/g.
+
   (* Let us instantiate the 2nd premis of h_all_eq_add_add without copying its type: *)
-  especialize h_all_eq_add_add at 2.
+  especialize h_all_eq_add_add_ at 2.
   { apply Nat.add_0_l. }
   (* now h_all_eq_add_add is specialized *)
-
   Undo 6.
   intros until 1.
-  (** Do subst on new hyps only, notice how x=y is not subst and
-    remains as 0 = y. Contrary to z = b  + x which is substituted. *)
-  (destruct x eqn:heq;intros);; substHyp.
+  (** The taticals apply after any tactic. Notice how H:x=y is not new
+    and hence not substituted, whereas z = b + x is. *)
+  destruct x eqn:heq;intros /sng.
   - apply I.
   - apply I.
 Qed.
 ```
 
-A short description of the features follows.
+## Short Documentation
 
+The following explains how it works under the hood, for people willing
+to apply more generic iterators to their own tactics. See also the code.
+  
 ### Iterator on all hypothesis
 
-- `onAllHyps tac` does `tac H` for each hypothesis `H` of the current goal.
-- `onAllHypsRev tac` same as `onAllHyps tac` but in reverse order
-  (good for reverting for instance).
+  + `onAllHyps tac` does `tac H` for each hypothesis `H` of the current goal.
+  + `onAllHypsRev tac` same as `onAllHyps tac` but in reverse order
+    (good for reverting for instance).
 
-### Tacticals to apply on each NEW hypothesis
 
-- `tac1 ;; tac2` applies `tac1` to current goal and then `tac2` to
-  each new hypothesis in each subgoal (iteration: newest first).
-- `tac1 ;!; tac2` applies `tac1` to current goal and then `tac2` to
-  each new hypothesis in each subgoal (older first).
+### Iterators on ALL NEW hypothesis (since LibHyps-1.2.0)
 
-### Cleaning tactics
+  + `tac1 ;{! tac2 }` applies `tac1` to current goal and then `tac2`
+    to *the list* of all new hypothesis in each subgoal (iteration:
+    oldest first).
+    The list is a term of type `LibHyps.TacNewHyps.DList`. See the code.
+  + `tac1 ;{!< tac2 }` is similar but the list of new hyps is reveresed.
 
-This tactics are best used in conjunction with the tacticals above.
-For instance `tac ;; subst_or_revert` allows to have all new
-hypothesis reverted, except the ones that are `subst`able.
+### Iterators on EACH NEW hypothesis
 
-- `subst_or_revert H` tries to use `H` to `subst` some variable and
-  `revert H` if it fails.
-- `move_up_type H` moves `H` to the top of the goal if it is
-  Type-Sorted (i.e. not in Prop). This is generally a good heuristic
-  to push away non interesting parts of the proof context.
+  + `tac1 ;{ tac2 }` applies `tac1` to current goal and then `tac2` to
+    each new hypothesis in each subgoal (iteration: older first).
+  + `tac1 ;{< tac2 }` is similar but applies tac2 on newer hyps first.
 
-### Specializing a premiss of a hypothesis by its number
-
-- `especialize H at n.` create a subgoal to prove the nth dependent
-  hypothesis of `H`, creating necessary evars for non unifiable
-  variables. Once proved the subgoal is used to remove the nth
-  hypothesis of `H`.
+  + `tac1 ;; tac2` is a synonym of `tac1; { tac2 }`.
+  + `tac1 ;!; tac2` is a synonym of `tac1; {< tac2 }`.
 
 ### Customizable hypothesis auto naming system
 

@@ -3,7 +3,9 @@
 
 Unset Printing Compact Contexts.
 (*  *)
-Require Import Arith ZArith LibHyps.LibHyps List.
+Require Import Arith ZArith  List.
+Require Import LibHyps.LibHyps.
+
 
 Lemma foo: forall (x:nat) (b1:bool) (y:nat) (b2:bool),
     x = y
@@ -90,11 +92,11 @@ Lemma foo: forall (x:nat) (b1:bool) (y:nat) (b2:bool),
 Proof.
   intros.
   (* BIG HYPS may clutter the goal. IDE solution. *)
-  (* 1) Just hide it by clicking on its button, or hit "f"
+  (* 1. Just hide it by clicking on its button, or hit "f"
         while cursor on its name. Persistent and simply based
         on hyp name. *)
 
-  (* 2) Big hyps ask for "non verbose forward reasoning". *)
+  (* 2. Big hyps ask for "non verbose forward reasoning". *)
   (* Since a few years: "specialize" now re-quantifies. *)
   specialize H3 with (1:= le_S _ _ (le_n 0)).
 
@@ -149,7 +151,7 @@ Proof.
      (set-face-attribute 'proof-declaration-name-face nil :bold nil :foreground "white") *)
   Restart.
   Show.
-  (* Again, better combine it with ";;"". *)
+  (* Again, better combine it with ";;". *)
   intros ;; autorename.
   (* You can still shorten big hyps. but hiding most of the time is better. *)
   rename h_all_eq_lcm_p_ into hall.

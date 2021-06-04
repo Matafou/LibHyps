@@ -3,5 +3,6 @@
 ./LibHyps/LibDecomp.v
 ./LibHyps/TacNewHyps.v
 ./LibHyps/LibHyps.v
+./LibHyps/LibHypsTactics.v
 ./LibHyps/LibHypsNaming.v
 ./LibHyps/LibSpecialize.v

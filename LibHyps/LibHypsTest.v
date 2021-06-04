@@ -17,10 +17,6 @@
 
 Require Import Arith ZArith LibHyps.LibHyps LibHyps.LibSpecialize List.
 
-
-Import TacNewHyps.Notations.
-Import LibHyps.Notations.
-
 Local Open Scope autonaming_scope.
 Import ListNotations.
 
@@ -43,6 +39,7 @@ Ltac rename_hyp_3 n th :=
 Ltac rename_hyp ::= rename_hyp_3.
 Ltac rename_depth ::= constr:(3).
 
+Close Scope autonaming_scope.
 Close Scope Z_scope.
 Open Scope nat_scope.
 
@@ -57,7 +54,6 @@ Ltac testg tg :=
   | |- tg => idtac
   | |- ?actual => fail "test failed: expected goal" tg "but got: " actual
   end.
-
 
 Lemma test_autorename: forall x y,
     0 <= 1 ->
@@ -137,6 +133,7 @@ Lemma test_autorename: forall x y,
   exact I.
 Qed.
 
+Import TacNewHyps.Notations.
 
 Lemma test_autorename_failing: forall x y:nat,
     ((fun f => x = y) true)
@@ -463,7 +460,6 @@ Qed.
 
 
 (* Legacy Notations tac ;!; tac2. *)
-Import TacNewHyps.SimpleNotations.
 Lemma test_tactical_semi: forall x y:nat,
     ((fun f => x = y) true)
     -> forall a b: bool, forall z:nat,
@@ -499,7 +495,6 @@ Proof.
 Qed.
 
 (* Legacy Notations tac ;; tac2. *)
-Import TacNewHyps.SimpleNotations.
 Lemma test_tactical_semi_rev: forall x y:nat,
     ((fun f => x = y) true)
     -> forall a b: bool, forall z:nat,
@@ -571,3 +566,42 @@ Proof.
   auto.
 Qed.
 
+
+
+(* This is supposed to be copy-pasted in README.md *)
+Lemma foo: forall x y z:nat,
+    x = y -> forall  a b t : nat, a+1 = t+2 -> b + 5 = t - 7 ->  (forall u v, v+1 = 1 -> u+1 = 1 -> a+1 = z+2)  -> z = b + x-> True.
+Proof.
+  intros.
+  (* ugly names *)
+  Undo.
+  (* Example of using the iterator on new hyps: this prints each new hyp name. *)
+  (*intros; {fun h => idtac h}.
+    Undo.*)
+  (* This gives sensible names to each new hyp. *)
+  intros ; { autorename }.
+  Undo.
+  (* short syntax: *)
+  intros /n.
+  Undo.
+  (* same thing but use subst if possible, and group non prop hyps to the top. *)
+  intros ; { substHyp }; { autorename}; {move_up_types}.
+  Undo.
+  (* short syntax: *)  
+  intros /s/n/g.
+  Undo.
+  (* Even shorter: *)  
+  intros /s/n/g.
+
+  (* Let us instantiate the 2nd premis of h_all_eq_add_add without copying its type: *)
+  especialize h_all_eq_add_add_ at 2.
+  { apply Nat.add_0_l. }
+  (* now h_all_eq_add_add is specialized *)
+  Undo 6.
+  intros until 1.
+  (** The taticals apply after any tactic. Notice how H:x=y is not new
+    and hence not substituted, whereas z = b + x is. *)
+  destruct x eqn:heq;intros /sng.
+  - apply I.
+  - apply I.
+Qed.

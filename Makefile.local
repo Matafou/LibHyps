@@ -5,11 +5,11 @@
 post-all::
 	@echo -n building tests...
 	$(SHOW) 'COQC LibHyps/LibHypsTest.v'
-	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $(COQLIBS) ./LibHyps/LibHypsTest.v $(TIMING_EXTRA) 
+	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) -w -undo-batch-mode $(COQLIBS) ./LibHyps/LibHypsTest.v $(TIMING_EXTRA) 
 	@echo " ==> tests passed."
 	@echo -n building regression tests...
 	$(SHOW) 'COQC LibHyps/LibHypsRegression.v' 
-	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $(COQLIBS) ./LibHyps/LibHypsRegression.v $(TIMING_EXTRA) 
+	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) -w -undo-batch-mode $(COQLIBS) ./LibHyps/LibHypsRegression.v $(TIMING_EXTRA) 
 	@echo " ==> regression tests passed."
 
 ### Local Variables: ***
