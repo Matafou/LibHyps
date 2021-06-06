@@ -2,7 +2,7 @@
 # This adds compilation of a test file, without adding it to the
 # install target.
 
-post-all::
+tests:
 	@echo -n building tests...
 	$(SHOW) 'COQC LibHyps/LibHypsTest.v'
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) -w -undo-batch-mode $(COQLIBS) ./LibHyps/LibHypsTest.v $(TIMING_EXTRA) 
