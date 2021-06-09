@@ -24,6 +24,9 @@ Proof.
   (* tactical ";!;": same but newer hyps first. *)
   intros ;!; fun h => idtac h.
   Undo.
+  intros x b1.
+  intros ;; fun h => idtac h.
+  Undo 2.
   (* Simply based on new *names* *)
   intros x b1.
   (* this tactic renames x into aaa, which is a new name. *)
@@ -61,6 +64,8 @@ Proof.
   Undo.
   (* combination: try subst and revert remaining hyps. *)
   intros x b1.
+  intros ;; subst_or_idtac ;!; (fun h => revert dependent h).
+  Undo.
   intros /s/r.
   Undo 2.
   (* It really applies only on new hyps: *)
@@ -111,7 +116,7 @@ Proof.
   (* VARIABLES MIXED WITH HYPOTHESIS. *)
   (* move_up_types X. moves X at top near something of the same type,
      but only if X is Type-sorted (not Prop). *)
-  move_up_types z. (* group z on top *)
+  move_up_types b4. (* group z on top *)
   move_up_types H. (* does nothing because H:..:Prop *)
   Undo 2.
   (* Do that on all hyps: *)
@@ -133,8 +138,8 @@ Proof.
   intros x b1 y b2 H H0 a b b3 t H1 H2 H3 H4 z b4 z' H5 H6 H7 H8.
   Undo.
   (* After a lot of non interesting work. *)
-  intros x b1 y b2 h_x_inf_y h_or_b2_b2 a b b3 t
-         h_a_t h_b_t z b4 z' h_b3_b4 h_all_uvaz
+  intros x b1 y b2 h_x_eq_y h_or_b2_b1 a b b3 t
+         h_a_t h_b_t hh hex z b4 z' h_b3_b4 h_all_uvaz
          heq_z heq_z'_b /s/g.
   (* But at each change in definitions or statements ==> Adapt the
      intros and "as". *)
@@ -148,7 +153,7 @@ Proof.
   onAllHyps autorename.
   (* better with colors. *)
   (* (set-face-attribute 'proof-declaration-name-face nil :bold nil :foreground "white")
-     (set-face-attribute 'proof-declaration-name-face nil :bold nil :foreground "white") *)
+     (set-face-attribute 'proof-declaration-name-face nil :bold nil :foreground "orange") *)
   Restart.
   Show.
   (* Again, better combine it with ";;". *)

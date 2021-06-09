@@ -92,7 +92,9 @@ move hypothesis to focus on intersting (i.e. Prop-sorted) stuff.
        match n with
        | 0 => fresh "" (*max depth reached, empty name *)
        | S n =>
-           match th with
+           rename_hyps n th (* User customized naming *)
+           +
+           match th with (* default naming *)
            | f t1 t2 t3 => fresh "_f" ^ name n t1 ^ name n t2 ^ name n t3
            | <special cases> => ...
            end
@@ -112,7 +114,7 @@ move hypothesis to focus on intersting (i.e. Prop-sorted) stuff.
 * Conclusion
 ** A distributed Ltac plugin
    opam install coq-libhyps
-   older than what I showed today. Release soon.
+   Released this week.
    Old syntax:
 #+begin_src coq
 !intros.  (* = intros /n. *)
