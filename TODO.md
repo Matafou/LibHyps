@@ -14,17 +14,19 @@ especialize h at *. (* equivalent to exploit *)
 
 Syntax suggestion:
 
-tac : intropattern1 intropattern2 ... intropatternk.
+tac : [ H 1 H 2 | x y Hx Hy H | ...].
 
 applies tac and then destruct each new hyp with the corresponding
 intropattern.
+
+Seems to need ocaml code because tactic notation are not suitable.
 
 ## Remaining question
 
 how to deal with several subgoals?
 Is it possible to split a disjunctive intropattern for each subgoal?
 
-# Find a better syntax?
+# Find a better syntax? 
 
 I find "tac1 ; { tac2 }." is nice because it resembles "tac ; [ tac2 ]."
 
@@ -68,10 +70,10 @@ Typically "h_add_x_y_z" would maybe be better as "h_add_x_y__z"
 
 - which args to ignore
 - Auto ignore implicit args
-
+- make the new "as" implementable?
 
 # ideas for other post-tactic cleaning
 
-## decomp?
+## decomp? /d
 ## cbn
 ## ?

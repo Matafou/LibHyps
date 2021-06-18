@@ -3,6 +3,8 @@
 # install target.
 ## -async-proofs-cache force avoids slowdowns in presence of Undo.
 
+.PHONY: cleantests
+
 tests:
 	@echo -n building tests...
 	$(SHOW) 'COQC LibHyps/LibHypsTest.v'
@@ -14,8 +16,8 @@ tests:
 	@echo " ==> regression tests passed."
 
 cleantests:
-	rm -f LibHyps/LibHypsRegression.{vo,vok,vos,glob}
-	rm -f LibHyps/LibHypsTest.{vo,vok,vos,glob}
+	rm -f LibHyps/LibHypsRegression.vo LibHyps/LibHypsRegression.vo LibHyps/LibHypsRegression.vok LibHyps/LibHypsRegression.vos LibHyps/LibHypsRegression.glob
+	rm -f LibHyps/LibHypsRegression.vo LibHyps/LibHypsTest.vo LibHyps/LibHypsTest.vok LibHyps/LibHypsTest.vos LibHyps/LibHypsTest.glob
 
 ### Local Variables: ***
 ### mode: makefile ***
