@@ -38,13 +38,15 @@ Ltac rename_or_revert H := autorename_strict H + revert H.
                once (subst x + subst y)
   end. *)
 
+(* This is similar to subst x, but ensures that H and only H is used.
+   Even if there is another hyp with the same variable *)
 Ltac substHyp H :=
   match type of H with
   | Depl => fail 1 (* fail immediately, we are applying on a list of hyps. *)
   | ?x = ?y =>
     (* subst would maybe subst using another hyp, so use replace to be sure *)
-    once ((is_var(x); replace x with y in *; [try clear H] )
-          + (is_var(y); replace y with x in * ; [try clear H]))
+    once ((is_var(x); replace x with y in *; [try clear x ; try clear H] )
+          + (is_var(y); replace y with x in * ; [try clear y; try clear H]))
   | _ => idtac
   end.
 
@@ -207,7 +209,7 @@ Ltac move_up_types H :=
   group_up_list constr:(DCons t H DNil).
 
 
-(*
+(* 
 (* Tests *)
 Export TacNewHyps.Notations.
 Goal forall x1 x3:bool, forall a z e : nat,

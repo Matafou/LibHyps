@@ -1,16 +1,21 @@
 
 # This adds compilation of a test file, without adding it to the
 # install target.
+## -async-proofs-cache force avoids slowdowns in presence of Undo.
 
 tests:
 	@echo -n building tests...
 	$(SHOW) 'COQC LibHyps/LibHypsTest.v'
-	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) -w -undo-batch-mode $(COQLIBS) ./LibHyps/LibHypsTest.v $(TIMING_EXTRA) 
+	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) -async-proofs-cache force -w -undo-batch-mode $(COQLIBS) ./LibHyps/LibHypsTest.v $(TIMING_EXTRA) 
 	@echo " ==> tests passed."
 	@echo -n building regression tests...
 	$(SHOW) 'COQC LibHyps/LibHypsRegression.v' 
-	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) -w -undo-batch-mode $(COQLIBS) ./LibHyps/LibHypsRegression.v $(TIMING_EXTRA) 
+	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) -async-proofs-cache force -w -undo-batch-mode $(COQLIBS) ./LibHyps/LibHypsRegression.v $(TIMING_EXTRA) 
 	@echo " ==> regression tests passed."
+
+cleantests:
+	rm -f LibHyps/LibHypsRegression.{vo,vok,vos,glob}
+	rm -f LibHyps/LibHypsTest.{vo,vok,vos,glob}
 
 ### Local Variables: ***
 ### mode: makefile ***

@@ -1,60 +1,365 @@
-(* Copyright 2017-2019 Pierre Courtieu *)
-(* This file is part of LibHyps.
+(* Copyright 2017,2019,2021 Pierre Courtieu *)
+(* This file is part of LibHyps. It is distributed under GPLv3.
 
-    LibHyps is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    LibHyps is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with LibHyps.  If not, see <https://www.gnu.org/licenses/>.
-*)
+ You should have received a copy of the GNU General Public License
+ along with LibHyps.  If not, see <https://www.gnu.org/licenses/>. *)
 
 (* proveprem H at i as h. Create an assert for the ith dependent
 premiss of hypothesis H and specialize H with the resulting proof. h
 is the (optional) name of the asserted premiss. *)
 
-Ltac proveprem_named_ H i idpremis idnewH :=
+Ltac proveprem_as_prem H i idpremis idnewH :=
   (* prefer this to evar, which is not well "typed" by Ltac (does not
-  know that it creates an evar (coq bug?). *)
+     know that it creates an evar (coq bug?). *)
   let ev := open_constr:((_:Prop)) in
   assert (idpremis:ev);
   [|specialize H with (i:=idpremis) as idnewH].
 
-Ltac proveprem_ H i idpremis :=
-  (* prefer this to evar, which is not well "typed" by Ltac (does not
-  know that it creates an evar (coq bug?). *)
+Tactic Notation "especialize" constr(H) "at" integer(i) "as" ident(idH) ":" ident(idprem) := proveprem_as_prem H i idprem idH.
+Tactic Notation "especialize" constr(H) "as" ident(idH) "at" integer(i) ":" ident(idprem) := proveprem_as_prem H i idprem idH.
+
+Ltac proveprem_asg_newH H i idpremis :=
+  let idnewH := fresh H "_spec" in (* FIXME: if H is not freshable? *)
+  proveprem_as_prem H i idpremis idnewH.
+
+Tactic Notation "especialize" constr(H) "at" integer(i) "as" "?" ":" ident(idprem) := proveprem_asg_newH H i idprem.
+Tactic Notation "especialize" constr(H) "as" "?" "at" integer(i) ":" ident(idprem) := proveprem_asg_newH H i idprem.
+
+
+Ltac proveprem_as_premg H i idnewH :=
+  let idpremis := fresh H "_prem" in
+  proveprem_as_prem H i idpremis idnewH.
+
+Tactic Notation "especialize" constr(H) "at" integer(i) "as" ident(idH) ":" "?" := proveprem_as_premg H i idH.
+Tactic Notation "especialize" constr(H) "as" ident(idH) "at" integer(i) ":" "?" := proveprem_as_premg H i idH.
+
+Ltac proveprem_asg_premg H i :=
+  let idnewH := fresh H "_spec" in
+  let idpremis := fresh H "_prem" in
+  proveprem_as_prem H i idpremis idnewH.
+
+Tactic Notation "especialize" constr(H) "at" integer(i) "as" "?" ":" "?" := proveprem_asg_premg H i.
+Tactic Notation "especialize" constr(H) "as" "?" "at" integer(i) ":" "?" := proveprem_asg_premg H i.
+
+Ltac proveprem_as H i idnewH :=
+  let idpremis := fresh H "_prem" in
+  proveprem_as_prem H i idpremis idnewH;[ | clear idpremis].
+
+Tactic Notation "especialize" constr(H) "at" integer(i) "as" ident(idH) := proveprem_as H i.
+Tactic Notation "especialize" constr(H) "as" ident(idH) "at" integer(i) := proveprem_as H i.
+
+Ltac proveprem_asg H i :=
+  let idnewH := fresh H "_spec" in
+  let idpremis := fresh H "_prem" in
+  proveprem_as_prem H i idpremis idnewH;[ | clear idpremis].
+
+Tactic Notation "especialize" constr(H) "at" integer(i) "as" "?" := proveprem_asg H i.
+Tactic Notation "especialize" constr(H) "as" "?" "at" integer(i) := proveprem_asg H i.
+
+
+
+(* Version where specialize is not given a name (soeither H is a
+   hypand it is modified, or the new hyp is generalized). *)
+
+Ltac proveprem_prem H i idpremis :=
   let ev := open_constr:((_:Prop)) in
   assert (idpremis:ev);
   [|specialize H with (i:=idpremis)].
 
-Tactic Notation "especialize" constr(H) "at" integer(i) ":" ident(idprem) "as" ident(idH)  :=
-  proveprem_named_ H i idprem idH.
+Tactic Notation "especialize" constr(H) "at" integer(i) ":" ident(idprem) := proveprem_prem H i idprem.
 
-Tactic Notation "especialize" constr(H) "at" integer(i) "as" ident(idH)  :=
-  let idprem := fresh H "_prem" in
-  proveprem_named_ H i idprem idH.
+Ltac proveprem_premg H i :=
+  let idpremis := fresh H "_prem" in
+  proveprem_prem H i idpremis.
 
-Tactic Notation "especialize" constr(H) "at" integer(i) ":" ident(idprem) :=
-  proveprem_ H i idprem.
+Tactic Notation "especialize" constr(H) "at" integer(i) ":" "?" := proveprem_premg H i.
 
-Tactic Notation "especialize" constr(H) "at" integer(i) :=
-  let idprem := fresh H "_prem" in
-  proveprem_ H i idprem.
+(* same as proveprem_prem but discard the created hypothesis once used in specialization *)
+Ltac proveprem H i :=
+  let idpremis := fresh H "_prem" in
+  proveprem_prem H i idpremis ; [ | clear idpremis].
 
-(* TEST *)
+Tactic Notation "especialize" constr(H) "at" integer(i) := proveprem H i.
+Tactic Notation "especialize" constr(H) "at" integer(i) := proveprem H i.
+
+(* Create a subgoal for each dependent premiss of H *)
+Ltac proveprem_all H := (especialize H at 1; [| proveprem_all H]) + idtac.
+
+Tactic Notation "especialize" constr(H) "at" "*" := proveprem_all H.
+
+(* Create a subgoal for each dependent premiss of H *)
+Ltac proveprem_until H i :=
+  match i with
+    0 => idtac
+  | (S ?i') => (especialize H at 1; [| proveprem_until H i'])
+  end.
+
+Tactic Notation "especialize" constr(H) "until" constr(i) := proveprem_until H i.
+
+(* Same but discard the created hypothesis once used in specialization *)
+Ltac proveprem_as_2 H idnewH i1 i2 :=
+  let idprem1 := fresh H "_prem" in
+  let idprem2 := fresh H "_prem'" in
+  let ev1 := open_constr:((_:Prop)) in
+  let ev2 := open_constr:((_:Prop)) in
+  assert (idprem1:ev1);
+  [ |
+    assert (idprem2:ev2);
+    [|specialize H with (i1:=idprem1) (i2:=idprem2) as idnewH ; clear idprem2 idprem1]].
+
+Tactic Notation "especialize" constr(H) "as" ident(idH) "at"  integer(i1) "," integer(i2) := proveprem_as_2 H idH i1 i2.
+Tactic Notation "especialize" constr(H) "at"  integer(i1) "," integer(i2) "as" ident(idH) := proveprem_as_2 H idH i1 i2.
+
+(* Same but discard the created hypothesis once used in specialization *)
+Ltac proveprem_2 H i1 i2 :=
+  let idprem1 := fresh H "_prem" in
+  let idprem2 := fresh H "_prem'" in
+  let ev1 := open_constr:((_:Prop)) in
+  let ev2 := open_constr:((_:Prop)) in
+  assert (idprem1:ev1);
+  [ |
+    assert (idprem2:ev2);
+    [|specialize H with (i1:=idprem1) (i2:=idprem2) ; clear idprem2 idprem1]].
+
+Tactic Notation "especialize" constr(H) "at" integer(i1) "," integer(i2) := proveprem_2 H i1 i2.
+
+Ltac proveprem_as_3 H idnewH i1 i2 i3 :=
+  let idprem1 := fresh H "_prem" in
+  let idprem2 := fresh H "_prem" in
+  let idprem3 := fresh H "_prem" in
+  let ev1 := open_constr:((_:Prop)) in
+  let ev2 := open_constr:((_:Prop)) in
+  let ev3 := open_constr:((_:Prop)) in
+  assert (idprem1:ev1);
+  [ | assert (idprem2:ev2);
+      [ | assert (idprem3:ev3);
+          [ | specialize H with (i1:=idprem1) (i2:=idprem2) (i3:=idprem3) as idnewH ; clear idprem3 idprem2 idprem1 ]]].
+
+Tactic Notation "especialize" constr(H) "as" ident(idH) "at"  integer(i1) "," integer(i2)"," integer(i3) := proveprem_as_3 H idH i1 i2 i3.
+Tactic Notation "especialize" constr(H) "at"  integer(i1) "," integer(i2)"," integer(i3) "as" ident(idH) := proveprem_as_3 H idH i1 i2 i3.
+
+Ltac proveprem_3 H i1 i2 i3 :=
+  let idprem1 := fresh H "_prem" in
+  let idprem2 := fresh H "_prem" in
+  let idprem3 := fresh H "_prem" in
+  let ev1 := open_constr:((_:Prop)) in
+  let ev2 := open_constr:((_:Prop)) in
+  let ev3 := open_constr:((_:Prop)) in
+  assert (idprem1:ev1);
+  [ | assert (idprem2:ev2);
+      [ | assert (idprem3:ev3);
+          [ | specialize H with (i1:=idprem1) (i2:=idprem2) (i3:=idprem3) ; clear idprem3 idprem2 idprem1 ]]].
+
+Tactic Notation "especialize" constr(H) "at"  integer(i1) "," integer(i2)"," integer(i3) := proveprem_3 H i1 i2 i3.
+
+Ltac proveprem_as_4 H idnewH i1 i2 i3 i4 :=
+  let idprem1 := fresh H "_prem" in
+  let idprem2 := fresh H "_prem" in
+  let idprem3 := fresh H "_prem" in
+  let idprem4 := fresh H "_prem" in
+  let ev1 := open_constr:((_:Prop)) in
+  let ev2 := open_constr:((_:Prop)) in
+  let ev3 := open_constr:((_:Prop)) in
+  let ev4 := open_constr:((_:Prop)) in
+  assert (idprem1:ev1); [
+  | assert (idprem2:ev2); [
+    | assert (idprem3:ev3); [
+      | assert (idprem4:ev4);
+        [ | specialize H with (i1:=idprem1) (i2:=idprem2) (i3:=idprem3) (i4:=idprem4) as idnewH ;
+            clear idprem4 idprem3 idprem2 idprem1 ]]]].
+
+Tactic Notation "especialize" constr(H) "as" ident(idH) "at"  integer(i1) "," integer(i2) "," integer(i3) "," integer(i4) := proveprem_as_4 H idH i1 i2 i3 i4.
+Tactic Notation "especialize" constr(H) "at"  integer(i1) "," integer(i2)"," integer(i3) "," integer(i4) "as" ident(idH) := proveprem_as_4 H idH i1 i2 i3 i4.
+
+Ltac proveprem_4 H i1 i2 i3 i4 :=
+  let idprem1 := fresh H "_prem" in
+  let idprem2 := fresh H "_prem" in
+  let idprem3 := fresh H "_prem" in
+  let idprem4 := fresh H "_prem" in
+  let ev1 := open_constr:((_:Prop)) in
+  let ev2 := open_constr:((_:Prop)) in
+  let ev3 := open_constr:((_:Prop)) in
+  let ev4 := open_constr:((_:Prop)) in
+  assert (idprem1:ev1); [
+  | assert (idprem2:ev2); [
+    | assert (idprem3:ev3); [
+      | assert (idprem4:ev4);
+        [ | specialize H with (i1:=idprem1) (i2:=idprem2) (i3:=idprem3) (i4:=idprem4) ;
+            clear idprem4 idprem3 idprem2 idprem1 ]]]].
+
+Tactic Notation "especialize" constr(H) "at"  integer(i1) "," integer(i2)"," integer(i3) "," integer(i4) := proveprem_4 H i1 i2 i3 i4.
+
+
+Ltac proveprem_as_5 H idnewH i1 i2 i3 i4 i5 :=
+  let idprem1 := fresh H "_prem" in
+  let idprem2 := fresh H "_prem" in
+  let idprem3 := fresh H "_prem" in
+  let idprem4 := fresh H "_prem" in
+  let idprem5 := fresh H "_prem" in
+  let ev1 := open_constr:((_:Prop)) in
+  let ev2 := open_constr:((_:Prop)) in
+  let ev3 := open_constr:((_:Prop)) in
+  let ev4 := open_constr:((_:Prop)) in
+  let ev5 := open_constr:((_:Prop)) in
+  assert (idprem1:ev1); [
+  | assert (idprem2:ev2); [
+    | assert (idprem3:ev3); [
+      | assert (idprem4:ev4); [
+        | assert (idprem5:ev5); [
+          | specialize H with (i1:=idprem1) (i2:=idprem2) (i3:=idprem3) (i4:=idprem4) (i5:=idprem5) as idnewH ;
+            clear idprem5 idprem4 idprem3 idprem2 idprem1 ]]]]].
+
+Tactic Notation "especialize" constr(H) "as" ident(idH) "at"  integer(i1) "," integer(i2) "," integer(i3) "," integer(i4) "," integer(i5) := proveprem_as_5 H idH i1 i2 i3 i4 i5.
+Tactic Notation "especialize" constr(H) "at"  integer(i1) "," integer(i2)"," integer(i3) "," integer(i4) "," integer(i5) "as" ident(idH) := proveprem_as_5 H idH i1 i2 i3 i4 i5.
+
+Ltac proveprem_5 H i1 i2 i3 i4 i5 :=
+  let idprem1 := fresh H "_prem" in
+  let idprem2 := fresh H "_prem" in
+  let idprem3 := fresh H "_prem" in
+  let idprem4 := fresh H "_prem" in
+  let idprem5 := fresh H "_prem" in
+  let ev1 := open_constr:((_:Prop)) in
+  let ev2 := open_constr:((_:Prop)) in
+  let ev3 := open_constr:((_:Prop)) in
+  let ev4 := open_constr:((_:Prop)) in
+  let ev5 := open_constr:((_:Prop)) in
+  assert (idprem1:ev1); [
+  | assert (idprem2:ev2); [
+    | assert (idprem3:ev3); [
+      | assert (idprem4:ev4); [
+        | assert (idprem5:ev5); [
+          | specialize H with (i1:=idprem1) (i2:=idprem2) (i3:=idprem3) (i4:=idprem4) (i5:=idprem5);
+            clear idprem5 idprem4 idprem3 idprem2 idprem1 ]]]]].
+
+Tactic Notation "especialize" constr(H) "at"  integer(i1) "," integer(i2)"," integer(i3) "," integer(i4) "," integer(i5) := proveprem_5 H i1 i2 i3 i4 i5.
+
+
+
 (*
 Definition eq_one (i:nat) := i = 1.
 (* eq_one is delta_reducible but I don't want it to be reduced. *)
-Lemma foo: (eq_one 1 -> False) -> False.
+Lemma foo: (eq_one 2 -> eq_one 3 -> eq_one 1 -> False) -> False.
 Proof.
   intros H.
-  especialize H at 1 as h.
+  especialize H at 2;[ admit | match type of H with
+                                 eq_one 2 -> eq_one 1 -> False => idtac "OK"
+                               end].
+  Undo.
+  especialize H as ? at 2 ;[ admit | match type of H_spec with
+                                       eq_one 2 -> eq_one 1 -> False => idtac "OK"
+                                     end; match type of H with
+                                            eq_one 2 -> eq_one 3 -> eq_one 1 -> False => idtac "OK"
+                                          end].
+  Undo.
+  especialize H at 2 as ? ;[ admit | match type of H_spec with
+                                       eq_one 2 -> eq_one 1 -> False => idtac "OK"
+                                     end; match type of H with
+                                            eq_one 2 -> eq_one 3 -> eq_one 1 -> False => idtac "OK"
+                                          end].
+  Undo.
+  especialize H at 2 : h;[ admit | match type of H with
+                                     eq_one 2 -> eq_one 1 -> False => idtac "OK"
+                                   end;
+                                   match type of h with
+                                     3=1 => idtac "OK"
+                                   end].
+  Undo.
+  especialize H at 2 : ?;[ admit | match type of H with
+                                     eq_one 2 -> eq_one 1 -> False => idtac "OK"
+                                   end;
+                                   match type of H_prem with
+                                     3=1 => idtac "OK"
+                                   end].
+  Undo.
+  especialize H at 2 as newH : h;[ admit | match type of newH with
+                                             eq_one 2 -> eq_one 1 -> False => idtac "OK"
+                                           end;
+                                           match type of h with
+                                             3=1 => idtac "OK"
+                                           end].
+  Undo.
+  especialize H as newH at 2 : h;[ admit | match type of newH with
+                                             eq_one 2 -> eq_one 1 -> False => idtac "OK"
+                                           end;
+                                           match type of h with
+                                             3=1 => idtac "OK"
+                                           end].
+  Undo.
+  especialize H at 2 as ? : h;[ admit | match type of H_spec with
+                                          eq_one 2 -> eq_one 1 -> False => idtac "OK"
+                                        end;
+                                        match type of h with
+                                          3=1 => idtac "OK"
+                                        end].
+  Undo.
+  especialize H as ? at 2 : h;[ admit | match type of H_spec with
+                                          eq_one 2 -> eq_one 1 -> False => idtac "OK"
+                                        end;
+                                        match type of h with
+                                          3=1 => idtac "OK"
+                                        end].
+  Undo.
+  especialize H at 2 as ? : ?;[ admit | match type of H_spec with
+                                          eq_one 2 -> eq_one 1 -> False => idtac "OK"
+                                        end;
+                                        match type of H_prem with
+                                          3=1 => idtac "OK"
+                                        end].
+  Undo.
+  especialize H as ? at 2 : ?;[ admit | match goal with
+                                          H_spec:eq_one 2 -> eq_one 1 -> False, H_prem : 3 = 1 |- _ => idtac "OK"
+                                        end].
+
+  Undo.
+
+  especialize H at 2,3; [ admit | admit| match type of H with eq_one 2 -> False=> idtac "OK" end].
+  Undo.
+  especialize H at 3,2; [ admit | admit| match type of H with eq_one 2 -> False=> idtac "OK" end].
+  Undo.
+  especialize H as h at 2,3; [ admit | admit| match type of h with eq_one 2 -> False=> idtac "OK" end].
+  Undo.
+  especialize H at 2,3 as h;  [ admit | admit| match type of h with eq_one 2 -> False=> idtac "OK" end].
+  Undo.
+  especialize H at 3,2,1; [ admit | admit | admit |  match type of H with False=> idtac "OK" end ].
+  Undo.
+  especialize H as h at 3,2,1; [ admit | admit | admit |  match type of h with False=> idtac "OK" end ].
+  Undo.
+  especialize H at 3,2,1 as h; [ admit | admit | admit |  match type of h with False=> idtac "OK" end ].
+Abort.
+
+Lemma foo2: (eq_one 2 -> eq_one 3 ->eq_one 4 ->eq_one 5 ->eq_one 6 -> eq_one 1 -> False) -> False.
+Proof.
+  intros H.
+  especialize H at 3,1,4,5 as h; [ admit | admit | admit  | admit | match type of h with eq_one 3 -> eq_one 1 ->False=> idtac "OK" end  ]. 
+  Undo.
+  especialize H as h at 3,1,4,5; [ admit | admit | admit  | admit | match type of h with eq_one 3 -> eq_one 1 ->False=> idtac "OK" end  ]. 
+  Undo.
+  especialize H at 3,1,4,5; [ admit | admit | admit  | admit | match type of H with eq_one 3 -> eq_one 1 ->False=> idtac "OK" end  ]. 
+  Undo.
+  especialize H at 3,1,4,5,2; [ admit | admit | admit | admit  | admit | match type of H with eq_one 1 ->False=> idtac "OK" end  ]. 
+  Undo.
+  especialize H at 3,1,4,5,2  as h; [ admit | admit | admit | admit  | admit | match type of h with eq_one 1 ->False=> idtac "OK" end  ]. 
+  Undo.
+  especialize H as h at 3,1,4,5,2; [ admit | admit | admit | admit  | admit | match type of h with eq_one 1 ->False=> idtac "OK" end  ]. 
+  Undo.
+Abort.
+
+
+
+
+
+
+(* TEST *)
+
+Lemma foo: (eq_one 2 -> eq_one 1 -> False) -> False.
+Proof.
+  intros H.
+  especialize (le_sind 0) at 1 as hh : h.
+  { admit. }
+  especialize min_l at 1 as ? : ?.
+  { apply (le_n O). }
+  
+  especialize H at 1 as hh : h.
   { reflexivity. }
   match type of h with False => idtac "OK" | _ => fail end.
   assumption.

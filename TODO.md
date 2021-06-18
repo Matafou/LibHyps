@@ -1,4 +1,15 @@
+# Suggestion by Sylvain Boulme:
 
+## Looks like "exploit" developped in compcert.
+
+exploit creates evars for all premisses of a hyp.
+especialize creates evars for ONE premiss.
+Maybe we could have the best of both?
+like:
+```
+especialize h at 1,4,6. (* fine grained exploit *)
+especialize h at *. (* equivalent to exploit *)
+```
 # have a true replacement for "as"
 
 Syntax suggestion:
@@ -59,3 +70,8 @@ Typically "h_add_x_y_z" would maybe be better as "h_add_x_y__z"
 - Auto ignore implicit args
 
 
+# ideas for other post-tactic cleaning
+
+## decomp?
+## cbn
+## ?

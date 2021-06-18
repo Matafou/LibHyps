@@ -435,28 +435,15 @@ Proof.
   exact I.
 Qed.
 
-
-(* Testing . *)
-Lemma test_subst_reverse: 
-  ((fun f => 0 = 1) true)
-  ->
-  forall x y:nat,
-  forall a b: bool, forall z:nat,
-      0 <= 1 ->
-      x = z ->
-      (0%Z <= 1%Z)%Z ->
-      x <= y ->
-      x = y ->
-      (0 < 1 -> 1<0) -> 0 < z -> True.
-Proof.
-  intros ; {< substHyp }.
-  (* x = y is subst first, and z = z remains *)
-  lazymatch reverse goal with
-  | H: z <= z |- True => idtac
-  | _ => fail "test failed!"
+Ltac substHyp H ::=
+  match type of H with
+  | Depl => fail 1 (* fail immediately, we are applying on a list of hyps. *)
+  | ?x = ?y =>
+    (* subst would maybe subst using another hyp, so use replace to be sure *)
+    once ((is_var(x); replace x with y in *; [try clear x ; try clear H] )
+          + (is_var(y);replace y with x in * ; [ try clear H]))
+  | _ => idtac
   end.
-  exact I.
-Qed.
 
 
 (* Legacy Notations tac ;!; tac2. *)
@@ -542,14 +529,14 @@ Lemma test_group_up_list_legacy: forall x y:nat,
       (0 < 1 -> 1<0) -> 0 < z -> True.
 Proof.
   (* move_up_types is there for backward compatibility. It moves Type-Sorted hyps up. *)
-  !!!! intros.
+  !!!!intros.
   lazymatch reverse goal with
-    | Hb:_, Ha:_,Hz : _ , Hy:_ , Hx:_ |- True =>
+    | Hb:_, Ha:_,Hz : _ , Hy:_  |- True =>
       let t := constr:((ltac:(reflexivity)): Hb=b) in
       let t := constr:((ltac:(reflexivity)): Ha=a) in
       let t := constr:((ltac:(reflexivity)): Hz=z) in
       let t := constr:((ltac:(reflexivity)): Hy=y) in
-      let t := constr:((ltac:(reflexivity)): Hx=x) in
+      (* let t := constr:((ltac:(reflexivity)): Hx=x) in *)
       idtac
     | _ => fail "test failed (wrong order of hypothesis)!"
   end.
@@ -605,3 +592,7 @@ Proof.
   - apply I.
   - apply I.
 Qed.
+
+
+
+

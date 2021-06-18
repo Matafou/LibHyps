@@ -125,24 +125,29 @@ Ltac exists_prefix := constr:(forall _ex, DUMMY _ex).
 
 (* ************************************** *)
 
+
 (** Builds an id from a sequence of chunks. fresh is not supposed to
     add suffixes anywhere because all the ids we use start with "_".
     As long as no constant or hyp name start with "_" it is ok. *)
-Ltac build_name l :=
+Ltac build_name_gen suffx l :=
   let l := eval lazy beta delta [List.app] iota in l in
   match l with
   | nil => fail
   | (forall id1:Prop, DUMMY id1)::nil =>
-    match add_suffix with
+    match suffx with
     | true => fresh id1 "_"
     | false => fresh id1
     end
   | (forall id1:Prop, DUMMY id1)::?l' =>
-    let recres := build_name l' in
+    let recres := build_name_gen suffx l' in
     (* id1 starts with "_", so fresh do not add any suffix *)
     let res := fresh id1 recres in
     res
   end.
+
+Ltac build_name l := build_name_gen add_suffix l.
+Ltac build_name_no_suffix l := build_name_gen constr:(false) l.
+
 
 (** Check if t is an eligible argument for fresh function. For instance
    if t is (forall foo, ...), it is not eligible. *)
@@ -237,6 +242,8 @@ Ltac numerical_names_sufx t :=
 Ltac numerical_names ::= numerical_names_sufx *)
 Ltac numerical_names ::= numerical_names_nosufx.
   
+
+Ltac raw_name X := (constr:((forall X, DUMMY X) :: [])).
 
 (** Build a chunk from a simple term: either a number or a freshable
    term. *)
@@ -491,6 +498,11 @@ Notation " X '#' n " := ltac:(
                           let c := fallback_rename_hyp n X in exact c)
                             (at level 1,X constr, only parsing): autonaming_scope.
 
+Notation " X '##' " := 
+   ltac:(let c := raw_name X in exact c)
+  (at level 1,X constr, only parsing): autonaming_scope.
+
+
 (** It is nicer to write name t than constr:t, see below. *)
 Ltac name c := (constr:(c)).
 
@@ -516,7 +528,7 @@ Ltac rename_hyp_default n th ::=
         | S ?n' => name (`_cons` ++ x#n ++ l#n')
         | 0 => name (`_cons` ++ x#n)
         end
-      | (@Some _ ?x) => name (x#n)
+      | (@Some _ ?x) => name (x#(S n))
       | (@None _) => name (`_None`)
       | _ => fail
       end in
@@ -527,7 +539,7 @@ Ltac rename_hyp_default n th ::=
 Ltac rename_hyp_neg n th :=
   match th with
   | ~ (_ = _) => fail 1(* h_neq already dealt by fallback *)
-  | ~ ?th' => name (`neq` ++ th'#(S n))
+  | ~ ?th' => name (`not` ++ th'#(S n))
   | _ => fail
   end.
 
@@ -550,19 +562,24 @@ Inductive LHMsg t (h:t) := LHMsgC: LHMsg t h.
 Notation "h : t" := (LHMsgC t h) (at level 1,only printing, format
 "'[ ' h ':' '/' '[' t ']' ']'").
 
+Ltac rename_hyp_with_name h th := fail.
+
+
 (* Tactic renaming hypothesis H. Ignore Type-sorted hyps, fails if no
 renaming can be computed. Example of failing type: H:((fun x => True) true). *)
 Ltac autorename_strict H :=
   match type of H with
   | ?th =>
     match type of th with
+    | _ =>
+      let l := rename_hyp_with_name H th in
+      let dummy_name := fresh "dummy" in
+      rename H into dummy_name; (* frees current name of H, in case of idempotency *)
+      let newname := build_name_no_suffix l in
+      rename dummy_name into newname
     | Prop =>
       let dummy_name := fresh "dummy" in
-      rename H into dummy_name; (* this renaming makes the renaming
-                                   more or less idempotent by freeing
-                                   the current name of H, it is
-                                   backtracked if the rename_hyp below
-                                   fails. *)
+      rename H into dummy_name; (* frees current name of H, in case of idempotency *)
       let newname := fallback_rename_hyp_name th in
       rename dummy_name into newname
     | Prop =>
@@ -573,18 +590,27 @@ Ltac autorename_strict H :=
   end.
 
 (* Tactic renaming hypothesis H. *)
+
 Ltac autorename H := try autorename_strict H.
 
 (*
+(* Tests *)
 Print Visibility.
-Open Scope autonaming_scope.
+Local Open Scope autonaming_scope.
 Ltac rename_hyp1 n th :=
   match th with
     (* | (?min <= ?x) /\ (?x < ?max) => name (x#n ++ `_bounded_` ++ min#n ++ `_` ++ max#n) *)
   | ((?min <= ?x) /\ (?x <= ?max))%nat => name (x#n ++ `_bounded` ++ min#n ++ max#n)
-  | (?x = ?z + ?z)%nat => name (x#n ++ `_bounded` ++ z#n ++ z#n)
   end.
-Close Scope autonaming_scope.
+(* example of adhoc naming from hyp name: *)
+Ltac rename_hyp_with_name h th ::=
+  match reverse goal with
+  | H: ?A = h |- _  =>
+    name ( A## ++ `_same`)
+    (* let _ := freshable A in *)
+    (* name (`same_as` ++ A#1) *)
+  end.
+Local Close Scope autonaming_scope.
 
 Ltac rename_hyp n th ::=
   match th with
@@ -593,6 +619,7 @@ Ltac rename_hyp n th ::=
 
 Goal forall x1 x3:bool, forall a z e : nat,
       z+e = a
+      -> z = a
       -> forall SEP:(True -> True),
         a = z+z
         -> z+z <= a <= e + e
@@ -600,9 +627,9 @@ Goal forall x1 x3:bool, forall a z e : nat,
         -> forall b1 b2 b3 b4: bool,
           True -> True.
 Proof.
-  (* Set Ltac Debug. *)
-  (* then_nh_rev ltac:(intros) ltac:(subst_or_idtac).   *)
   intros.
+  autorename a.
+  autorename H2.
   autorename H1.
   Fail autorename_strict H2.
 

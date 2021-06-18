@@ -119,3 +119,131 @@ Lemma dummy: forall x y,
   match type of h_lt_0n_z with 0 < z => idtac | _ => fail "test failed!" end.
   exact I.
 Qed. 
+
+
+
+Definition eq_one (i:nat) := i = 1.
+(* eq_one is delta_reducible but I don't want it to be reduced. *)
+Lemma test_espec: (eq_one 2 -> eq_one 3 -> eq_one 1 -> False) -> True.
+Proof.
+  intros H.
+  especialize H at 2;[ admit | match type of H with
+                                 eq_one 2 -> eq_one 1 -> False => idtac
+                               end].
+  Undo.
+  especialize H as ? at 2 ;[ admit | match type of H_spec with
+                                       eq_one 2 -> eq_one 1 -> False => idtac
+                                     end; match type of H with
+                                            eq_one 2 -> eq_one 3 -> eq_one 1 -> False => idtac
+                                          end].
+  Undo.
+  especialize H at 2 as ? ;[ admit | match type of H_spec with
+                                       eq_one 2 -> eq_one 1 -> False => idtac
+                                     end; match type of H with
+                                            eq_one 2 -> eq_one 3 -> eq_one 1 -> False => idtac
+                                          end].
+  Undo.
+  especialize H at 2 : h;[ admit | match type of H with
+                                     eq_one 2 -> eq_one 1 -> False => idtac
+                                   end;
+                                   match type of h with
+                                     3=1 => idtac
+                                   end].
+  Undo.
+  especialize H at 2 : ?;[ admit | match type of H with
+                                     eq_one 2 -> eq_one 1 -> False => idtac
+                                   end;
+                                   match type of H_prem with
+                                     3=1 => idtac
+                                   end].
+  Undo.
+  especialize H at 2 as newH : h;[ admit | match type of newH with
+                                             eq_one 2 -> eq_one 1 -> False => idtac
+                                           end;
+                                           match type of h with
+                                             3=1 => idtac
+                                           end].
+  Undo.
+  especialize H as newH at 2 : h;[ admit | match type of newH with
+                                             eq_one 2 -> eq_one 1 -> False => idtac
+                                           end;
+                                           match type of h with
+                                             3=1 => idtac
+                                           end].
+  Undo.
+  especialize H at 2 as ? : h;[ admit | match type of H_spec with
+                                          eq_one 2 -> eq_one 1 -> False => idtac
+                                        end;
+                                        match type of h with
+                                          3=1 => idtac
+                                        end].
+  Undo.
+  especialize H as ? at 2 : h;[ admit | match type of H_spec with
+                                          eq_one 2 -> eq_one 1 -> False => idtac
+                                        end;
+                                        match type of h with
+                                          3=1 => idtac
+                                        end].
+  Undo.
+  especialize H at 2 as ? : ?;[ admit | match type of H_spec with
+                                          eq_one 2 -> eq_one 1 -> False => idtac
+                                        end;
+                                        match type of H_prem with
+                                          3=1 => idtac
+                                        end].
+  Undo.
+  especialize H as ? at 2 : ?;[ admit | match goal with
+                                          H_spec:eq_one 2 -> eq_one 1 -> False, H_prem : 3 = 1 |- _ => idtac
+                                        end].
+
+  Undo.
+
+  especialize H at 2,3; [ admit | admit| match type of H with eq_one 2 -> False=> idtac end].
+  Undo.
+  especialize H at 3,2; [ admit | admit| match type of H with eq_one 2 -> False=> idtac end].
+  Undo.
+  especialize H as h at 2,3; [ admit | admit| match type of h with eq_one 2 -> False=> idtac end].
+  Undo.
+  especialize H at 2,3 as h;  [ admit | admit| match type of h with eq_one 2 -> False=> idtac end].
+  Undo.
+  especialize H at 3,2,1; [ admit | admit | admit |  match type of H with False=> idtac end ].
+  Undo.
+  especialize H as h at 3,2,1; [ admit | admit | admit |  match type of h with False=> idtac end ].
+  Undo.
+  especialize H at 3,2,1 as h; [ admit | admit | admit |  match type of h with False=> idtac end ].
+  Undo.
+  exact I.
+Qed.
+
+Lemma foo2: (eq_one 2 -> eq_one 3 ->eq_one 4 ->eq_one 5 ->eq_one 6 -> eq_one 1 -> False) -> True.
+Proof.
+  intros H.
+  especialize H at 3,1,4,5 as h; [ admit | admit | admit  | admit | match type of h with eq_one 3 -> eq_one 1 ->False=> idtac end  ]. 
+  Undo.
+  especialize H as h at 3,1,4,5; [ admit | admit | admit  | admit | match type of h with eq_one 3 -> eq_one 1 ->False=> idtac end  ]. 
+  Undo.
+  especialize H at 3,1,4,5; [ admit | admit | admit  | admit | match type of H with eq_one 3 -> eq_one 1 ->False=> idtac end  ]. 
+  Undo.
+  especialize H at 3,1,4,5,2; [ admit | admit | admit | admit  | admit | match type of H with eq_one 1 ->False=> idtac end  ]. 
+  Undo.
+  especialize H at 3,1,4,5,2  as h; [ admit | admit | admit | admit  | admit | match type of h with eq_one 1 ->False=> idtac end  ]. 
+  Undo.
+  especialize H as h at 3,1,4,5,2; [ admit | admit | admit | admit  | admit | match type of h with eq_one 1 ->False=> idtac end  ]. 
+  Undo.
+  exact I.
+Qed.
+
+
+Lemma test_espec_namings: forall n:nat, (eq_one n -> eq_one 1 -> False) -> True.
+Proof.
+  intros n H.
+  especialize Nat.quadmul_le_squareadd at 1 as hh : h.
+  { apply le_n. }
+  especialize min_l at 1 as ? : ?.
+  { apply (le_n O). }
+  especialize H at 2 as h1 : h2.
+  { reflexivity. }
+  match type of h2 with 1 = 1 => idtac | _ => fail end.
+  match type of h1 with eq_one n -> False => idtac | _ => fail end.
+  exact I.
+Qed.
