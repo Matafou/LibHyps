@@ -127,6 +127,11 @@ Definition eq_one (i:nat) := i = 1.
 Lemma test_espec: (eq_one 2 -> eq_one 3 -> eq_one 1 -> False) -> True.
 Proof.
   intros H.
+  (* let nme := fresh_robust H "hh" "def" in idtac nme.Definition *)
+
+  especialize H as newH  at 2;[ admit | match type of newH with eq_one 2 -> eq_one 1 -> False => idtac end;
+                                        match type of  H with  eq_one 2 -> eq_one 3 -> eq_one 1 -> False => idtac end].
+  Undo.
   especialize H at 2;[ admit | match type of H with eq_one 2 -> eq_one 1 -> False => idtac end].
   Undo.
   especialize H as ? at 2 ;[ admit | match type of H_spec with

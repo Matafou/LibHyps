@@ -8,6 +8,10 @@
 premiss of hypothesis H and specialize H with the resulting proof. h
 is the (optional) name of the asserted premiss. *)
 
+Ltac freshable t :=
+  let x := fresh t "_dummy_sufx" in
+  idtac.
+
 Ltac proveprem_as_prem H i idpremis idnewH :=
   (* prefer this to evar, which is not well "typed" by Ltac (does not
      know that it creates an evar (coq bug?). *)
@@ -45,8 +49,8 @@ Ltac proveprem_as H i idnewH :=
   let idpremis := fresh H "_prem" in
   proveprem_as_prem H i idpremis idnewH;[ | clear idpremis].
 
-Tactic Notation "especialize" constr(H) "at" integer(i) "as" ident(idH) := proveprem_as H i.
-Tactic Notation "especialize" constr(H) "as" ident(idH) "at" integer(i) := proveprem_as H i.
+Tactic Notation "especialize" constr(H) "at" integer(i) "as" ident(idH) := proveprem_as H i idH.
+Tactic Notation "especialize" constr(H) "as" ident(idH) "at" integer(i) := proveprem_as H i idH.
 
 Ltac proveprem_asg H i :=
   let idnewH := fresh H "_spec" in
@@ -81,10 +85,6 @@ Ltac proveprem H i :=
 
 Tactic Notation "especialize" constr(H) "at" integer(i) := proveprem H i.
 Tactic Notation "especialize" constr(H) "at" integer(i) := proveprem H i.
-
-Ltac freshable t :=
-  let x := fresh t "_dummy_sufx" in
-  idtac.
 
 (* Create a subgoal for each dependent premiss of H *)
 Ltac proveprem_all H := (especialize H at 1; [| proveprem_all H]) + idtac.
