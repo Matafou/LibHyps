@@ -226,3 +226,31 @@ Proof.
   Undo.
   exact I.
 Qed.
+
+(* "until i" and "at *" *)
+
+Lemma test_esepec_until_star: (eq_one 2 -> eq_one 3 ->eq_one 4 ->eq_one 5 ->eq_one 6 ->eq_one 7 ->eq_one 8 -> eq_one 9 -> eq_one 1 -> False) -> True.
+Proof.
+  
+  intros H.
+  (* specialize on term ==> create a new hyp *)
+  especialize (let x:=not_eq_S in x) at *; [ intro ; admit | match type of H_spec with (S _)<>(S _) => idtac | _ => fail "Test failed!" end].
+  Undo.
+  especialize (let x:=not_eq_S in x) at * as h; [ intro ; admit | match type of h with (S _)<>(S _) => idtac | _ => fail "Test failed!" end].
+  Undo.
+  especialize (let x:=H in x) at *; [ admit |admit |admit |admit |admit |admit |admit |admit |admit | match type of H_spec with False => idtac | _ => fail "Test failed!" end].
+  Undo.
+  especialize (let x:= H in x) until 4 ; [ admit |admit |admit |admit | match type of H_spec with eq_one 6 -> eq_one 7 -> eq_one 8 -> eq_one 9 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end ].
+  Undo.
+  (* behavior when acting on a hypothesis: replace the hyp by its specialize version *)
+  especialize H until 4; [ admit |admit |admit |admit | match type of H with eq_one 6 -> eq_one 7 -> eq_one 8 -> eq_one 9 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end].
+  Undo.
+  especialize H at * ; [ admit |admit |admit |admit |admit |admit |admit |admit |admit | match type of H with False => idtac | _ => fail "Test failed!" end].
+  Undo.
+  (* unless we give the "as" option *)
+  especialize H at * as h ; [ admit |admit |admit |admit |admit |admit |admit |admit |admit | match type of h with False => idtac | _ => fail "Test failed!" end; match type of H with eq_one 2 -> eq_one 3 -> eq_one 4 -> eq_one 5 -> eq_one 6 -> eq_one 7 -> eq_one 8 -> eq_one 9 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end].
+  Undo.
+  especialize H until 4 as h; [ admit |admit |admit |admit | match type of h with eq_one 6 -> eq_one 7 -> eq_one 8 -> eq_one 9 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end].
+  Undo.
+  exact I.
+Qed.

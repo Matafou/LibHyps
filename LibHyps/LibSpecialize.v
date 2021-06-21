@@ -82,10 +82,28 @@ Ltac proveprem H i :=
 Tactic Notation "especialize" constr(H) "at" integer(i) := proveprem H i.
 Tactic Notation "especialize" constr(H) "at" integer(i) := proveprem H i.
 
+Ltac freshable t :=
+  let x := fresh t "_dummy_sufx" in
+  idtac.
+
 (* Create a subgoal for each dependent premiss of H *)
 Ltac proveprem_all H := (especialize H at 1; [| proveprem_all H]) + idtac.
 
-Tactic Notation "especialize" constr(H) "at" "*" := proveprem_all H.
+Tactic Notation "especialize" constr(H) "at" "*" :=
+  ((try (is_var(H); fail 1));
+   ((try (freshable H;fail 1));
+    (let h := fresh "H_spec" in
+     specialize H as h; (* create the hyp *)
+     proveprem_all h))
+   + (let h := fresh "H_" H "_spec" in
+      specialize H as h; (* create the hyp *)
+      proveprem_all h))
+  + proveprem_all H.
+
+Tactic Notation "especialize" constr(H) "at" "*" "as" ident(idH) :=
+    (let h := fresh idH in
+     specialize H as h; (* create the hyp *)
+     proveprem_all h).
 
 (* Create a subgoal for each dependent premiss of H *)
 Ltac proveprem_until H i :=
@@ -94,11 +112,25 @@ Ltac proveprem_until H i :=
   | (S ?i') => (especialize H at 1; [| proveprem_until H i'])
   end.
 
-Tactic Notation "especialize" constr(H) "until" constr(i) := proveprem_until H i.
+Tactic Notation "especialize" constr(H) "until" constr(i) :=
+  (try (is_var(H); fail 1);
+   ((let _ := freshable H in
+     let h := fresh "H_" H "_spec" in
+     specialize H as h; (* create the hyp *)
+     proveprem_until h i)
+    + (let h := fresh "H_spec" in
+       specialize H as h; (* create the hyp *)
+       proveprem_until h i)))
+  + proveprem_until H i.
+
+Tactic Notation "especialize" constr(H) "until" constr(i) "as" ident(idH) :=
+   (let h := fresh idH in
+    specialize H as h; (* create the hyp *)
+    proveprem_until h i).
 
 (* Same but discard the created hypothesis once used in specialization *)
 Ltac proveprem_as_2 H idnewH i1 i2 :=
-  let idprem1 := fresh H "_prem" in
+  let idprem1 := fresh H "_prem" in (* FIXME when H is not freshable, and in all others. *)
   let idprem2 := fresh H "_prem'" in
   let ev1 := open_constr:((_:Prop)) in
   let ev2 := open_constr:((_:Prop)) in
