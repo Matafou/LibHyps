@@ -126,75 +126,207 @@ Definition eq_one (i:nat) := i = 1.
 (* eq_one is delta_reducible but I don't want it to be reduced. *)
 Lemma test_espec: (eq_one 2 -> eq_one 3 -> eq_one 1 -> False) -> True.
 Proof.
-  intros H.
+  intros h_eqone.
   (* let nme := fresh_robust H "hh" "def" in idtac nme.Definition *)
 
-  especialize H as newH  at 2;[ admit | match type of newH with eq_one 2 -> eq_one 1 -> False => idtac end;
-                                        match type of  H with  eq_one 2 -> eq_one 3 -> eq_one 1 -> False => idtac end].
+  especialize h_eqone as newH at 2;
+    [ admit | match type of newH with eq_one 2 -> eq_one 1 -> False => idtac end;
+              match type of h_eqone with  eq_one 2 -> eq_one 3 -> eq_one 1 -> False => idtac end].
   Undo.
-  especialize H at 2;[ admit | match type of H with eq_one 2 -> eq_one 1 -> False => idtac end].
+  especialize h_eqone at 2 as newH;
+    [ admit | match type of newH with eq_one 2 -> eq_one 1 -> False => idtac end;
+              match type of h_eqone with  eq_one 2 -> eq_one 3 -> eq_one 1 -> False => idtac end].
   Undo.
-  especialize H as ? at 2 ;[ admit | match type of H_spec with
-                                       eq_one 2 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end; match type of H with
-                                            eq_one 2 -> eq_one 3 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end].
+
+  especialize (let x:=Nat.le_antisymm in x) at 2 as hhh;
+    [ admit | match type of hhh with _ <= _ -> _ = _ => idtac | _ => fail "Test failed!" end ].
   Undo.
-  especialize H at 2 as ? ;[ admit | match type of H_spec with eq_one 2 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end;
-                                     match type of H with eq_one 2 -> eq_one 3 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end].
+
+  especialize (let x:=Nat.le_antisymm in x)as hhh at 2;
+    [ admit | match type of hhh with _ <= _ -> _ = _ => idtac | _ => fail "Test failed!" end ].
   Undo.
-  especialize H at 2 : h;[ admit | match type of H with eq_one 2 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end;
-                                   match type of h with 3=1 => idtac | _ => fail "Test failed!" end].
+
+  especialize h_eqone at 2;
+    [ admit | match type of h_eqone with eq_one 2 -> eq_one 1 -> False => idtac end].
   Undo.
-  especialize H at 2 : ?;[ admit | match type of H with eq_one 2 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end;
-                                   match type of H_prem with 3=1 => idtac | _ => fail "Test failed!" end].
+
+  especialize (let x:=Nat.le_antisymm in x) at 2;
+    [ admit | match goal with |- (_ <= _ -> _ = _) -> True => idtac | _ => fail "Test failed!" end ].
   Undo.
-  especialize H at 2 as newH : h;[ admit | match type of newH with eq_one 2 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end;
-                                           match type of h with 3=1 => idtac | _ => fail "Test failed!" end].
+
+  especialize h_eqone as ? at 2;
+    [ admit | match type of h_eqone_spec with eq_one 2 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end;
+              match type of h_eqone with eq_one 2 -> eq_one 3 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end].
   Undo.
-  especialize H as newH at 2 : h;[ admit | match type of newH with eq_one 2 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end;
-                                           match type of h with 3=1 => idtac | _ => fail "Test failed!" end].
+  especialize h_eqone at 2 as ? ;
+    [ admit | match type of h_eqone_spec with eq_one 2 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end;
+              match type of h_eqone with eq_one 2 -> eq_one 3 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end].
   Undo.
-  especialize H at 2 as ? : h;[ admit | match type of H_spec with eq_one 2 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end;
-                                        match type of h with 3=1 => idtac | _ => fail "Test failed!" end].
+  
+  especialize (let x:=Nat.le_antisymm in x) as ? at 2;
+    [ admit | match type of H_spec with _ <= _ -> _ = _ => idtac | _ => fail "Test failed!" end;
+              match type of h_eqone with eq_one 2 -> eq_one 3 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end].
   Undo.
-  especialize H as ? at 2 : h;[ admit | match type of H_spec with eq_one 2 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end;
-                                        match type of h with 3=1 => idtac | _ => fail "Test failed!" end].
+
+  especialize (let x:=Nat.le_antisymm in x) at 2 as ? ;
+    [ admit | match type of H_spec with _ <= _ -> _ = _ => idtac | _ => fail "Test failed!" end;
+              match type of h_eqone with eq_one 2 -> eq_one 3 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end].
   Undo.
-  especialize H at 2 as ? : ?;[ admit | match type of H_spec with eq_one 2 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end;
-                                        match type of H_prem with 3=1 => idtac | _ => fail "Test failed!" end].
+
+  especialize h_eqone at 2 : h;
+    [ admit | match type of h_eqone with eq_one 2 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end;
+              match type of h with 3=1 => idtac | _ => fail "Test failed!" end].
   Undo.
-  especialize H as ? at 2 : ?;[ admit | match goal with H_spec:eq_one 2 -> eq_one 1 -> False, H_prem : 3 = 1 |- _ => idtac | _ => fail "Test failed!" end].
+
+  especialize (let x:=Nat.le_antisymm in x) at 2 : h;
+    [ admit | match goal with |- (_ <= _ -> _ = _) -> True => idtac | _ => fail "Test failed!" end;
+              match type of h with _ <= _ => idtac | _ => fail "Test failed!" end].
   Undo.
-  especialize H at 2,3; [ admit | admit| match type of H with eq_one 2 -> False=> idtac | _ => fail "Test failed!" end].
+
+  especialize h_eqone at 2 : ? ;
+    [ admit | match type of h_eqone with eq_one 2 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end;
+              match type of h_eqone_prem with 3=1 => idtac | _ => fail "Test failed!" end].
+  Undo. 
+
+  especialize (let x:=Nat.le_antisymm in x) at 2 : ? ;
+    [ admit | match goal with |- (_ <= _ -> _ = _) -> True => idtac | _ => fail "Test failed!" end;
+              match type of H_prem with _ <= _ => idtac | _ => fail "Test failed!" end].
   Undo.
-  especialize H at 3,2; [ admit | admit| match type of H with eq_one 2 -> False=> idtac | _ => fail "Test failed!" end].
+
+
+  especialize h_eqone at 2 as newH : h;
+    [ admit | match type of newH with eq_one 2 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end;
+              match type of h with 3=1 => idtac | _ => fail "Test failed!" end].
   Undo.
-  especialize H as h at 2,3; [ admit | admit| match type of h with eq_one 2 -> False=> idtac | _ => fail "Test failed!" end].
+
+  especialize (let x:=Nat.le_antisymm in x) at 2 as newH : h;
+    [ admit | match type of newH with (_ <= _ -> _ = _) => idtac | _ => fail "Test failed!" end;
+              match type of h with _ <= _ => idtac | _ => fail "Test failed!" end].
   Undo.
-  especialize H at 2,3 as h;  [ admit | admit| match type of h with eq_one 2 -> False=> idtac | _ => fail "Test failed!" end].
+
+  especialize h_eqone as newH at 2 : h;
+    [ admit | match type of newH with eq_one 2 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end;
+              match type of h with 3=1 => idtac | _ => fail "Test failed!" end].
   Undo.
-  especialize H at 3,2,1; [ admit | admit | admit |  match type of H with False=> idtac | _ => fail "Test failed!" end ].
+
+  especialize (let x:=Nat.le_antisymm in x) as newH at 2 : h;
+    [ admit |
+      match type of newH with (_ <= _ -> _ = _) => idtac | _ => fail "Test failed!" end;
+      match type of h with _ <= _ => idtac | _ => fail "Test failed!" end].
   Undo.
-  especialize H as h at 3,2,1; [ admit | admit | admit |  match type of h with False=> idtac | _ => fail "Test failed!" end ].
+
+  especialize h_eqone at 2 as ? : h;
+    [ admit | match type of h_eqone_spec with eq_one 2 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end;
+              match type of h with 3=1 => idtac | _ => fail "Test failed!" end].
   Undo.
-  especialize H at 3,2,1 as h; [ admit | admit | admit |  match type of h with False=> idtac | _ => fail "Test failed!" end ].
+
+  especialize (let x:=Nat.le_antisymm in x) at 2 as ? : h;
+    [ admit |
+      match type of H_spec with (_ <= _ -> _ = _) => idtac | _ => fail "Test failed!" end;
+      match type of h with _ <= _ => idtac | _ => fail "Test failed!" end].
+  Undo.
+
+  especialize h_eqone as ? at 2 : h;
+    [ admit | match type of h_eqone_spec with eq_one 2 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end;
+              match type of h with 3=1 => idtac | _ => fail "Test failed!" end].
+  Undo.
+
+  especialize (let x:=Nat.le_antisymm in x) as ? at 2 : h;
+    [ admit |
+      match type of H_spec with (_ <= _ -> _ = _) => idtac | _ => fail "Test failed!" end;
+      match type of h with _ <= _ => idtac | _ => fail "Test failed!" end].
+  Undo.
+
+  especialize h_eqone at 2 as ? : ? ;
+    [ admit | match type of h_eqone_spec with eq_one 2 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end;
+              match type of h_eqone_prem with 3=1 => idtac | _ => fail "Test failed!" end].
+  Undo.
+
+  especialize (let x:=Nat.le_antisymm in x) at 2 as ? : ? ;
+    [ admit |
+      match type of H_spec with (_ <= _ -> _ = _) => idtac | _ => fail "Test failed!" end;
+      match type of H_prem with _ <= _ => idtac | _ => fail "Test failed!" end].
+  Undo.
+
+  especialize h_eqone as ? at 2 : ? ;
+    [ admit | match goal with h_eqone_spec:eq_one 2 -> eq_one 1 -> False,
+                              h_eqone_prem : 3 = 1 |- _ => idtac | _ => fail "Test failed!" end].
+  Undo.
+
+  especialize (let x:=Nat.le_antisymm in x) as ? at 2 : ? ;
+    [ admit |
+      match type of H_spec with (_ <= _ -> _ = _) => idtac | _ => fail "Test failed!" end;
+      match type of H_prem with _ <= _ => idtac | _ => fail "Test failed!" end].
+  Undo.
+
+  especialize h_eqone at 2,3;
+    [ admit | admit| match type of h_eqone with eq_one 2 -> False=> idtac | _ => fail "Test failed!" end].
+  Undo.
+
+  especialize (let x:=Nat.le_antisymm in x) at 1,2;
+    [ admit | admit | match goal with |- (_ = _) -> True => idtac | _ => fail "Test failed!" end].
+  Undo.
+
+  especialize h_eqone at 3,2;
+    [ admit | admit| match type of h_eqone with eq_one 2 -> False=> idtac | _ => fail "Test failed!" end].
+  Undo.
+
+  especialize (let x:=Nat.le_antisymm in x) at 2,1;
+    [ admit | admit | match goal with |- (_ = _) -> True => idtac | _ => fail "Test failed!" end].
+  Undo.
+
+  especialize h_eqone as h at 2,3;
+    [ admit | admit| match type of h with eq_one 2 -> False=> idtac | _ => fail "Test failed!" end].
+  Undo.
+
+  especialize (let x:=Nat.le_antisymm in x) at 2,1 as h;
+    [ admit | admit | 
+      match type of h with (_ = _) => idtac | _ => fail "Test failed!" end].
+  Undo.
+
+  especialize h_eqone at 2,3 as h;
+    [ admit | admit| match type of h with eq_one 2 -> False=> idtac | _ => fail "Test failed!" end].
+  Undo.
+
+  especialize (let x:=Nat.le_antisymm in x) as h at 2,1;
+    [ admit | admit | 
+      match type of h with (_ = _) => idtac | _ => fail "Test failed!" end].
+  Undo.
+
+  especialize h_eqone at 3,2,1;
+    [ admit | admit | admit |  match type of h_eqone with False=> idtac | _ => fail "Test failed!" end ].
+  Undo.
+
+  especialize h_eqone as h at 3,2,1;
+    [ admit | admit | admit |  match type of h with False=> idtac | _ => fail "Test failed!" end ].
+  Undo.
+
+  especialize h_eqone at 3,2,1 as h;
+    [ admit | admit | admit |  match type of h with False=> idtac | _ => fail "Test failed!" end ].
   Undo.
   exact I.
 Qed.
 
 Lemma foo2: (eq_one 2 -> eq_one 3 ->eq_one 4 ->eq_one 5 ->eq_one 6 -> eq_one 1 -> False) -> True.
 Proof.
-  intros H.
-  especialize H at 3,1,4,5 as h; [ admit | admit | admit  | admit | match type of h with eq_one 3 -> eq_one 1 ->False=> idtac | _ => fail "Test failed!" end  ]. 
+  intros h_eqone.
+  especialize h_eqone at 3,1,4,5 as h;
+    [ admit | admit | admit  | admit | match type of h with eq_one 3 -> eq_one 1 ->False=> idtac | _ => fail "Test failed!" end  ]. 
   Undo.
-  especialize H as h at 3,1,4,5; [ admit | admit | admit  | admit | match type of h with eq_one 3 -> eq_one 1 ->False=> idtac | _ => fail "Test failed!" end  ]. 
+  especialize h_eqone as h at 3,1,4,5;
+    [ admit | admit | admit  | admit | match type of h with eq_one 3 -> eq_one 1 ->False=> idtac | _ => fail "Test failed!" end  ]. 
   Undo.
-  especialize H at 3,1,4,5; [ admit | admit | admit  | admit | match type of H with eq_one 3 -> eq_one 1 ->False=> idtac | _ => fail "Test failed!" end  ]. 
+  especialize h_eqone at 3,1,4,5;
+    [ admit | admit | admit  | admit | match type of h_eqone with eq_one 3 -> eq_one 1 ->False=> idtac | _ => fail "Test failed!" end  ]. 
   Undo.
-  especialize H at 3,1,4,5,2; [ admit | admit | admit | admit  | admit | match type of H with eq_one 1 ->False=> idtac | _ => fail "Test failed!" end  ]. 
+  especialize h_eqone at 3,1,4,5,2;
+    [ admit | admit | admit | admit  | admit | match type of h_eqone with eq_one 1 ->False=> idtac | _ => fail "Test failed!" end  ]. 
   Undo.
-  especialize H at 3,1,4,5,2  as h; [ admit | admit | admit | admit  | admit | match type of h with eq_one 1 ->False=> idtac | _ => fail "Test failed!" end  ]. 
+  especialize h_eqone at 3,1,4,5,2  as h;
+    [ admit | admit | admit | admit  | admit | match type of h with eq_one 1 ->False=> idtac | _ => fail "Test failed!" end  ]. 
   Undo.
-  especialize H as h at 3,1,4,5,2; [ admit | admit | admit | admit  | admit | match type of h with eq_one 1 ->False=> idtac | _ => fail "Test failed!" end  ]. 
+  especialize h_eqone as h at 3,1,4,5,2;
+    [ admit | admit | admit | admit  | admit | match type of h with eq_one 1 ->False=> idtac | _ => fail "Test failed!" end  ]. 
   Undo.
   exact I.
 Qed.
@@ -202,12 +334,12 @@ Qed.
 
 Lemma test_espec_namings: forall n:nat, (eq_one n -> eq_one 1 -> False) -> True.
 Proof.
-  intros n H.
+  intros n h_eqone.
   especialize Nat.quadmul_le_squareadd at 1 as hh : h.
   { apply le_n. }
   especialize min_l at 1 as ? : ?.
   { apply (le_n O). }
-  especialize H at 2 as h1 : h2.
+  especialize h_eqone at 2 as h1 : h2.
   { reflexivity. }
   match type of h2 with 1 = 1 => idtac | _ => fail end.
   match type of h1 with eq_one n -> False => idtac | _ => fail end.
@@ -216,18 +348,24 @@ Qed.
 
 Lemma test_esepec_6_7: (eq_one 2 -> eq_one 3 ->eq_one 4 ->eq_one 5 ->eq_one 6 ->eq_one 7 ->eq_one 8 -> eq_one 9 -> eq_one 1 -> False) -> True.
 Proof.
-  intros H.
-  especialize H at 3,1,4,5,2,7 as h; [ admit | admit | admit  | admit | admit | admit | match type of h with eq_one 7 -> eq_one 9 -> eq_one 1 ->False=> idtac | _ => fail "Test failed!" end].
+  intros h_eqone.
+  especialize h_eqone at 3,1,4,5,2,7 as h;
+    [ admit | admit | admit  | admit | admit | admit | match type of h with eq_one 7 -> eq_one 9 -> eq_one 1 ->False=> idtac | _ => fail "Test failed!" end].
   Undo.
-  especialize H as h at 3,1,4,5,2,7; [ admit | admit | admit  | admit | admit | admit | match type of h with eq_one 7 -> eq_one 9 -> eq_one 1 ->False=> idtac | _ => fail "Test failed!" end].
+  especialize h_eqone as h at 3,1,4,5,2,7;
+    [ admit | admit | admit  | admit | admit | admit | match type of h with eq_one 7 -> eq_one 9 -> eq_one 1 ->False=> idtac | _ => fail "Test failed!" end].
   Undo.
-  especialize H at 3,1,4,5,2,7; [ admit | admit | admit  | admit | admit | admit | match type of H with eq_one 7 -> eq_one 9 -> eq_one 1 ->False=> idtac | _ => fail "Test failed!" end].
+  especialize h_eqone at 3,1,4,5,2,7;
+    [ admit | admit | admit  | admit | admit | admit | match type of h_eqone with eq_one 7 -> eq_one 9 -> eq_one 1 ->False=> idtac | _ => fail "Test failed!" end].
   Undo.
-  especialize H at 3,1,4,5,2,7,9 as h; [ admit | admit | admit  | admit | admit | admit | admit | match type of h with eq_one 7 -> eq_one 9 -> False => idtac | _ => fail "Test failed!" end].
+  especialize h_eqone at 3,1,4,5,2,7,9 as h;
+    [ admit | admit | admit  | admit | admit | admit | admit | match type of h with eq_one 7 -> eq_one 9 -> False => idtac | _ => fail "Test failed!" end].
   Undo.
-  especialize H as h at 3,1,4,5,2,7,9; [ admit | admit | admit  | admit | admit | admit | admit | match type of h with eq_one 7 -> eq_one 9 -> False => idtac | _ => fail "Test failed!" end].
+  especialize h_eqone as h at 3,1,4,5,2,7,9;
+    [ admit | admit | admit  | admit | admit | admit | admit | match type of h with eq_one 7 -> eq_one 9 -> False => idtac | _ => fail "Test failed!" end].
   Undo.
-  especialize H at 3,1,4,5,2,7,9; [ admit | admit | admit  | admit | admit | admit | admit | match type of H with eq_one 7 -> eq_one 9 -> False => idtac | _ => fail "Test failed!" end].
+  especialize h_eqone at 3,1,4,5,2,7,9;
+    [ admit | admit | admit  | admit | admit | admit | admit | match type of h_eqone with eq_one 7 -> eq_one 9 -> False => idtac | _ => fail "Test failed!" end].
   Undo.
   exact I.
 Qed.
@@ -237,25 +375,46 @@ Qed.
 Lemma test_esepec_until_star: (eq_one 2 -> eq_one 3 ->eq_one 4 ->eq_one 5 ->eq_one 6 ->eq_one 7 ->eq_one 8 -> eq_one 9 -> eq_one 1 -> False) -> True.
 Proof.
   
-  intros H.
+  intros h_eqone.
   (* specialize on term ==> create a new hyp *)
-  especialize (let x:=not_eq_S in x) at *; [ intro ; admit | match type of H_spec with (S _)<>(S _) => idtac | _ => fail "Test failed!" end].
+  especialize (let x:=not_eq_S in x) at *;
+    [ intro ; admit | match type of H_spec with (S _)<>(S _) => idtac | _ => fail "Test failed!" end].
   Undo.
-  especialize (let x:=not_eq_S in x) at * as h; [ intro ; admit | match type of h with (S _)<>(S _) => idtac | _ => fail "Test failed!" end].
+  especialize (let x:=not_eq_S in x) at * as h;
+    [ intro ; admit | match type of h with (S _)<>(S _) => idtac | _ => fail "Test failed!" end].
   Undo.
-  especialize (let x:=H in x) at *; [ admit |admit |admit |admit |admit |admit |admit |admit |admit | match type of H_spec with False => idtac | _ => fail "Test failed!" end].
+  especialize (let x:=h_eqone in x) at *;
+    [ admit |admit |admit |admit |admit |admit |admit |admit |admit | match type of H_spec with False => idtac | _ => fail "Test failed!" end].
   Undo.
-  especialize (let x:= H in x) until 4 ; [ admit |admit |admit |admit | match type of H_spec with eq_one 6 -> eq_one 7 -> eq_one 8 -> eq_one 9 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end ].
+  (* proveprem_until h_eqone 4. *)
+  especialize (let x:= h_eqone in x) until 4;
+    [ admit |admit |admit |admit | match type of H_spec with eq_one 6 -> eq_one 7 -> eq_one 8 -> eq_one 9 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end ].
   Undo.
   (* behavior when acting on a hypothesis: replace the hyp by its specialize version *)
-  especialize H until 4; [ admit |admit |admit |admit | match type of H with eq_one 6 -> eq_one 7 -> eq_one 8 -> eq_one 9 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end].
+  especialize h_eqone until 4 ;
+    [ admit |admit |admit |admit | match type of h_eqone with eq_one 6 -> eq_one 7 -> eq_one 8 -> eq_one 9 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end].
   Undo.
-  especialize H at * ; [ admit |admit |admit |admit |admit |admit |admit |admit |admit | match type of H with False => idtac | _ => fail "Test failed!" end].
+  especialize h_eqone at * ;
+    [ admit |admit |admit |admit |admit |admit |admit |admit |admit | match type of h_eqone with False => idtac | _ => fail "Test failed!" end].
   Undo.
   (* unless we give the "as" option *)
-  especialize H at * as h ; [ admit |admit |admit |admit |admit |admit |admit |admit |admit | match type of h with False => idtac | _ => fail "Test failed!" end; match type of H with eq_one 2 -> eq_one 3 -> eq_one 4 -> eq_one 5 -> eq_one 6 -> eq_one 7 -> eq_one 8 -> eq_one 9 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end].
+  especialize h_eqone at * as h ;
+    [ admit |admit |admit |admit |admit |admit |admit |admit |admit | match type of h with False => idtac | _ => fail "Test failed!" end;
+                                                                      match type of h_eqone with eq_one 2 -> eq_one 3 -> eq_one 4 -> eq_one 5 -> eq_one 6 -> eq_one 7 -> eq_one 8 -> eq_one 9 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end].
   Undo.
-  especialize H until 4 as h; [ admit |admit |admit |admit | match type of h with eq_one 6 -> eq_one 7 -> eq_one 8 -> eq_one 9 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end].
+  especialize h_eqone until 4 as h;
+    [ admit |admit |admit |admit | match type of h with eq_one 6 -> eq_one 7 -> eq_one 8 -> eq_one 9 -> eq_one 1 -> False => idtac | _ => fail "Test failed!" end].
   Undo.
   exact I.
 Qed.
+
+Require Import LibHyps.LibDecomp.
+
+Goal forall l1 l2 l3:list nat, List.length l1 = List.length l2 /\ List.length l1 = List.length l3 -> True.
+Proof.
+
+  intros l1 l2 l3 h.
+  (* then_allnh_gen ltac:(fun x => all_hyps) ltac:(fun _ => decomp_logicals h)  ltac:(fun lh => idtac lh) . *)
+
+  (* Set Ltac Debug. *)
+  ltac:(fun _ => decomp_logicals h) ; { ltac:(fun lh => idtac lh) }.
