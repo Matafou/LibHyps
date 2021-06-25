@@ -18,7 +18,7 @@
 (** ** A specific variant of decompose. Which decomposes all logical connectives. *)
 
 Ltac decomp_logicals h :=
-  match type of h with
+  idtac;match type of h with
   | @ex _ (fun x => _) => let x' := fresh x in let h1 := fresh in destruct h as [x' h1]; decomp_logicals h1
   | @sig _ (fun x => _) => let x' := fresh x in let h1 := fresh in destruct h as [x' h1]; decomp_logicals h1
   | @sig2 _ (fun x => _) (fun _ => _) => let x' := fresh x in

@@ -408,6 +408,7 @@ Proof.
   exact I.
 Qed.
 
+(*
 Require Import LibHyps.LibDecomp.
 
 Goal forall l1 l2 l3:list nat, List.length l1 = List.length l2 /\ List.length l1 = List.length l3 -> True.
@@ -416,5 +417,7 @@ Proof.
   intros l1 l2 l3 h.
   (* then_allnh_gen ltac:(fun x => all_hyps) ltac:(fun _ => decomp_logicals h)  ltac:(fun lh => idtac lh) . *)
 
-  (* Set Ltac Debug. *)
+  Set Ltac Debug.
+  decomp_logicals h ; {(fun lh => idtac lh)}.
   ltac:(fun _ => decomp_logicals h) ; { ltac:(fun lh => idtac lh) }.
+*)
