@@ -36,7 +36,7 @@ Demo file [LibHypsDemo.v](https://github.com/Matafou/LibHyps/blob/master/LibHyps
 
 LibHyps provides utilities for hypothesis manipulations. In particular
 a new tactic `especialize H` and a set of tacticals to appy or iterate
-tactics either on all hypothesis of a goalor on "new' hypothesis after
+tactics either on all hypothesis of a goal or on "new' hypothesis after
 a tactic. It also provide syntax for a few predefined such iterators.
 
 ## QUICK REF: especialize
@@ -68,6 +68,8 @@ The most useful user-dedicated tacticals are the following
 ## Examples
 
 ```coq
+Require Import LibHyps.LibHyps.
+
 Lemma foo: forall x y z:nat,
     x = y -> forall  a b t : nat, a+1 = t+2 -> b + 5 = t - 7 ->  (forall u v, v+1 = 1 -> u+1 = 1 -> a+1 = z+2)  -> z = b + x-> True.
 Proof.
