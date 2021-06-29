@@ -1,8 +1,8 @@
 
+(* (set-face-attribute 'proof-declaration-name-face nil
+   :bold nil :foreground "white") *)
 (*** Proof maintenance ***)
-
 Unset Printing Compact Contexts.
-(*  *)
 Require Import Arith ZArith  List.
 Require Import LibHyps.LibHyps.
 
@@ -87,7 +87,8 @@ Lemma foo: forall (x:nat) (b1:bool) (y:nat) (b2:bool),
           0 <= p ->
           Nat.divide n p ->
           Nat.divide m p ->
-          (forall q : nat, Nat.divide n q -> Nat.divide m q -> Nat.divide p q) ->
+          (forall q : nat, Nat.divide n q -> Nat.divide m q
+                    -> Nat.divide p q) ->
           Nat.lcm n m = p) ->
       (exists w:nat , ~(true=(andb false true)) /\ le w w /\ w = x) ->
       forall z, forall b4:bool, forall z',
@@ -147,13 +148,21 @@ Proof.
   intros.
   (* tactic "autorename H" applies the naming heursitc to H. *)
   autorename H.
-  (* Notice the trailing "_". Can be removed BUT coq may replace digits... *)
+  (* Notice the trailing "_": avoids coq replacing digits. *)
   Undo.
   (* Again, one can apply it to all hyps: *)
   onAllHyps autorename.
+
+  (* experimental: (setq coq-libhyps-intros t) *)
+  Undo 2.
+  Show.
+  (* PG's "smart intros" adapts *)
+
+  (* company-coq "guess names" has the same back-end.  *)
+
   (* better with colors. *)
   (* (set-face-attribute 'proof-declaration-name-face nil :bold nil :foreground "white")
-     (set-face-attribute 'proof-declaration-name-face nil :bold nil :foreground "orange") *)
+   (set-face-attribute 'proof-declaration-name-face nil :bold nil :foreground "orange") *)
   Restart.
   Show.
   (* Again, better combine it with ";;". *)
@@ -173,7 +182,7 @@ Proof.
      demo. *)
 
   (* tactic that generate names can be easily tamed. *)
-  decompose [ex and or] h_ex_and_neq_and_ /sng.
+  decompose [ex and or] h_ex_and_neq_and_/sng.
   (* No more obscure "as" to maintain *)
   inversion h_le_y_y_ /sng.
 Abort.
@@ -199,9 +208,14 @@ Ltac rename_hyp ::= rename_hyp_2.
 Goal forall x y:nat, True.
   intros.
   (* computing a few names *)
+  (* Customize the starting depth *)
+
   let res := fallback_rename_hyp_name (Nat.eqb 1 2) in idtac res.
   let res := fallback_rename_hyp_name (Nat.eqb x 4) in idtac res.
   let res := fallback_rename_hyp_name (Nat.eqb 1 2 = false) in idtac res.
+  Ltac rename_depth ::= constr:(2).
+  let res := fallback_rename_hyp_name (Nat.eqb 1 2 = false) in idtac res.
+  Ltac rename_depth ::= constr:(3).
 Abort.
 
 (** Suppose I want to add another naming rule: I need to cumulate the
@@ -222,7 +236,8 @@ Local Close Scope autonaming_scope.
 
 Goal forall x y:nat, True.
   intros.
-  let res := fallback_rename_hyp_name (Nat.eqb 1 2 = false) in idtac res.
+  let res := fallback_rename_hyp_name (Nat.eqb 1 2 = false) in
+  idtac res.
 Abort.
 
 
@@ -239,7 +254,7 @@ Lemma foo: forall (x:nat) (b1:bool) (y:nat) (b2:bool),
             -> z = b + 5-> z' + 1 = b + x-> x < y + b.
 Proof.
   (* Customize the starting depth *)
-  Ltac rename_depth ::= constr:(2).
+  Ltac rename_depth ::= constr:(3).
 
   intros/n/g.
 

@@ -1,50 +1,60 @@
-Small proof maintenance enhancements with Coq and IDE (e.g. Proofgeneral)
+             Small proof maintenance enhancements with Coq
 
 * Dealing with new hyps
 ** ssreflect spirit
-   Operate on hypothesis *before* introducing them.
-   post-treatment (administrative) *while* introducing.
-   
+*** Operate on hypothesis *before* introducing them.
+*** Post-treatment (administrative) *while* introducing.
 ** Ltac spirit
-   Deal with hypothesis *after* introducing them.
+*** Deal with hypothesis *after* introducing them.
+
    => idea: provide post-treatment tyding tactics
    => apply them to "recent" hyps.
 
-** General tactical ";;"
+** tacticals iterating on (new) hyps
+*** New tactical ";;"
+
 #+begin_src coq
   tac1 ;; tac2. 
 #+end_src
- + applies tac1, then applies tac2 on each new hypothesis from tac1.
- + Example:
+   + applies tac1, then applies tac2 on each new hypothesis from tac1.
+
+**** example:
+
 #+begin_src coq
    intros ;; (fun h => idtac h)
 #+end_src
-   outputs the name of each new hyp.
- + *Important*: "new hyp" means "new hyp *name*".
-   If tac1 reuses a name, it is not "new".
+   + *Important*: "new hyp" means "new hyp *name*".
 
-** Tactical ;!; (reverse order)
-** Tactical onAllHyp
+*** Reverse order ":!:"
+
+#+begin_src coq
+  tac1 ;!; tac2.
+#+end_src
+
+*** Iterating on all hyps instead
+
 #+begin_src coq
   onAllhyp tac.
 #+end_src
-+ applies tac on each hypothesis of the goal.
-+ degenerate case of ";;". One-time use.
 
 ** DEMO: different use cases
-   + revert new hyps
-   + subst new hyps
-   + move uninteresting new hyps to the top
-   + name new hyps
+   + revert
+   + subst
+   + move non-Prop away to the top
+   + autorename
+   + decompose
    + ...
+
+
 * Dealing with big goals (demo)
-** IDE can help
+** A bit help from IDE
 *** hide big hyps
 *** help read the goal
 *** copy hyps names easily
-
 ** use case for ";;"
-move hypothesis to focus on intersting (i.e. Prop-sorted) stuff.
+move variables away to focus on intersting (i.e. Prop-sorted) stuff.
+
+
 
 * Hypothesis names
 ** Problem not really interesting
@@ -56,7 +66,7 @@ move hypothesis to focus on intersting (i.e. Prop-sorted) stuff.
 *** ssrefelct partial solution
     Less use of introduced hyps.
     New hyps never introduced automatically.
-    Still need names.
+    Still need to provide names.
 *** others
 **** coq-label aka Cortouche
      https://github.com/pedagand/coq-label
@@ -72,7 +82,7 @@ move hypothesis to focus on intersting (i.e. Prop-sorted) stuff.
      Qed.
 #+end_src
    Needs:
-   - automatic pattern generation
+   - automatic pattern generation for IDE
    - still a bit hard to read.
    - but promising
    - Maintained?
@@ -84,7 +94,12 @@ move hypothesis to focus on intersting (i.e. Prop-sorted) stuff.
    - Maintained?
 
 **** LibHyps (present work) Automatic naming from the type of the hyp
-***** Idea
+***** tactic autorename
+  - rename a hypothesis, works with ";;"
+#+begin_src coq
+  autorename H.
+#+end_src
+
      Simple recursive procedure on the type. PROP SORTED ONLY.
      Pseudo-code (th = type of the hypothesis, n = "depth"):
 #+begin_src coq
@@ -100,28 +115,22 @@ move hypothesis to focus on intersting (i.e. Prop-sorted) stuff.
            end
        end.
 #+end_src
+
 ***** Details
      + prefix "h_", suffix "_" (optional, avoids bad interaction with Coq hacking names)
-     + omit implicits
-     + special cases for equality and negation and quantifiers
+     + omit implicits (Ltac painful)
+     + special cases for equality, negation, option, quantifiers.
      + USER DEFINED NAMING LTAC
      + keep using "rename" and "as" and "intros" for non-Prop hyps
 
-** Use case for ";;"
-   rename new hyps!
 ** Demo
+
 
 * Conclusion
 ** A distributed Ltac plugin
    opam install coq-libhyps
-   Released this week.
-   Old syntax:
-#+begin_src coq
-!intros.  (* = intros /n. *)
-!!!intros. (* = intros /s/n. *)
-!!!!intros. (* = intros /s/n/g. *)
-#+end_src
-** Need of an ocaml plugin?
+   
+** Need of an ocaml plugin
 *** Efficiency problem on big goals
     + Lots of terms building (and typing) to do all this in Ltac.
     + Speed up with a tactical applying to the *list* of new hyps.
@@ -135,7 +144,7 @@ move hypothesis to focus on intersting (i.e. Prop-sorted) stuff.
     + But still slow on big goals.
 *** implicit detection slow
 *** program a new "as" for new hyps - difficult in ltac
-*** Nicer custmization syntax.
+*** Nicer customization syntax.
 There is already this:
    #+begin_src coq
    Arguments my_relation {A} {R} x y z : rename. 
@@ -149,5 +158,6 @@ Maybe we can add:
 
 or maybe merge both declarations?
    
+*** BUT plugins tend to be less adopted (fear of long term maintenance)
 ** Give it a try.
 *** testers and comments welcome
