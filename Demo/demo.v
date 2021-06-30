@@ -75,7 +75,7 @@ Proof.
 Abort.
 
 
-(*** Large Goals ***)
+(*** Large Goals - Foraward reasoning and reordering and autorenaming of hypothesis. ***)
 
 Lemma foo: forall (x:nat) (b1:bool) (y:nat) (b2:bool),
     x = y ->
@@ -113,6 +113,20 @@ Proof.
   especialize H3 at 1.
   { apply le_S.
     apply le_n. }
+  Undo 5.
+
+  (* It accepts several (up to 7) premisses numers. *)
+  especialize H3 at 2,3.
+  Undo.
+
+  (* you can ask a goal for all premisses, in the spirit of the
+  "exploit" tactic from CompCert. *)
+  especialize H3 at *.
+  Undo.
+  
+  (* You can also specify that you want to instantiate the n first premisses. *)
+  especialize H3 until 3.
+  Undo.
 
   (* VARIABLES MIXED WITH HYPOTHESIS. *)
   (* move_up_types X. moves X at top near something of the same type,
