@@ -31,11 +31,11 @@ make install
 Require Import LibHyps.LibHyps.
 ```
 
-Demo files [demo.v](https://github.com/Matafou/LibHyps/blob/master/LibHyps/Demo/demo.v).
+Demo files [demo.v](https://github.com/Matafou/LibHyps/blob/master/Demo/demo.v).
 
 ## Documentation
 
-Demo file [demo.v](https://github.com/Matafou/LibHyps/blob/master/LibHyps/Demo/demo.v) acts as a documentation.
+Demo file [demo.v](https://github.com/Matafou/LibHyps/blob/master/Demo/demo.v) acts as a documentation.
 
 # Short description:
 
@@ -69,6 +69,14 @@ The most useful user-dedicated tacticals are the following
     above are preferred.
   + "tac1 ;; tac2" remains, but you can also use "tac1; { tac2 }".
   + "tac1 ;!; tac2" remains, but you can also use "tac1; {< tac2 }".
+
+## KNOWN BUGS
+
+Due to Ltac limitation, it is difficult to define a tactic notation
+`tac1 ; { tac2 }` which delays `tac1` and `tac2` in all cases.
+Sometimes (rarely) you will have to write `(idtac; tac1); {idtac;
+tac2}`. You may then use tactic notation like: `Tactic Notation tac1'
+:= idtac; tac1.`.
 
 ## Examples
 
