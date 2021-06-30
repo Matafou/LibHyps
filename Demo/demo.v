@@ -1,4 +1,13 @@
 
+(* DEMO FILE FOR THE LIBHYPS LIBRARY FEATURES.
+
+This acts as a documentation.
+
+You can install LibHyps with opam with
+
+opam install coq_libhyps
+*)
+
 (* (set-face-attribute 'proof-declaration-name-face nil
    :bold nil :foreground "white") *)
 (*** Proof maintenance ***)
