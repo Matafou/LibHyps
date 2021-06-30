@@ -30,7 +30,12 @@ make install
 ```coq
 Require Import LibHyps.LibHyps.
 ```
-Demo file [LibHypsDemo.v](https://github.com/Matafou/LibHyps/blob/master/LibHyps/LibHypsDemo.v).
+
+Demo files [demo.v](https://github.com/Matafou/LibHyps/blob/master/LibHyps/Demo/demo.v).
+
+## Documentation
+
+Demo file [demo.v](https://github.com/Matafou/LibHyps/blob/master/LibHyps/Demo/demo.v) acts as a documentation.
 
 # Short description:
 

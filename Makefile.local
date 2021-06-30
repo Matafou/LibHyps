@@ -14,10 +14,15 @@ tests:
 	$(SHOW) 'COQC LibHyps/LibHypsRegression.v' 
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) -async-proofs-cache force -w -undo-batch-mode $(COQLIBS) ./LibHyps/LibHypsRegression.v $(TIMING_EXTRA) 
 	@echo " ==> regression tests passed."
+	@echo -n building demo file...
+	$(SHOW) 'COQC Demo/demo.v > /dev/null' 
+	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) -async-proofs-cache force -w -undo-batch-mode $(COQLIBS) ./Demo/demo.v $(TIMING_EXTRA) > /dev/null
+	@echo " ==> regression tests passed."
 
 cleantests:
-	rm -f LibHyps/LibHypsRegression.vo LibHyps/LibHypsRegression.vo LibHyps/LibHypsRegression.vok LibHyps/LibHypsRegression.vos LibHyps/LibHypsRegression.glob
-	rm -f LibHyps/LibHypsRegression.vo LibHyps/LibHypsTest.vo LibHyps/LibHypsTest.vok LibHyps/LibHypsTest.vos LibHyps/LibHypsTest.glob
+	rm -f LibHyps/LibHypsRegression.vo LibHyps/LibHypsRegression.vok LibHyps/LibHypsRegression.vos LibHyps/LibHypsRegression.glob
+	rm -f LibHyps/LibHypsTest.vo LibHyps/LibHypsTest.vok LibHyps/LibHypsTest.vos LibHyps/LibHypsTest.glob
+	rm -f Demo/*.vo Demo/*.vok Demo/*.vos Demo/*.glob
 
 ### Local Variables: ***
 ### mode: makefile ***
