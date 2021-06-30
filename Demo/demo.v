@@ -1,15 +1,17 @@
 
-(* DEMO FILE FOR THE LIBHYPS LIBRARY FEATURES.
+(* DEMO FILE FOR THE LIBHYPS LIBRARY FEATURES. *)
 
-This acts as a documentation.
+(* This acts as a documentation for LibHyps. *)
 
-You can install LibHyps with opam with
+(* WARNING: You can play this file in any IDE but beware that it
+contains "Undo" at many places and that your IDE may not support it.
+In this case you can edit the script by commenting things instead of
+playing the Undos. *)
 
-opam install coq_libhyps
-*)
+(* You can install LibHyps with opam with:
 
-(* (set-face-attribute 'proof-declaration-name-face nil
-   :bold nil :foreground "white") *)
+opam install coq_libhyps *)
+
 (*** Proof maintenance ***)
 Unset Printing Compact Contexts.
 Require Import Arith ZArith  List.
@@ -107,29 +109,31 @@ Lemma foo: forall (x:nat) (b1:bool) (y:nat) (b2:bool),
 Proof.
   intros.
   (* BIG HYPS may clutter the goal. IDE solution. *)
-  (* 1. Just hide it by clicking on its button, or hit "f"
-        while cursor on its name. Persistent and simply based
-        on hyp name. *)
+  (* 1. ProofGeneral: just hide it by clicking on its button, or hit
+        "f" while cursor on its name. Persistent and simply based on
+        hyp name. *)
 
   (* 2. Big hyps ask for "non verbose forward reasoning". *)
-  (* Since a few years: "specialize" now re-quantifies. *)
+  (* Since a few years coq allows "specialize" to re-quantifies
+     non-unified premisses. *)
   specialize H3 with (1:= le_S _ _ (le_n 0)).
 
-  (* More of the same: new tactic "especialize" starts a goal
-    to instantiate a dependent premiss of a hyp, and then
-    re-quantifies everything non instantiated. *)
+  (* Our tactic "especialize" starts a goal to instantiate a dependent
+     premiss of a hyp, and then re-quantifies everything non
+     instantiated. *)
   Undo.
   especialize H3 at 1.
   { apply le_S.
     apply le_n. }
   Undo 5.
-
+  (* IDEs don't like Undo, replay the next ocommand twice will resync
+     proofgeneral. *)
   (* It accepts several (up to 7) premisses numers. *)
   especialize H3 at 2,3.
   Undo.
 
   (* you can ask a goal for all premisses, in the spirit of the
-  "exploit" tactic from CompCert. *)
+     "exploit" tactic from CompCert. *)
   especialize H3 at *.
   Undo.
   
@@ -179,13 +183,7 @@ Proof.
   (* experimental: (setq coq-libhyps-intros t) *)
   Undo 2.
   Show.
-  (* PG's "smart intros" adapts *)
-
-  (* company-coq "guess names" has the same back-end.  *)
-
-  (* better with colors. *)
-  (* (set-face-attribute 'proof-declaration-name-face nil :bold nil :foreground "white")
-   (set-face-attribute 'proof-declaration-name-face nil :bold nil :foreground "orange") *)
+  
   Restart.
   Show.
   (* Again, better combine it with ";;". *)
@@ -201,8 +199,7 @@ Proof.
   (* Long names, this is configurable (next demo), but IDE provides
      easy ways to see them (highlight) and to input them:
      - middle-click on hyp's name.
-     - completion (company-coq).
-     demo. *)
+     - completion (company-coq). *)
 
   (* tactic that generate names can be easily tamed. *)
   decompose [ex and or] h_ex_and_neq_and_/sng.
@@ -280,6 +277,11 @@ Proof.
   Ltac rename_depth ::= constr:(3).
 
   intros/n/g.
+  Undo.
+  (* Have shorter names: *)
+  Ltac rename_depth ::= constr:(2).
+  intros/n/g.
+
 
 Abort.
 
