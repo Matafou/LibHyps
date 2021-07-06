@@ -1,3 +1,6 @@
+(* Copyright 2021 Pierre Courtieu
+  This file is part of LibHyps. It is distributed under the MIT
+  "expat license". You should have recieved a LICENSE file with it. *)
 (* We add commands, and Assign is an expr. *)
 
 Require Import FSets.FMapList FSets.FMapFacts Arith ZArith

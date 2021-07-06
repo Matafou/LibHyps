@@ -1,4 +1,6 @@
-
+(* Copyright 2021 Pierre Courtieu
+  This file is part of LibHyps. It is distributed under the MIT
+  "expat license". You should have recieved a LICENSE file with it. *)
 (* Adding variables, thus an environment. *)
 
 Require Import FSets.FMapList FSets.FMapFacts Arith ZArith

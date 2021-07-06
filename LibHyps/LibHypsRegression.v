@@ -1,9 +1,6 @@
-(* Copyright 2017 Pierre Courtieu *)
-(* This file is part of LibHyps.
-
-    You should have received a copy of the GNU General Public License
-    along with LibHyps.  If not, see <https://www.gnu.org/licenses/>.
-*)
+(* Copyright 2021 Pierre Courtieu
+  This file is part of LibHyps. It is distributed under the MIT
+  "expat license". You should have recieved a LICENSE file with it. *)
 
 Require Import Arith ZArith LibHyps.LibHyps LibHyps.LibSpecialize List.
 

@@ -1,8 +1,6 @@
-(* Copyright 2017,2019,2021 Pierre Courtieu *)
-(* This file is part of LibHyps. It is distributed under GPLv3.
-
- You should have received a copy of the GNU General Public License
- along with LibHyps.  If not, see <https://www.gnu.org/licenses/>. *)
+(* Copyright 2021 Pierre Courtieu
+  This file is part of LibHyps. It is distributed under the MIT
+  "expat license". You should have recieved a LICENSE file with it. *)
 
 (* proveprem H at i as h. Create an assert for the ith dependent
 premiss of hypothesis H and specialize H with the resulting proof. h

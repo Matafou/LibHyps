@@ -1,7 +1,6 @@
-(* Copyright 2017-2019 Pierre Courtieu *)
-(* This file is part of LibHyps.
-   You should have received a copy of the GNU General Public License
-   along with LibHyps.  If not, see <https://www.gnu.org/licenses/>. *)
+(* Copyright 2021 Pierre Courtieu
+  This file is part of LibHyps. It is distributed under the MIT
+  "expat license". You should have recieved a LICENSE file with it. *)
 
 Require Export LibHyps.TacNewHyps.
 Require Export LibHyps.LibHypsNaming.
