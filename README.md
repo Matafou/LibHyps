@@ -178,7 +178,7 @@ will. It must be of the following form:
 (** Redefining rename_hyp*)
 (* First define a naming ltac. It takes the current level n and
    the sub-term th being looked at. It returns a "name". *)
-Ltac rename_hyp_default n th ::=
+Ltac rename_hyp_default n th :=
    match th with
    | (ind1 _ _) => name (`ind1`)
    | (ind1 _ _ ?x ?y) => name (`ind1` ++ x#(S n)x ++ y$n)
