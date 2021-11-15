@@ -22,7 +22,6 @@ Ltac decomp_logicals h :=
   | and _ _ => let h1 := fresh in let h2 := fresh in destruct h as [h1 h2]; decomp_logicals h1; decomp_logicals h2
   | iff _ _ => let h1 := fresh in let h2 := fresh in destruct h as [h1 h2]; decomp_logicals h1; decomp_logicals h2
   | or _ _ => let h' := fresh in destruct h as [h' | h']; [decomp_logicals h' | decomp_logicals h' ]
-  | IF_then_else _ _ _ => let h' := fresh in destruct h as [h' | h']; [decomp_logicals h' | decomp_logicals h']
   | _ => idtac
   end.
 
