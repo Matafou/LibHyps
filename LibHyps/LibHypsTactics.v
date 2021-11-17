@@ -6,6 +6,15 @@ Require Export LibHyps.TacNewHyps.
 Require Export LibHyps.LibHypsNaming.
 Require Export LibHyps.LibSpecialize.
 
+(* debug *)
+(*
+Ltac pr_goal :=
+  match goal with
+    |- ?g =>
+      let allh := all_hyps in
+      idtac allh " ⊢ " g
+  end.*)
+
 (* Default behaviour: generalize hypothesis that we failed to rename,
    so that no automatic names are introduced by mistake. Of course one
    can do "intros" to reintroduce them.
@@ -126,8 +135,25 @@ Ltac find_topest_prop others lH :=
   | _ => others
   end.
 
+(* equivalent to move x before belowme but fails if x=bleowme. This
+   forces the pre-8.14 behaviour of move below. *)
+Ltac move_below x belowme :=
+  match constr:((x , belowme)) with
+  | (?c,?c) => idtac
+  | _ => move x before belowme
+  end.
 
+(* equivalent to move x after belowme but fails if x=bleowme *)
+Ltac move_above x aboveme :=
+  match constr:((x , aboveme)) with
+  | (?c,?c) => idtac
+  | _ => move x after aboveme
+  end.
 
+Local Tactic Notation "move" hyp(x) "below" hyp(y)
+  := (move_below x y).
+Local Tactic Notation "move" hyp(x) "above" hyp(y)
+  := (move_above x y).
 
 Ltac group_up_list_ fstProp cache lhyps :=
   lazymatch lhyps with
@@ -140,11 +166,11 @@ Ltac group_up_list_ fstProp cache lhyps :=
       | (?newcache , None) =>
         match fstProp with
         | @None => idtac (* No Prop Hyp, don't move *)
-        | ?hfstprop => move h after hfstprop
+        | ?hfstprop => move h above hfstprop
         end;
         group_up_list_ fstProp constr:(DCons th h cache) lhyps'
       | (?newcache , ?theplace) =>
-        (try move h before theplace); group_up_list_ fstProp newcache lhyps'
+          (try move h below theplace); group_up_list_ fstProp newcache lhyps'
       end
     end
   | _ => idtac
@@ -184,7 +210,8 @@ Ltac build_initial_cache_ lh :=
     end
   end.
 
-(* build the list of hyps  *)
+(* the cache is a pair: (H:first Prop-sorted hyp, list of each
+   variable that is above H and the last of its type segment). *)
 Ltac build_initial_cache lh := build_initial_cache_ lh.
 
 

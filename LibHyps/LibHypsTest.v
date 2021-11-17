@@ -422,6 +422,40 @@ Proof.
   exact I.
 Qed.
 
+(* Checking the chaining of operators. *)
+Lemma test_group_up_after_subst: forall x y:nat,
+    ((fun f => x = y) true)
+    -> forall a b: bool, forall z:nat,
+    0 <= 1 ->
+    (0%Z <= 1%Z)%Z ->
+    x <= y ->
+    x = y ->
+      (0 < 1 -> 1<0) -> 0 < z -> True.
+Proof.
+  intros ; { subst_or_idtac } ; {! group_up_list }.
+  lazymatch reverse goal with
+  | Hb:_, Ha:_,Hz:_ , Hy:_ |- True =>
+    let t := constr:((ltac:(reflexivity)): Hb=b) in
+    let t := constr:((ltac:(reflexivity)): Ha=a) in
+    let t := constr:((ltac:(reflexivity)): Hz=z) in
+    let t := constr:((ltac:(reflexivity)): Hy=y) in
+    idtac
+  | _ => fail "test failed (wrong order of hypothesis)!"
+  end.
+  lazymatch goal with
+    | hH0:_,hH1:_, hH2:_, hH4:_ , hH5:_ |- True =>
+      let t := constr:((ltac:(reflexivity)): H0=hH0) in
+      let t := constr:((ltac:(reflexivity)):H1=hH1) in
+      let t := constr:((ltac:(reflexivity)): H2=hH2) in
+      let t := constr:((ltac:(reflexivity)): H4=hH4) in
+      let t := constr:((ltac:(reflexivity)): H5=hH5) in
+      idtac
+    | _ => fail "test failed (wrong order of hypothesis)!"
+  end.
+  exact I.
+Qed.
+
+
 Ltac substHyp H ::=
   match type of H with
   | Depl => fail 1 (* fail immediately, we are applying on a list of hyps. *)
