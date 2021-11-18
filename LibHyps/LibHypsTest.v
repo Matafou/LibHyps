@@ -289,9 +289,10 @@ Proof.
   exact I.
 Qed.
 
-(* This is a nonregression test but the current behaviour is not
-completely satisfying (b <-> a). So we may make it a bit different
-some day. *)
+(* group_up_list is insensitive to order of hypothesis. It respects
+   the respective order of variables in each segment. This has changed
+   in version 2.0.5 together with a bug fix.
+   Note that the deprecated move_up_types is sensitive to order. *)
 Lemma test_group_up_list1_rev: forall x y:nat,
     ((fun f => x = y) true)
     -> forall a b: bool, forall z:nat,
@@ -303,7 +304,7 @@ Lemma test_group_up_list1_rev: forall x y:nat,
 Proof.
   intros ; {!< group_up_list }.
   lazymatch reverse goal with
-    | Ha:_, Hb:_,Hz : _ , Hy:_ , Hx:_ |- True =>
+    | Hb:_, Ha:_,Hz : _ , Hy:_ , Hx:_ |- True =>
       let t := constr:((ltac:(reflexivity)): Hb=b) in
       let t := constr:((ltac:(reflexivity)): Ha=a) in
       let t := constr:((ltac:(reflexivity)): Hz=z) in
@@ -323,7 +324,7 @@ Proof.
     | _ => fail "test failed (wrong order of hypothesis)!"
   end.
   exact I.
-Qed.
+ Qed.
 
 (* Two more tests for the case where the top hyp is Prop-sorted. *)
 
@@ -505,7 +506,7 @@ Qed.
 (* Legacy Notations tac ;; tac2. *)
 Lemma test_tactical_semi_rev: forall x y:nat,
     ((fun f => x = y) true)
-    -> forall a b: bool, forall z:nat,
+    -> forall a b: bool, forall z u:nat,
     0 <= 1 ->
     (0%Z <= 1%Z)%Z ->
     x <= y ->
@@ -515,9 +516,10 @@ Proof.
   (* move_up_types is there for backward compatibility. It moves Type-Sorted hyps up. *)
   intros ;!; move_up_types.
   lazymatch reverse goal with
-    | Ha:_, Hb:_,Hz : _ , Hx:_ , Hy:_ |- True =>
+    | Ha:_, Hb:_, Hz: _ , Hu : _ , Hy:_ , Hx:_ |- True =>
       let t := constr:((ltac:(reflexivity)): Hb=b) in
       let t := constr:((ltac:(reflexivity)): Ha=a) in
+      let t := constr:((ltac:(reflexivity)): Hu=u) in
       let t := constr:((ltac:(reflexivity)): Hz=z) in
       let t := constr:((ltac:(reflexivity)): Hy=y) in
       let t := constr:((ltac:(reflexivity)): Hx=x) in
@@ -616,4 +618,27 @@ Qed.
 
 
 
-
+(* Stressing the system with big goals *)
+Import TacNewHyps.Notations.
+Lemma foo':
+  forall (_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+            _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+            _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+            _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+            _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+            _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+            _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+            _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+          : (forall (_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+                       _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+                       _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+                       _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+                     :nat), True))
+                  (a b:bool), True -> forall y z:nat, True.
+  (* Time intros. (* .07s *) *)
+  (* Time intros; { fun x => idtac x}. (* 1,6s *) *)
+  Time intros /g. (* 3s *)
+  (* Time intros ; { move_up_types }. (* ~7mn *) *)
+  (* Time intros /n. (* 19s *) *)
+exact I.
+Qed.

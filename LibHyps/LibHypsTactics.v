@@ -7,13 +7,12 @@ Require Export LibHyps.LibHypsNaming.
 Require Export LibHyps.LibSpecialize.
 
 (* debug *)
-(*
 Ltac pr_goal :=
   match goal with
     |- ?g =>
       let allh := all_hyps in
       idtac allh " ⊢ " g
-  end.*)
+  end.
 
 (* Default behaviour: generalize hypothesis that we failed to rename,
    so that no automatic names are introduced by mistake. Of course one
@@ -115,69 +114,92 @@ Ltac find_in_cache_T cache T :=
   | _ => constr:((cache,@None T))
   end.
 
+(* if T is not already present in cache, return the (cache + (h:T)),
+   otherwise return cache unchanged. *)
 Ltac find_in_cache_update cache T h :=
   match find_in_cache_T cache T with
-    (?c , ?res) => constr:((DCons T h c , res))
+    (?c , None) => constr:((DCons T h c , None))
+  | (?c , ?res) => constr:((DCons T h c , res))
   end.
 
-
-
-(* Finds the topest Prop-srted hyp. If none found, return candidate. *)
-Ltac find_topest_prop others lH :=
-  lazymatch lH with
-  | (?hs' ?Hyp) =>
-    let THyp := type of Hyp in
-    match type of THyp with
-    | Prop => find_topest_prop hs' hs'
-    | Type => find_topest_prop others hs'
-    | Set => find_topest_prop others hs'
-    end
-  | _ => others
-  end.
-
+(* Precondition: x must be "below" y at start *)
 (* equivalent to move x before belowme but fails if x=bleowme. This
    forces the pre-8.14 behaviour of move below. *)
-Ltac move_below x belowme :=
-  match constr:((x , belowme)) with
+Ltac move_above x y :=
+  match constr:((x , y)) with
   | (?c,?c) => idtac
-  | _ => move x before belowme
+  | _ => move x after y
   end.
 
+(* Precondition: x must be "below" y at start *)
 (* equivalent to move x after belowme but fails if x=bleowme *)
-Ltac move_above x aboveme :=
-  match constr:((x , aboveme)) with
+Ltac move_below x y :=
+  match constr:((x , y)) with
   | (?c,?c) => idtac
-  | _ => move x after aboveme
+  | _ => move x before y
   end.
 
-Local Tactic Notation "move" hyp(x) "below" hyp(y)
-  := (move_below x y).
-Local Tactic Notation "move" hyp(x) "above" hyp(y)
-  := (move_above x y).
 
+(* move each hyp in lhyps either after the pivot hyp for its type
+found in cache, or just above fstProp if there is no pivot. In this
+second case we return a new cache with h as a new pivot. *)
+(* Example
+There is a number of "segments". A segment for type T is the first set
+of consecutive variables of type T, located before the first
+Prop-sorted hyp. For sintance there are 2 segments in the goal below,
+one is x1-x3 and the other is b1-b2.
+
+  x1 : nat
+  x2 : nat
+  x3 : nat <-- pivot for nat
+  b1 : bool
+  b2 : bool <-- pivot for bool
+  H : ... : Prop <-- fstProp
+  H2: ... : Prop not in lhyps
+  x : nat  <-- in lhyps
+  b : bool <-- in lhyps
+  c : Z    <-- in lhyps
+ =======
+  ...
+
+This is described by the three arguments:
+
+- cache is (DCons bool b2 (DCons nat x3 DNil)) i.e. last variable of
+  each segment 
+- lhyps is (DCons nat x (DCons bool b (DCons Z c DNil))) list of
+  variable to move (may not contain all the badly place variables)
+- fstProp is H.
+
+The goal of group_up_list_ is to move all vars of lhyps to there
+segment or above fstProp if there segment does not exist yet.
+
+invariant: the things in lhyps always need to be moved upward,
+otherwise move before and move after work the wrong way. *)
 Ltac group_up_list_ fstProp cache lhyps :=
   lazymatch lhyps with
   | DCons ?th ?h ?lhyps' =>
     match type of th with
-    | Prop => group_up_list_ fstProp cache lhyps'
-    | _ => 
+    | Prop => (* lhyps is supposed to be filtered out of Prop already. *)
+        idtac "LibHyps: This shoud not happen. Please report.";
+        group_up_list_ fstProp cache lhyps'
+    | _ =>
       let upd := find_in_cache_update cache th h in
       lazymatch upd with
-      | (?newcache , None) =>
+      | (?newcache , None) => (* there was no pivot for th *)
         match fstProp with
         | @None => idtac (* No Prop Hyp, don't move *)
-        | ?hfstprop => move h above hfstprop
+        | ?hfstprop => move_above h hfstprop
         end;
         group_up_list_ fstProp constr:(DCons th h cache) lhyps'
       | (?newcache , ?theplace) =>
-          (try move h below theplace); group_up_list_ fstProp newcache lhyps'
+          (* we append h to its segment, and it becomes the new pivot. *)
+          (try move_below h theplace);
+          group_up_list_ fstProp newcache lhyps'
       end
     end
-  | _ => idtac
+  | DNil => idtac (* no more hyps to move *)
   end
 .
-
-
 
 Ltac find_in t lh :=
   match lh with
@@ -186,33 +208,70 @@ Ltac find_in t lh :=
   | (DCons _ ?h ?lh') => find_in t lh'
   end.
 
-Ltac build_initial_cache_ lh :=
-  lazymatch lh with
-  | DNil => constr:((@None , DNil))
-  | (DCons ?th ?h ?lh') =>
-    lazymatch type of th with
-    | Prop => constr:((h, DNil)) (* Adding the topest Prop *)
-    | _ =>
-      let recres := build_initial_cache_ lh' in
-      match recres with
-      | (?fstProp , ?rescache) => 
-        let found := find_in th rescache in
-        lazymatch found with
-        | @None => constr:((fstProp, DCons th h rescache))
-        | _ =>
-          match lh' with
-          | (DCons th _ _) => recres
-          | (DCons _ _ _) => constr:((fstProp, DCons th h rescache))
-          | DNil => fail 0 (* assert false, found above would be None *)
+(* return a triple for hyps groupinf initiation:
+- H: topmost Prop-sorted hyp (where a hyp goes if there is no segment for it).
+- list of pivots for each type seen above H (pivot = lowest of the first segment of a type)
+- the hypothesis that may need to be moved (not belonging to there first segment).
+See group_up_list_ above.
+ *)
+Ltac build_initial_cache_ acc lh :=
+  match acc with
+    (?fstProp, ?pivots, ?tomove) =>
+      lazymatch lh with
+      | DNil => constr:((fstProp, pivots , tomove))
+      | (DCons ?th ?h ?lh') =>
+          lazymatch type of th with
+          | Prop =>
+              lazymatch fstProp with (* is this the first Prop? *)
+              | @None => build_initial_cache_ (h, pivots, tomove) lh'
+              | _ => build_initial_cache_ (fstProp, pivots, tomove) lh'
+              end
+          | _ => (* Type-sorted hyp *)
+              lazymatch fstProp with (* we haven't reached the fstprop *)
+              | @None => 
+                  (* does this type already have a pivot? if yes don't replace *)
+                  let found := find_in th pivots in
+                  lazymatch found with
+                  | @None => (* no pivot yet, see the next hyp *)
+                      lazymatch lh' with
+                      | (DCons th _ _) => (* h is correctly placed, not the pivot *)
+                          build_initial_cache_ (fstProp, pivots, tomove) lh'
+                      | (DCons _ _ _) => (* h is the pivot for th  *)
+                          build_initial_cache_ (fstProp, DCons th h pivots , tomove) lh'
+                      | DNil => (* h is the pivot for th  *)
+                          constr:((fstProp, DCons th h pivots , tomove))
+                      end
+                  | _ => (* there already is a pivot for th, and it needs to move *)
+                      build_initial_cache_ (fstProp, pivots , DCons th h tomove) lh'
+                  end
+              | _ => (*fstprop already reached, this is not a pivot and needs to move*)
+                  build_initial_cache_ (fstProp, pivots , DCons th h tomove) lh'
+              end
           end
-        end
       end
-    end
   end.
 
-(* the cache is a pair: (H:first Prop-sorted hyp, list of each
-   variable that is above H and the last of its type segment). *)
-Ltac build_initial_cache lh := build_initial_cache_ lh.
+Ltac build_initial_cache lh := build_initial_cache_ constr:((@None, DNil, DNil)) lh.
+
+Ltac mem x l :=
+  lazymatch l with
+  | DNil => false
+  | DCons _ x ?l' => true
+  | DCons _ _ ?l' => mem x l'
+  end.
+
+(* return the intersection of l1 l2 in reverse order of l1 *)
+Ltac intersec_ acc l1 l2 :=
+  match l1 with
+    DNil => acc
+  | DCons ?th ?h ?l1' =>
+      match (mem h l2) with
+      | true => intersec_ (DCons th h acc) l1' l2
+      | false => intersec_ acc l1' l2
+      end
+  end.
+
+Ltac intersec l1 l2 := intersec_ DNil l1 l2.
 
 
 (* Move up non-Prop hypothesis of lhyps up in the goal, to make Prop
@@ -224,7 +283,10 @@ then_allnh (syntax: ";{! group_up_list }") or then_allnh_rev (syntax:
 ";{!< group_up_list}"). *)
 Ltac group_up_list lhyps :=
   match build_initial_cache all_hyps with
-  | (?fstProp, ?cache) => group_up_list_ fstProp cache lhyps
+  | (?fstProp, ?cache, ?tomove) =>
+      (* tomove is reversed, but intersec re-reverse *)
+      let tomove2 := intersec tomove lhyps in
+      group_up_list_ fstProp cache tomove2
   end.
 
 (* Stays for compatibility, but for efficiency reason prefer
@@ -232,10 +294,13 @@ Ltac group_up_list lhyps :=
    Use the corresponding tactical. *)
 Ltac move_up_types H :=
   let t := type of H in
-  group_up_list constr:(DCons t H DNil).
+  match t with
+    Depl => fail "Try to use { } instead of {! }"
+  | _ => group_up_list constr:(DCons t H DNil)
+  end.
 
 
-(* 
+(*
 (* Tests *)
 Export TacNewHyps.Notations.
 Goal forall x1 x3:bool, forall a z e : nat,

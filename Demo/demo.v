@@ -32,23 +32,23 @@ Lemma foo: forall (x:nat) (b1:bool) (y:nat) (b2:bool),
             -> (forall u v, v+1 = 1 -> u+1 = 1 -> a = z+2)
             -> z = b + 5-> z' + 1 = b + x-> x < y + b.
 Proof.
-  (* tactical ";;" to apply a tactic to each "new" hyp. *)
-  intros ;; fun h => idtac h.
+  (* tactical "; { }" to apply a tactic to each "new" hyp. *)
+  intros ; { fun h => idtac h }.
   Undo.
-  (* tactical ";!;": same but newer hyps first. *)
-  intros ;!; fun h => idtac h.
+  (* tactical "; {< }": same but newer hyps first. *)
+  intros ; {< fun h => idtac h }.
   Undo.
   intros x b1.
-  intros ;; fun h => idtac h.
+  intros ; { fun h => idtac h }.
   Undo 2.
   (* Simply based on new *names* *)
   intros x b1.
   (* this tactic renames x into aaa, which is a new name. *)
-  rename x into aaa ;; fun h => idtac h.
+  rename x into aaa ; { fun h => idtac h }.
   Undo 2.
   (* Here x is reused by induction and thus not new. *)
   intros x.
-  induction x ;!; (fun h => idtac h).
+  induction x ; {< (fun h => idtac h) }.
   Undo 2.
   (* tactical "onAllhyps": same thing but on all hyps. *)
   intros.
@@ -59,16 +59,16 @@ Proof.
   (* Revert any new hyp. Must be older fist. *)
   intros.
   revert x H H6.
-  induction x ;!; (fun h => revert dependent h).
+  induction x ; {< (fun h => revert dependent h) }.
   Undo.
   (* Shortcut *)
   induction x /r.
 
   Restart.
   (* Try subst on each new hyp. *)
-  intros ;; (fun h => try match type of h with
+  intros ; { fun h => try match type of h with
                         (?x = ?y) => (subst x+subst y)
-                      end).
+                      end }.
   Undo.
   (* predefined tactic. *)
   intros ;; subst_or_idtac.
@@ -78,7 +78,7 @@ Proof.
   Undo.
   (* combination: try subst and revert remaining hyps. *)
   intros x b1.
-  intros ;; subst_or_idtac ;!; (fun h => revert dependent h).
+  intros ; { subst_or_idtac } ; {< (fun h => revert dependent h) }.
   Undo.
   intros /s/r.
   Undo 2.
@@ -153,25 +153,28 @@ Proof.
   (* Do that on all hyps: *)
   onAllHyps move_up_types.
   Restart.
-  (* Better do that when new hyps are generated. *)
-  intros ;; move_up_types.
+  (* Better do that on new hyps only. *)
+  intros ; { move_up_types }.
   Undo.
-  (* Shortcut (faster version actually): *)
+  (* Faster version dealing with the whole list of new hyps at once: *)
+  intros; {! group_up_list }.
+  Undo.
+  (* Shortcut for this faster version: *)
   intros /g.
   Undo.
   (* combined with subst: *)
   intros /s/g.
-  (* And have this coq option on: *)
+  (* And have this coq option on fo saving a bit more room: *)
   Set Printing Compact Contexts.
 
   (*** HYPOTHESIS NAMES. ***)
   Restart.
-  intros x b1 y b2 H H0 a b b3 t H1 H2 H3 H4 z b4 z' H5 H6 H7 H8.
+  intros.
   Undo.
   (* After a lot of non interesting work. *)
   intros x b1 y b2 h_x_eq_y h_or_b2_b1 a b b3 t
          h_a_t h_b_t hh hex z b4 z' h_b3_b4 h_all_uvaz
-         heq_z heq_z'_b /s/g.
+         heq_z heq_z'_b.
   (* But at each change in definitions or statements ==> Adapt the
      intros and "as". *)
   Restart.
@@ -189,8 +192,8 @@ Proof.
   
   Restart.
   Show.
-  (* Again, better combine it with ";;". *)
-  intros ;; autorename.
+  (* Again, better combine it with "; { }". *)
+  intros ; { autorename }.
   (* You can still shorten big hyps. but hiding most of the time is better. *)
   rename h_all_eq_lcm_p_ into hall.
   Undo 2.
@@ -208,6 +211,12 @@ Proof.
   decompose [ex and or] h_ex_and_neq_and_/sng.
   (* No more obscure "as" to maintain *)
   inversion h_le_y_y_ /sng.
+  (* You can still use destructive pattern, but without inventing names: *)
+  Undo.
+  assert (y < a /\ b < t /\ z' < t) /n.
+  {admit. }
+  destruct h_and_lt_y_a_and_lt_lt_ as [ ? [? ?]] /n.
+
 Abort.
 
 (* customization of autorename *)
@@ -219,7 +228,7 @@ Import ListNotations.
 th, and the depth n of the recursive naming analysis. Here we state
 that a type starting with Nat.eqb should start with _Neqb, followed by
 the name of both arguments. #n here means normal decrement of depth.
-(S n) would increase depth by 1 (n-1) would decrease depth *)
+(S n) would increase depth by 1 (n-1) would decrease depth. *)
 Ltac rename_hyp_2 n th :=
   match th with
   | Nat.eqb ?x ?y => name(`_Neqb` ++ x#n ++ y#n)
@@ -244,7 +253,8 @@ Abort.
 (** Suppose I want to add another naming rule: I need to cumulate the
     previous scheme with the new one. First define a new tactic that
     will replace the old one. it should call previous naming schemes
-    in case of failure of the new scheme *)
+    in case of failure of the new scheme. It is thus important that
+    rename_hyp_2 was defined by itself and directly as rename_hyp. *)
 Ltac rename_hyp_3 n th :=
   match th with
   | ?x = false => name(x#n ++ `_isf`)
