@@ -39,6 +39,7 @@ Proof.
   intros ; {< fun h => idtac h }.
   Undo.
   intros x b1.
+  (* Only the *new* hyps are iterated *)
   intros ; { fun h => idtac h }.
   Undo 2.
   (* Simply based on new *names* *)
@@ -71,7 +72,7 @@ Proof.
                       end }.
   Undo.
   (* predefined tactic. *)
-  intros ;; subst_or_idtac.
+  intros ;{ subst_or_idtac }.
   Undo.
   (* and a shortcut. *)
   intros /s.
@@ -111,6 +112,7 @@ Lemma foo: forall (x:nat) (b1:bool) (y:nat) (b2:bool),
         z = b + 5-> z' + 1 = b + x-> x < y + b.
 Proof.
   intros.
+  Set Printing Compact Contexts.
   (* BIG HYPS may clutter the goal. IDE solution. *)
   (* 1. ProofGeneral: just hide it by clicking on its button, or hit
         "f" while cursor on its name. Persistent and simply based on
@@ -142,6 +144,7 @@ Proof.
   
   (* You can also specify that you want to instantiate the n first premisses. *)
   especialize H3 until 3.
+  Show 4.
   Undo.
 
   (* VARIABLES MIXED WITH HYPOTHESIS. *)
@@ -150,8 +153,10 @@ Proof.
   move_up_types b4. (* group z on top *)
   move_up_types H. (* does nothing because H:..:Prop *)
   Undo 2.
+  Unset Printing Compact Contexts.
   (* Do that on all hyps: *)
   onAllHyps move_up_types.
+  Set Printing Compact Contexts.
   Restart.
   (* Better do that on new hyps only. *)
   intros ; { move_up_types }.
@@ -171,7 +176,7 @@ Proof.
   Restart.
   intros.
   Undo.
-  (* After a lot of non interesting work. *)
+  (* After a lot of non interesting thinking. *)
   intros x b1 y b2 h_x_eq_y h_or_b2_b1 a b b3 t
          h_a_t h_b_t hh hex z b4 z' h_b3_b4 h_all_uvaz
          heq_z heq_z'_b.
@@ -211,6 +216,7 @@ Proof.
   decompose [ex and or] h_ex_and_neq_and_/sng.
   (* No more obscure "as" to maintain *)
   inversion h_le_y_y_ /sng.
+  Show 2.
   (* You can still use destructive pattern, but without inventing names: *)
   Undo.
   assert (y < a /\ b < t /\ z' < t) /n.
