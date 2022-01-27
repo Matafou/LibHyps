@@ -1,50 +1,91 @@
-             Small proof maintenance enhancements with Coq
+        LibHyps: Small proof maintenance enhancements with Coq
 
-* Dealing with new hyps
+* Dealing with hyps
 ** ssreflect spirit
 *** Operate on hypothesis *before* introducing them.
-*** Post-treatment (administrative) *while* introducing.
+- Goal's conclusion seen as a stack.
+- tactics operate on the top of the stack.
+- Post-treatment (administrative) *while* introducing.
+- still needs to name hypothesis to revert them.
+**** example
+#+begin_src coq
+x: nat
+H: x > 0
+===========
+forall y:nat, x <= y -> x <> 1 -> x = 2
+
+case. (* = destruct y. *)
+by move: H; case: (x) => [| [| s1]].
+#+end_src
+
+
 ** Ltac spirit
 *** Deal with hypothesis *after* introducing them.
+- destruct H, induction H, rewrite ... in H
+- rename H into htruc...
 
-   => idea: provide post-treatment tyding tactics
-   => apply them to "recent" hyps.
+   => idea: provide post-treatment tyding tacticals
+   => apply them to "recent" hyps
+      after an arbitrary tactic.
 
-** tacticals iterating on (new) hyps
-*** New tactical ";;"
+* Tacticals iterating on (new) hyps
+*** New tactical ";{ }"
 
 #+begin_src coq
-  tac1 ;; tac2. 
+  tac1 ;{ tac2 }. 
 #+end_src
    + applies tac1, then applies tac2 on each new hypothesis from tac1.
 
-**** example:
+example:
 
 #+begin_src coq
-   intros ;; (fun h => idtac h)
+   intros ; { fun h => idtac h }
 #+end_src
    + *Important*: "new hyp" means "new hyp *name*".
 
-*** Reverse order ":!:"
+*** Reverse order ";{< }"
 
 #+begin_src coq
-  tac1 ;!; tac2.
+  tac1 ;{< tac2 }.
 #+end_src
 
 *** Iterating on all hyps instead
 
 #+begin_src coq
-  onAllhyp tac.
+  onAllHyps tac.
 #+end_src
 
-** DEMO: different use cases
-   + revert
-   + subst
-   + move non-Prop away to the top
-   + autorename
-   + decompose
-   + ...
+*** iterate on the *list* of new hyps (for efficiency)
 
+#+begin_src coq
+  tac1 ;{! tac2 }. 
+  tac1 ;{!< tac2 }. 
+#+end_src
+
+tac2 takes a term of type LibHyps.Depl
+**** details
+#+begin_src coq
+Inductive Depl :=
+  | DNil: Depl
+  | DCons: forall (A:Type) (x:A), Depl -> Depl.
+
+  x : nat
+  b1 : bool
+  y, b : nat
+  ============================
+  x < y + b
+
+  Check (DCons nat x (DCons bool b1 DNil)). (* : Depl *)
+#+end_src
+
+
+
+** DEMO: different use cases
+   + revert (short: tac /r)
+   + subst (=tac /s=)
+   + move non-Prop away to the top (=tac /g=)
+   + autorename =(tac /n)=
+   + combinations =tac /s/n/g=
 
 * Dealing with big goals (demo)
 ** A bit help from IDE
@@ -53,8 +94,6 @@
 *** copy hyps names easily
 ** use case for ";;"
 move variables away to focus on intersting (i.e. Prop-sorted) stuff.
-
-
 
 * Hypothesis names
 ** Problem not really interesting
@@ -125,7 +164,6 @@ move variables away to focus on intersting (i.e. Prop-sorted) stuff.
 
 ** Demo
 
-
 * Conclusion
 ** A distributed Ltac plugin
    opam install coq-libhyps
@@ -157,7 +195,14 @@ Maybe we can add:
 #+end_src
 
 or maybe merge both declarations?
-   
+
 *** BUT plugins tend to be less adopted (fear of long term maintenance)
+- proofgeneral: coq-libhyps-intros allows to remove dependency: names
+  are put in the file. Inconvenient: need to re-insert the names
+  during maintenance.
+- is this the good philosophy?
 ** Give it a try.
-*** testers and comments welcome
+*** tests, comments and bug reports welcome
+https://github.com/Matafou/LibHyps
+opam install coq-libhyps
+
