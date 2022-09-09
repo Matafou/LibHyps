@@ -2,11 +2,6 @@
   This file is part of LibHyps. It is distributed under the MIT
   "expat license". You should have recieved a LICENSE file with it. *)
 
-(**************************************************************************
-* A user-customizable auto-naming scheme for hypothesis in Coq            *
-* Author: Pierre Courtieu                                                 *
-* Distributed under the terms of the LGPL-v3 license                      *
-***************************************************************************)
 Require Import Arith ZArith List LibHyps.TacNewHyps.
 Import ListNotations.
 Local Open Scope list.
