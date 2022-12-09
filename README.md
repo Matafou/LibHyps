@@ -3,6 +3,46 @@ hypothesis during a proof.
 
 Main page and documentation: https://github.com/Matafou/LibHyps
 
+Demo file [demo.v](https://github.com/Matafou/LibHyps/blob/master/Demo/demo.v) acts as a documentation.
+
+# Short description:
+
+LibHyps provides utilities for hypothesis manipulations. In particular
+a new tactic `especialize H` and a set of tacticals to appy or iterate
+tactics either on all hypothesis of a goal or on "new' hypothesis after
+a tactic. It also provide syntax for a few predefined such iterators.
+
+## QUICK REF: especialize
+
++ `especialize H at n [as h].` Creates a subgoal to prove the nth
+    dependent hypothesis of `H`, creating necessary evars for non
+    unifiable variables. Once proved the subgoal is used to remove the
+    nth hypothesis of `H` (or a new hypothesis is created if the `as`
+    option is given).
+
++ `especialize H at * [as h].` Creates one subgoal for each dependent
+    hypothesis of `H`, creating necessary evars for non unifiable
+    variables. Once proved the subgoal is used to remove the
+    hypothesis of `H` (or a new hypothesis is created if the `as`
+    option is given).
+
++ `especialize H until n [as h].` Creates one subgoal for each n first
+    dependent hypothesis of `H`, creating necessary evars for non
+    unifiable variables. Once proved the subgoal is used to remove the
+    hypothesis of `H` (or a new hypothesis is created if the `as`
+    option is given).
+
+## QUICK REF: Pre-defined tacticals /s /n...
+
+The most useful user-dedicated tacticals are the following
+
+  + `tac /s` try to apply `subst` on each new hyp.
+  + `tac /r` revert each new hyp.
+  + `tac /n` auto-rename each new hyp.
+  + `tac /g` group all non-Prop new hyp at the top of the goal.
+  + combine the above, as in `tac /s/n/g`.
+  + usual combinations have shortcuts: `\sng`, `\sn`,`\ng`,`\sg`...
+
 # Install
 
 ## Quick install using opam
@@ -33,34 +73,7 @@ Require Import LibHyps.LibHyps.
 
 Demo files [demo.v](https://github.com/Matafou/LibHyps/blob/master/Demo/demo.v).
 
-## Documentation
-
-Demo file [demo.v](https://github.com/Matafou/LibHyps/blob/master/Demo/demo.v) acts as a documentation.
-
-# Short description:
-
-LibHyps provides utilities for hypothesis manipulations. In particular
-a new tactic `especialize H` and a set of tacticals to appy or iterate
-tactics either on all hypothesis of a goal or on "new' hypothesis after
-a tactic. It also provide syntax for a few predefined such iterators.
-
-## QUICK REF: especialize
-
-+ `especialize H at n.` create a subgoal to prove the nth dependent
-    hypothesis of `H`, creating necessary evars for non unifiable
-    variables. Once proved the subgoal is used to remove the nth
-    hypothesis of `H`.
-
-## QUICK REF: Pre-defined tacticals /s /n...
-
-The most useful user-dedicated tacticals are the following
-
-  + `tac /s` try to apply `subst` on each new hyp.
-  + `tac /r` revert each new hyp.
-  + `tac /n` auto-rename each new hyp.
-  + `tac /g` group all non-Prop new hyp at the top of the goal.
-  + combine the above, as in `tac /s/n/g`.
-  + usual combinations have shortcuts: `\sng`, `\sn`,`\ng`,`\sg`...
+# More information
 
 ## Deprecation from 1.0.x to 2.0.x
 
