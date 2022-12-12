@@ -15,22 +15,22 @@ a tactic. It also provide syntax for a few predefined such iterators.
 ## QUICK REF: especialize
 
 + `especialize H at n [as h].` Creates a subgoal to prove the nth
-    dependent hypothesis of `H`, creating necessary evars for non
+    dependent premise of `H`, creating necessary evars for non
     unifiable variables. Once proved the subgoal is used to remove the
-    nth hypothesis of `H` (or a new hypothesis is created if the `as`
+    nth premise of `H` (or of a new created hypothesis if the `as`
     option is given).
 
 + `especialize H at * [as h].` Creates one subgoal for each dependent
-    hypothesis of `H`, creating necessary evars for non unifiable
-    variables. Once proved the subgoal is used to remove the
-    hypothesis of `H` (or a new hypothesis is created if the `as`
-    option is given).
+    premise of `H`, creating necessary evars for non unifiable
+    variables. Once proved the subgoal is used to remove the premises
+    of `H` (or of a new createdd hypothesis if the `as` option is
+    given).
 
 + `especialize H until n [as h].` Creates one subgoal for each n first
-    dependent hypothesis of `H`, creating necessary evars for non
+    dependent premises of `H`, creating necessary evars for non
     unifiable variables. Once proved the subgoal is used to remove the
-    hypothesis of `H` (or a new hypothesis is created if the `as`
-    option is given).
+    premises of `H` (or of a new created hypothesis if the `as` option
+    is given).
 
 ## QUICK REF: Pre-defined tacticals /s /n...
 
