@@ -47,6 +47,14 @@ The most useful user-dedicated tacticals are the following
 
 ## Quick install using opam
 
+If you have not done it already add the coq platform repository to opam!
+
+```bash
+opam repo add coq-released https://coq.inria.fr/opam/released
+```
+
+and then:
+
 ```bash
 opam install coq-libhyps
 ```
