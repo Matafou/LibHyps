@@ -21,10 +21,8 @@ build: [
 run-test: [
   ["./configure.sh"]
   [make "-j%{jobs}%"]
-  ["coqc" "-Q" "LibHyps" "LibHyps" "-async-proofs-cache" "force" "./Demo/demo.v" ]
-  ["coqc" "-Q" "LibHyps" "LibHyps" "-async-proofs-cache" "force" "./LibHyps/LibHypsTest.v" ]
+  [make "tests"]
 ]
-
 
 install: [make "install"]
 
