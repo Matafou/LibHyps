@@ -34,16 +34,5 @@ jobs:
         with:
           opam_file: 'coq-libhyps.opam'
           custom_image: ${{ matrix.image }}
-  
-  tests:
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v3
-      - uses: coq-community/docker-coq-action@v1
-        with:
-          opam_file: 'coq-libhyps.opam'
-          custom_image: 'coqorg/coq:8.18'
-      - run: coq_makefile -f _CoqProject -o Makefile
-      - run: make tests
+        env:
+          OPAMWITHTEST: 'true'
