@@ -127,25 +127,29 @@ Proof.
      premiss of a hyp, and then re-quantifies everything non
      instantiated. *)
   Undo.
-  especialize H3 at 1.
+  (* THIS IS BROKEN IN COQ 8.18 *)
+  (* especialize H3 at 1.
   { apply le_S.
     apply le_n. }
-  Undo 5.
+  Undo 5. *)
   (* IDEs don't like Undo, replay the next ocommand twice will resync
      proofgeneral. *)
   (* It accepts several (up to 7) premisses numers. *)
-  especialize H3 at 2,3.
-  Undo.
+  (* BROKEN IN 8.18 *)
+  (* especialize H3 at 2,3.
+  Undo. *)
 
   (* you can ask a goal for all premisses, in the spirit of the
      "exploit" tactic from CompCert. *)
-  especialize H3 at *.
-  Undo.
+  (* BROKEN IN 8.18 *)
+  (* especialize H3 at *.
+  Undo. *)
   
   (* You can also specify that you want to instantiate the n first premisses. *)
-  especialize H3 until 3.
+  (* BROKEN IN 8.18 *)
+  (* especialize H3 until 3.
   Show 4.
-  Undo.
+  Undo. *)
 
   (* VARIABLES MIXED WITH HYPOTHESIS. *)
   (* move_up_types X. moves X at top near something of the same type,

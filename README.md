@@ -12,7 +12,10 @@ a new tactic `especialize H` and a set of tacticals to appy or iterate
 tactics either on all hypothesis of a goal or on "new' hypothesis after
 a tactic. It also provide syntax for a few predefined such iterators.
 
-## QUICK REF: especialize
+## QUICK REF: especialize (BROKEN IN COQ-8.18)
+
+This tactic is currently broken in coq v8.18. I am working on it. This
+may need some work on coq side.
 
 + `especialize H at n [as h].` Creates a subgoal to prove the nth
     dependent premise of `H`, creating necessary evars for non
@@ -129,10 +132,12 @@ Proof.
   intros /s/n/g.
 
   (* Let us instantiate the 2nd premis of h_all_eq_add_add without copying its type: *)
-  especialize h_all_eq_add_add_ at 2.
+  (* BROKEN IN COQ 8.18*)
+  (* especialize h_all_eq_add_add_ at 2.
   { apply Nat.add_0_l. }
   (* now h_all_eq_add_add is specialized *)
-  Undo 6.
+  Undo 6. *)
+  Undo 2.
   intros until 1.
   (** The taticals apply after any tactic. Notice how H:x=y is not new
     and hence not substituted, whereas z = b + x is. *)

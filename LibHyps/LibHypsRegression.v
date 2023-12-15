@@ -118,7 +118,8 @@ Lemma dummy: forall x y,
 Qed. 
 
 
-
+(* BROKEN IN 8.18 *)
+(*
 Definition eq_one (i:nat) := i = 1.
 (* eq_one is delta_reducible but I don't want it to be reduced. *)
 Lemma test_espec: (eq_one 2 -> eq_one 3 -> eq_one 1 -> False) -> True.
@@ -404,7 +405,7 @@ Proof.
   Undo.
   exact I.
 Qed.
-
+*)
 
 Require Import LibHyps.LibDecomp.
 

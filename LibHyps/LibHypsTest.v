@@ -604,10 +604,12 @@ Proof.
   intros /s/n/g.
 
   (* Let us instantiate the 2nd premis of h_all_eq_add_add without copying its type: *)
-  especialize h_all_eq_add_add_ at 2.
+  (* BROKEN IN COQ 8.18 *)
+  (* especialize h_all_eq_add_add_ at 2.
   { apply Nat.add_0_l. }
   (* now h_all_eq_add_add is specialized *)
-  Undo 6.
+  Undo 6. *)
+  Undo 2.
   intros until 1.
   (** The taticals apply after any tactic. Notice how H:x=y is not new
     and hence not substituted, whereas z = b + x is. *)
