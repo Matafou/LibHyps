@@ -44,4 +44,5 @@ jobs:
       - uses: coq-community/docker-coq-action@v1
         with:
           run: |
+            coq_makefile -f _CoqProject -o Makefile
             make tests
