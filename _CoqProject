@@ -5,9 +5,3 @@ LibHyps/LibHypsTactics.v
 LibHyps/LibDecomp.v
 LibHyps/TacNewHyps.v
 LibHyps/LibHyps.v
-
-# especialize is broken in coq-8.18. This is due to a change in
-# specialize tactic that does not allow new evars remaining in its
-# subgoals. This is unfortunate and hopefully fixed in the next
-# version.
-# LibHyps/LibSpecialize.v

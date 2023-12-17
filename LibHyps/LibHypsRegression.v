@@ -2,7 +2,7 @@
   This file is part of LibHyps. It is distributed under the MIT
   "expat license". You should have recieved a LICENSE file with it. *)
 
-Require Import Arith ZArith LibHyps.LibHyps LibHyps.LibSpecialize List.
+Require Import Arith ZArith LibHyps.LibHyps (*LibHyps.LibSpecialize*) List.
 
 
 Import TacNewHyps.Notations.

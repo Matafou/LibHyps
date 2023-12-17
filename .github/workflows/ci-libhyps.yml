@@ -36,3 +36,27 @@ jobs:
           custom_image: ${{ matrix.image }}
         env:
           OPAMWITHTEST: 'true'
+
+  # This workflow contains a single job called "build"
+  test:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image:
+          - 'coqorg/coq:dev'
+          - 'coqorg/coq:8.18'
+          - 'coqorg/coq:8.17'
+          - 'coqorg/coq:8.16'
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3
+      - uses: coq-community/docker-coq-action@v1
+        with:
+          opam_file: 'coq-libhyps.opam'
+          custom_image: ${{ matrix.image }}
+      - name: test files
+        run: ./configure.sh 
+        run: make
+        run: make tests
