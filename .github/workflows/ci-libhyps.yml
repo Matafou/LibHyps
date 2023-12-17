@@ -56,7 +56,6 @@ jobs:
         with:
           opam_file: 'coq-libhyps.opam'
           custom_image: ${{ matrix.image }}
-        run: |
-          ./configure.sh 
-          make
-          make tests
+          export: 'OPAMWITHTEST'  # space-separated list of variables
+    env:
+      OPAMWITHTEST: 'true'
