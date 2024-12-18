@@ -2,6 +2,7 @@
 
 LibHyps/LibHypsNaming.v
 LibHyps/LibHypsTactics.v
+LibHyps/LibSpecialize.v
 LibHyps/LibDecomp.v
 LibHyps/TacNewHyps.v
 LibHyps/LibHyps.v

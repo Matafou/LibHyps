@@ -4,15 +4,28 @@
 
 Require Export LibHyps.TacNewHyps.
 Require Export LibHyps.LibHypsNaming.
-(* Require Export LibHyps.LibSpecialize. *)
+Require Export LibHyps.LibSpecialize.
 
 (* debug *)
-Ltac pr_goal :=
-  match goal with
-    |- ?g =>
-      let allh := all_hyps in
-      idtac allh " ⊢ " g
-  end.
+Module Prgoal_Notation.
+  Ltac pr_goal :=
+    match goal with
+      |- ?g =>
+        let allh := all_hyps in
+        idtac "[" allh " ⊢ " g "]"
+    end.
+  Notation "X : Y ; Z" := (DCons Y X Z) (right associativity,only printing,format "'[v' X : Y ; '/' Z ']' ") .
+End Prgoal_Notation.
+
+(* example: 
+Import Prgoal_Notation.
+Lemma test_espec2: forall x:nat, x = 1 -> (forall a y z:nat, a = 1 -> y = 1 -> z+y+a = 2 -> z+1 = x -> False) -> x > 1.
+Proof.
+  intros x hx h_eqone.
+  (* specevar h_eqone at y. *)
+  pr_goal.
+pr_goal.
+Abort. *)
 
 (* Default behaviour: generalize hypothesis that we failed to rename,
    so that no automatic names are introduced by mistake. Of course one
@@ -30,7 +43,7 @@ Ltac revert_if_norename H :=
             (* since we are only in prop it is almost never the case
                that something depends on H but if this happens we revert
                everything that does. This needs testing. *)
-            | _ => try revert dependent H
+            | _ => try generalize dependent H
             end
   | _ => idtac
   end.

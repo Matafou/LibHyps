@@ -60,7 +60,7 @@ Proof.
   (* Revert any new hyp. Must be older fist. *)
   intros.
   revert x H H6.
-  induction x ; {< (fun h => revert dependent h) }.
+  induction x ; {< (fun h => generalize dependent h) }.
   Undo.
   (* Shortcut *)
   induction x /r.
@@ -79,7 +79,7 @@ Proof.
   Undo.
   (* combination: try subst and revert remaining hyps. *)
   intros x b1.
-  intros ; { subst_or_idtac } ; {< (fun h => revert dependent h) }.
+  intros ; { subst_or_idtac } ; {< (fun h => generalize dependent h) }.
   Undo.
   intros /s/r.
   Undo 2.
@@ -128,28 +128,28 @@ Proof.
      instantiated. *)
   Undo.
   (* THIS IS BROKEN IN COQ 8.18 *)
-  (* especialize H3 at 1.
+  especialize H3 with p at 1.
   { apply le_S.
     apply le_n. }
-  Undo 5. *)
+  Undo 5.
   (* IDEs don't like Undo, replay the next ocommand twice will resync
      proofgeneral. *)
   (* It accepts several (up to 7) premisses numers. *)
   (* BROKEN IN 8.18 *)
-  (* especialize H3 at 2,3.
-  Undo. *)
+  especialize H3 with n,m,p at 2,3.
+  Undo.
 
   (* you can ask a goal for all premisses, in the spirit of the
      "exploit" tactic from CompCert. *)
   (* BROKEN IN 8.18 *)
-  (* especialize H3 at *.
-  Undo. *)
+  especialize H3 with  n,m,p at *.
+  Undo.
   
   (* You can also specify that you want to instantiate the n first premisses. *)
   (* BROKEN IN 8.18 *)
-  (* especialize H3 until 3.
+  especialize H3 with n,m,p until 3.
   Show 4.
-  Undo. *)
+  Undo.
 
   (* VARIABLES MIXED WITH HYPOTHESIS. *)
   (* move_up_types X. moves X at top near something of the same type,
@@ -198,7 +198,6 @@ Proof.
   (* experimental: (setq coq-libhyps-intros t) *)
   Undo 2.
   Show.
-  
   Restart.
   Show.
   (* Again, better combine it with "; { }". *)
