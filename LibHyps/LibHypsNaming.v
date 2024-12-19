@@ -472,7 +472,7 @@ Declare Scope autonaming_scope.
 (* from coq-8.13 we should use name instead of ident. But let us wait
    a few versions before this change. *)
 Notation "'`' idx '`'" := (@cons Prop (forall idx:Prop, DUMMY idx) (@nil Prop))
-                           (at level 1,idx ident,only parsing): autonaming_scope.
+                           (at level 1,idx name,only parsing): autonaming_scope.
 
 
 (** Notation to call naming on a term X, with a given depth n. *)

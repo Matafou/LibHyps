@@ -5,7 +5,7 @@
 
 .PHONY: cleantests
 
-tests:
+tests: all
 	@echo -n building tests...
 	$(SHOW) 'COQC LibHyps/LibHypsTest.v'
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) -async-proofs-cache force -w -undo-batch-mode $(COQLIBS) ./LibHyps/LibHypsTest.v $(TIMING_EXTRA) 

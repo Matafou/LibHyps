@@ -487,6 +487,8 @@ Module Using.
       * reflexivity.
   Qed.
 
+(* This tests only hold for coq >= 8.18 *)
+(*
   Lemma test_espec8: forall x:nat, x = 1 -> (forall a y z:nat, a = 1 -> y = 1 -> z+y+a = 2 -> z+1 = x -> False) -> x > 1.
   Proof.
     intros x hx h_eqone.
@@ -522,7 +524,7 @@ Module Using.
     intros x hx h_eqone.
     Fail especialize h_eqone at 1,4 as ?.
   Abort.
-
+*)
 End Using.
 
 
@@ -595,13 +597,14 @@ Proof.
   Undo.
   especialize H at 2,3 as h;[  .. | match type of h with forall x: nat, eq_one 1 -> forall y:nat, eq_one 4 -> eq_one _ -> eq_one 6 -> eq_one _ -> eq_one 8 -> eq_one 9 -> False => idtac "OK" end].
   Undo.
-  Fail especialize H at 2,3,5 as h. 
-  Undo.
+  (* Only for coq >= 8.18 *)
+  (* Fail especialize H at 2,3,5 as h.  *)
   especialize H with x at 2,3,5 as h ;[ ..  | match type of h with eq_one 1 -> forall y:nat, eq_one 4 -> eq_one 6 -> eq_one _ -> eq_one 8 -> eq_one 9 -> False => idtac "OK" end].
   Undo.
   especialize H with x at 2,3,5,6 as h ;[ ..  | match type of h with eq_one 1 -> forall y:nat, eq_one 4 -> eq_one _ -> eq_one 8 -> eq_one 9 -> False => idtac "OK" end].
   Undo.
-  Fail especialize H with x at 2,3,5,7 as h.
+  (* Only for coq >= 8.18 *)
+  (* Fail especialize H with x at 2,3,5,7 as h. *)
   especialize H with x,y at 2,3,5,7 as h ;[ ..  | match type of h with eq_one 1 -> eq_one 4 -> eq_one 6 -> eq_one 8 -> eq_one 9 -> False => idtac "OK" end].
   Undo.
   especialize H with x,y at 2,3,5,7,9 as h ;[ ..  | match type of h with eq_one 1 -> eq_one 4 -> eq_one 6 -> eq_one 8 -> False => idtac "OK" end].
@@ -615,13 +618,14 @@ Proof.
   Undo.
   especialize H at 2,3 as ?;[  .. | match type of H0 with forall x: nat, eq_one 1 -> forall y:nat, eq_one 4 -> eq_one _ -> eq_one 6 -> eq_one _ -> eq_one 8 -> eq_one 9 -> False => idtac "OK" end].
   Undo.
-  Fail especialize H at 2,3,5 as ?. 
-  Undo.
+  (* Only for coq >= 8.18 *)
+  (* Fail especialize H at 2,3,5 as ?.  *)
   especialize H with x at 2,3,5 as ? ;[ ..  | match type of H0 with eq_one 1 -> forall y:nat, eq_one 4 -> eq_one 6 -> eq_one _ -> eq_one 8 -> eq_one 9 -> False => idtac "OK" end].
   Undo.
   especialize H with x at 2,3,5,6 as ? ;[ ..  | match type of H0 with eq_one 1 -> forall y:nat, eq_one 4 -> eq_one _ -> eq_one 8 -> eq_one 9 -> False => idtac "OK" end].
   Undo.
-  Fail especialize H with x at 2,3,5,7 as ?.
+  (* Only for coq >= 8.18 *)
+  (* Fail especialize H with x at 2,3,5,7 as ?. *)
   especialize H with x,y at 2,3,5,7 as ? ;[ ..  | match type of H0 with eq_one 1 -> eq_one 4 -> eq_one 6 -> eq_one 8 -> eq_one 9 -> False => idtac "OK" end].
   Undo.
   especialize H with x,y at 2,3,5,7,9 as ? ;[ ..  | match type of H0 with eq_one 1 -> eq_one 4 -> eq_one 6 -> eq_one 8 -> False => idtac "OK" end].
@@ -635,13 +639,14 @@ Proof.
   Undo.
   especialize H at 2,3;[  .. | match type of H with forall x: nat, eq_one 1 -> forall y:nat, eq_one 4 -> eq_one _ -> eq_one 6 -> eq_one _ -> eq_one 8 -> eq_one 9 -> False => idtac "OK" end].
   Undo.
-  Fail especialize H at 2,3,5. 
-  Undo.
+  (* Only for coq >= 8.18 *)
+  (* Fail especialize H at 2,3,5.  *)
   especialize H with x at 2,3,5 ;[ ..  | match type of H with eq_one 1 -> forall y:nat, eq_one 4 -> eq_one 6 -> eq_one _ -> eq_one 8 -> eq_one 9 -> False => idtac "OK" end].
   Undo.
   especialize H with x at 2,3,5,6 ;[ ..  | match type of H with eq_one 1 -> forall y:nat, eq_one 4 -> eq_one _ -> eq_one 8 -> eq_one 9 -> False => idtac "OK" end].
   Undo.
-  Fail especialize H with x at 2,3,5,7.
+  (* Only for coq >= 8.18 *)
+  (* Fail especialize H with x at 2,3,5,7. *)
   especialize H with x,y at 2,3,5,7 ;[ ..  | match type of H with eq_one 1 -> eq_one 4 -> eq_one 6 -> eq_one 8 -> eq_one 9 -> False => idtac "OK" end].
   Undo.
   especialize H with x,y at 2,3,5,7,9 ;[ ..  | match type of H with eq_one 1 -> eq_one 4 -> eq_one 6 -> eq_one 8 -> False => idtac "OK" end].
