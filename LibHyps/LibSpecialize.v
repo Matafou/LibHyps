@@ -57,9 +57,7 @@ Ltac fresh_unfail H :=
   end.
 
 Ltac fail_if_not_hyp c :=
-  (is_var(c))
-  + ((assert_fails (is_var(c)));
-     fail "especialize: please provide a name for the new hyp (with 'as')").
+  tryif is_var(c) then idtac else fail "especialize: please provide a name for the new hyp (with 'as')".
 
 
 Ltac proveprem_as_prem H i idpremis idnewH :=
@@ -143,12 +141,12 @@ Ltac proveprem_all H := (especialize H at 1; [| proveprem_all H]) + idtac.
 
 (* TODO: make the "as" mandatory if G not a hyp. *)
 Tactic Notation "especialize" constr(H) "at" "*" :=
-  ((try (is_var(H); fail 1));
-   (let prefx := fresh_unfail H in
-    (let h := fresh prefx "spec" in
-     specialize H as h; (* create the hyp *)
-     proveprem_all h)))
-  + proveprem_all H.
+  tryif is_var(H) then proveprem_all H
+  else
+    let prefx := fresh_unfail H in
+    let h := fresh prefx "spec" in
+    specialize H as h; (* create the hyp *)
+    proveprem_all h.
 
 Tactic Notation "especialize" constr(H) "at" "*" "as" ident(idH) :=
     (let h := fresh idH in
@@ -164,12 +162,12 @@ Ltac proveprem_until H i :=
 
 (* TODO idem: make as mandatory *)
 Tactic Notation "especialize" constr(H) "until" constr(i) :=
-  (try (is_var(H); fail 1);
-   (let prefx := fresh_unfail H in
+  tryif is_var(H) then proveprem_until H i
+  else
+    let prefx := fresh_unfail H in
     let h := fresh prefx "spec" in
     specialize H as h; (* create the hyp *)
-    proveprem_until h i))
-  + proveprem_until H i.
+    proveprem_until h i.
 
 Tactic Notation "especialize" constr(H) "until" constr(i) "as" ident(idH) :=
    (let h := fresh idH in

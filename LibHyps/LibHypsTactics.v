@@ -6,7 +6,7 @@ Require Export LibHyps.TacNewHyps.
 Require Export LibHyps.LibHypsNaming.
 Require Export LibHyps.LibSpecialize.
 
-(* debug *)
+(* debug
 Module Prgoal_Notation.
   Ltac pr_goal :=
     match goal with
@@ -14,10 +14,11 @@ Module Prgoal_Notation.
         let allh := all_hyps in
         idtac "[" allh " ⊢ " g "]"
     end.
-  Notation "X : Y ; Z" := (DCons Y X Z) (right associativity,only printing,format "'[v' X : Y ; '/' Z ']' ") .
+  Notation "X : Y ; Z" := (DCons Y X Z) (at level 1, Z at level 1, right associativity,only printing,format "'[v' X : Y ; '/' Z ']' ") .
 End Prgoal_Notation.
 
-(* example: 
+
+ (* example:  *)
 Import Prgoal_Notation.
 Lemma test_espec2: forall x:nat, x = 1 -> (forall a y z:nat, a = 1 -> y = 1 -> z+y+a = 2 -> z+1 = x -> False) -> x > 1.
 Proof.

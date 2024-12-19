@@ -691,11 +691,11 @@ Proof.
   especialize (let x:=not_eq_S in x) with n,m at * as h;
     [ .. | match type of h with (S _)<>(S _) => idtac | _ => fail "Test failed!" end].
   Undo.
-  especialize (let x:=Nat.sub_pred_r in x) with n,m until 2 as h;
-    [ .. | match type of h with ?n - Nat.pred ?m = S (?n - ?m) => idtac | _ => fail "Test failed!" end].
+  especialize (let x:=Nat.add_sub_eq_nz in x) with n,m,p until 2 as h;
+    [ .. | match type of h with ?m + ?p = ?n => idtac | _ => fail "Test failed!" end].
   Undo.
-  especialize (let x:=Nat.sub_pred_r in x) with n,m until 1 as h;
-    [ .. | match type of h with ?m <= ?n -> ?n - Nat.pred ?m = S (?n - ?m) => idtac | _ => fail "Test failed!" end].
+  especialize (let x:= Nat.add_sub_eq_nz in x) with p until 1 as h;
+    [ .. | match type of h with forall n m : nat, n - m = ?p -> m + ?p = n => idtac | _ => fail "Test failed!" end].
   Undo.
   especialize (let x:=h_eqone in x) at *;
     [ ..  | match type of H_spec with False => idtac | _ => fail "Test failed!" end].

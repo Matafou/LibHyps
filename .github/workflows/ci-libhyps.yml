@@ -23,6 +23,8 @@ jobs:
       matrix:
         image:
           - 'coqorg/coq:dev'
+          - 'coqorg/coq:8.20'
+          - 'coqorg/coq:8.19'
           - 'coqorg/coq:8.18'
           - 'coqorg/coq:8.17'
           - 'coqorg/coq:8.16'
@@ -45,6 +47,8 @@ jobs:
       matrix:
         image:
           - 'coqorg/coq:dev'
+          - 'coqorg/coq:8.20'
+          - 'coqorg/coq:8.19'
           - 'coqorg/coq:8.18'
           - 'coqorg/coq:8.17'
           - 'coqorg/coq:8.16'
