@@ -12,21 +12,23 @@ a new tactic `especialize H` and a set of tacticals to appy or iterate
 tactics either on all hypothesis of a goal or on "new' hypothesis after
 a tactic. It also provide syntax for a few predefined such iterators.
 
-## QUICK REF: especialize (BROKEN IN COQ-8.18)
+## QUICK REF: especialize
 
-This tactic is currently broken in coq v8.18. I am working on it. This
-may need some work on coq side.
+This tactic was broken in coq v8.18. It is now fixed with some
+modification: see the remark about evars below
 
-+ `especialize H at n [as h].` Creates a subgoal to prove the nth
-    dependent premise of `H`, creating necessary evars for non
-    unifiable variables. Once proved the subgoal is used to remove the
-    nth premise of `H` (or of a new created hypothesis if the `as`
-    option is given).
++ `especialize H at 3 [as h].` Creates a subgoal to prove the nth
+    (here the 3rd) dependent premise of `H`, creating necessary evars
+    for non unifiable variables (see below for how to declare this
+    variables). Once proved the subgoal is used to remove the nth
+    premise of `H` (or of a new created hypothesis if the `as` option
+    is given). Se at the bottom of this page for a discussion about
+    the logical completeness of this tactic.
 
 + `especialize H at * [as h].` Creates one subgoal for each dependent
     premise of `H`, creating necessary evars for non unifiable
     variables. Once proved the subgoal is used to remove the premises
-    of `H` (or of a new createdd hypothesis if the `as` option is
+    of `H` (or of a new created hypothesis if the `as` option is
     given).
 
 + `especialize H until n [as h].` Creates one subgoal for each n first
@@ -34,6 +36,26 @@ may need some work on coq side.
     unifiable variables. Once proved the subgoal is used to remove the
     premises of `H` (or of a new created hypothesis if the `as` option
     is given).
+
++ all this variant accept (and may *need*) a supplementary argument
+  `with x,y,z` to declare the variables of the hypothesis which must
+  be transformed into existential variables. Examples:
+
+  `especialize H with x,z at n [as h].`,
+  `especialize H with a,b at * [as h].`, etc.
+  
+  These declarations are mandatory (from version 3 of libHyps) due to
+  restriction in coq >= 8.18. If you forget to mention such a variable
+  you will get an error message like this:
+  
+  ```coq
+  Unable to unify "?n0" with "u" (cannot instantiate "?n0"` <!-- -->
+  `because "u" is not in its scope: available arguments are "y" "a" "b" "t").
+  ```
+
+  I am considering the possibility to have a mode where some of these
+  variables may be declared implicitly.
+
 
 ## QUICK REF: Pre-defined tacticals /s /n...
 
@@ -132,12 +154,10 @@ Proof.
   intros /s/n/g.
 
   (* Let us instantiate the 2nd premis of h_all_eq_add_add without copying its type: *)
-  (* BROKEN IN COQ 8.18*)
-  (* especialize h_all_eq_add_add_ at 2.
+  especialize h_all_eq_add_add_ with u at 2.
   { apply Nat.add_0_l. }
   (* now h_all_eq_add_add is specialized *)
-  Undo 6. *)
-  Undo 2.
+  Undo 6.
   intros until 1.
   (** The taticals apply after any tactic. Notice how H:x=y is not new
     and hence not substituted, whereas z = b + x is. *)
@@ -240,3 +260,42 @@ Tactic Notation (at level 4) "!!!!" tactic4(Tac) :=
       (Tac ;; substHyp ;!; revert_if_norename ;; autorename ;; move_up_types).
 ```
 
+
+# About the logical "completeness" of `especialize`
+
+Suppose we have this goal:
+
+
+```coq
+  Lemma foo: (forall x:nat, x = 1 -> (x>0) -> x < 0) -> False.
+  Proof.
+    intros h.
+
+h : forall x : nat, x = 1 -> x > 0 -> x < 0
+  ============================
+  False
+
+especialize h with x at 2.
+
+
+  h : ?x = 1 -> ?x > 0 -> ?x < 0
+  ============================
+  ?x > 0
+
+goal 2 (ID 88) is:
+ False
+
+```
+
+Note that in this case it would be preferable (and logically more
+accurate) to have a hypothesis `h2: ?x = 1` in the context, since the
+premise 2 of H needs only to be proved when premise 1 is true. Note
+however that in this kind of situation most users would wait to be
+able to prove premise 1 before instantiating premise 2. `especialize`
+does not cover this kind of subtleties. Another tactic is under
+development to support this kind of reasoning.
+
+
+
+<!--  LocalWords:  subgoal unifiable evars
+ -->

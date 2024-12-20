@@ -4,6 +4,45 @@
 
 Require Import Arith ZArith LibHyps.LibHyps (*LibHyps.LibSpecialize*) List.
 
+Lemma foo: forall x y z:nat,
+    x = y -> forall  a b t : nat, a+1 = t+2 -> b + 5 = t - 7 ->  (forall u v, v+1 = 1 -> u+1 = 1 -> a+1 = z+2)  -> z = b + x-> True.
+Proof.
+  intros.
+  (* ugly names *)
+  Undo.
+  (* Example of using the iterator on new hyps: this prints each new hyp name. *)
+  intros; {fun h => idtac h}.
+  Undo.
+  (* This gives sensible names to each new hyp. *)
+  intros ; { autorename }.
+  Undo.
+  (* short syntax: *)
+  intros /n.
+  Undo.
+  (* same thing but use subst if possible, and group non prop hyps to the top. *)
+  intros ; { substHyp }; { autorename}; {move_up_types}.
+  Undo.
+  (* short syntax: *)  
+  intros /s/n/g.
+  Undo.
+  (* Even shorter: *)  
+  intros /s/n/g.
+
+  (* Let us instantiate the 2nd premis of h_all_eq_add_add without copying its type: *)
+  (* BROKEN IN COQ 8.18*)
+  especialize h_all_eq_add_add_ with u at 2.
+  { apply Nat.add_0_l. }
+  (* now h_all_eq_add_add is specialized *)
+  Undo 6.
+
+  intros until 1.
+  (** The taticals apply after any tactic. Notice how H:x=y is not new
+    and hence not substituted, whereas z = b + x is. *)
+  destruct x eqn:heq;intros /sng.
+  - apply I.
+  - apply I.
+Qed.
+
 
 Import TacNewHyps.Notations.
 Import LibHyps.LegacyNotations.
@@ -120,6 +159,19 @@ Qed.
 
 Definition eq_one (i:nat) := i = 1.
 Module AS.
+
+
+  Lemma foo: (forall x:nat, x = 1 -> (x>0) -> x < 0) -> False.
+  Proof.
+    intros h.
+    especialize h with x at 2.
+    + assumption.
+    + match type of h_eqone with
+        False => idtac
+      | _ => fail "test failed!"
+      end.
+      contradiction.
+  Qed.
 
 
   Lemma test_espec: forall x:nat, x = 1 -> (x = 1 -> False) -> x > 1.
