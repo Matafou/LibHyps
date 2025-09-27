@@ -38,60 +38,6 @@ Inductive Depl :=
 | DNil: Depl
 | DCons: forall (A:Type) (x:A), Depl -> Depl.
 
-(* ESPECIALIZE INTERNAL DOC *)
-(* We show here by hand what the especialize tactic does. We start
-with a hypothesis H of type
-
-H: (forall n m:nat, n<m -> n<=m -> forall p:nat, p>0 -> p+1 = m+n)
-
-Suppose we want:
-
-1. let the user prove that the premise (n <= m) can be proved from the
-   other premise (n < m) and can thus be removed from H
-
-2. let the user prove the premise (p > 0) for a p yet to be determined
-   (evar) and remove both p and (p>0) from H.
-*)
-Lemma foo: forall x y : nat, (forall n m:nat, n < m -> n <= m -> forall p:nat, p > 0 -> p+1 = m+n) -> False.
-Proof.
-
-  intros x y H. 
-  (* - We start from a goal evarEV with no typing constraint. *)
-  let ev1 := open_constr:(_) in
-  assert ev1 as newH.
-  (* then we refine this unknown goal by mimick H until we reach the
-  premise we want to remove: *)
-  intro n. (*or refine (fun (n:nat) => _) *)
-  specialize (H n).
-  intro m. 
-  specialize (H m).
-
-  (* 1 more times, but more automatic *)
-  match type of H with
-    (forall nme:?t, _) => (intro nme) (*refine (fun nme:t => _)*); specialize (H nme)
-  end.
-  
-  (* We want to prove (n<=m) as a consequence of (n<m) in H. So here
-  instead of mimickig H we assert the premise as a new goal. *)
-  assert (n<=m) as h.
-  all:swap 1 2.
-  (* we go on by specializing H with this new goal *)
-  specialize (H h).
-
-  (* let us make the premise p an evar and specialize H with it. *)
-  evar (p:nat).
-  specialize (H p);subst p.
-  
-  (* Let us make another goal for (?p > 0) *)
-  assert (?p>0) as h'.
-  all:swap 1 2.
-  (* we go on by specializing H with this new goal *)
-  specialize (H h').
-  (* Now we have finished, we finish refining the unknown goal with H itself. *)
-  exact H.
-  (* Now we are left with 2 subgoals and the initial goal where H has
-     been specialized. *)
-Abort.
 
 (* if H head product is dependent, call tac1, else call tac2 *)
 Ltac if_is_dep_prod H tac1 tac2 :=
@@ -164,6 +110,61 @@ Ltac ident_of_constr_string_cps := ltac2:(s tac |-
 Ltac evar_as_string s t := ident_of_constr_string_cps s ltac:(fun s => let s' := fresh s in evar(s':t)).
 
 
+(* ESPECIALIZE INTERNAL DOC *)
+(* We show here by hand what the especialize tactic does. We start
+with a hypothesis H of type
+
+H: (forall n m:nat, n<m -> n<=m -> forall p:nat, p>0 -> p+1 = m+n)
+
+Suppose we want:
+
+1. let the user prove that the premise (n <= m) can be proved from the
+   other premise (n < m) and can thus be removed from H
+
+2. let the user prove the premise (p > 0) for a p yet to be determined
+   (evar) and remove both p and (p>0) from H.
+*)
+Lemma foo: forall x y : nat, (forall n m:nat, n < m -> n <= m -> forall p:nat, p > 0 -> p+1 = m+n) -> False.
+Proof.
+
+  intros x y H. 
+  (* - We start from a goal evarEV with no typing constraint. *)
+  let ev1 := open_constr:(_) in
+  assert ev1 as newH.
+  (* then we refine this unknown goal by mimick H until we reach the
+  premise we want to remove: *)
+  intro n. (*or refine (fun (n:nat) => _) *)
+  specialize (H n).
+  intro m. 
+  specialize (H m).
+
+  (* 1 more times, but more automatic *)
+  match type of H with
+    (forall nme:?t, _) => (intro nme) (*refine (fun nme:t => _)*); specialize (H nme)
+  end.
+  
+  (* We want to prove (n<=m) as a consequence of (n<m) in H. So here
+  instead of mimickig H we assert the premise as a new goal. *)
+  assert (n<=m) as h.
+  all:swap 1 2.
+  (* we go on by specializing H with this new goal *)
+  specialize (H h).
+
+  (* let us make the premise p an evar and specialize H with it. *)
+  evar (p:nat).
+  specialize (H p);subst p.
+  (* Let us make another goal for (?p > 0) *)
+  assert (?p>0) as h'.
+  all:swap 1 2.
+  (* we go on by specializing H with this new goal *)
+  specialize (H h').
+  (* Now we have finished, we finish refining the unknown goal with H itself. *)
+  exact H.
+  (* Now we are left with 2 subgoals and the initial goal where H has
+     been specialized. *)
+Abort.
+
+
 (* This performs the refinement of the current goal by mimicking h and
    making evars and subgoals according to args. n is the number of
    dependent product we have already met. *)
@@ -174,24 +175,28 @@ Ltac refine_hd h largs n :=
   | nil =>  exact h
   | _ => 
       lazymatch type of h with
-      | (forall (x:?t) , _) =>
+      | (forall (h_premis:?t) , _) =>
+          let id := ident:(h_premis) in (* ltac hack, if the product was not named,
+                                           then "h_premis" is taken "as is" by fresh *)
+          let intronme := (*fresh*) id in
           lazymatch largs with
           | nil =>  exact h
-          | cons Quantif ?largs' => 
-              refine (fun x: t => _);
-              specialize (h x);
+          | cons Quantif ?largs' =>
+              refine (fun intronme: t => _);
+              specialize (h intronme);
               refine_hd h largs' newn
           | cons QuantifIgnore ?largs' => 
-              refine (fun x: t => _);
-              specialize (h x);
-              clear x;
+              (* let intronme := fresh x in *)
+              refine (fun intronme: t => _);
+              specialize (h intronme);
+              clear h_premis;
               refine_hd h largs' newn
           | cons (QuantifAtName ?nme) ?largs' => 
-              if_eqstr ident:(x) nme
+              if_eqstr ident:(h_premis) nme
               ltac:(idtac;refine_hd h (cons SubGoal largs') n)
               ltac:(idtac;refine_hd h (cons Quantif largs) n)
           | cons (EvarAtName ?nmearg ?nameevar) ?largs' => 
-              if_eqstr ident:(x) nmearg
+              if_eqstr ident:(h_premis) nmearg
               ltac:(idtac;refine_hd h (cons (Evar nameevar) largs') n)
               ltac:(idtac;refine_hd h (cons Quantif largs) n)
           | cons (QuantifAtNum ?num) ?largs' => 
@@ -221,7 +226,7 @@ Ltac refine_hd h largs n :=
                                   H:t|-_ => H
                                 end in
                   specialize (h hename);
-                  subst hename;
+                  clearbody hename;
                   (* idtac "subst"; *)
                   refine_hd h largs' newn]
           end
@@ -435,21 +440,21 @@ Ltac2 call_specialize_until_ltac2_no_evar_gen h li newh clearb :=
 
 
 
-Tactic Notation "especialize" constr(h) "using" ne_ident_list(levars) "at" ne_integer_list(li)
+Tactic Notation "especialize" constr(h) "with" ne_ident_list(levars) "at" ne_integer_list(li)
   "as" ident(newH) :=
   let tac := ltac2:(h li levars newH |- call_specialize_ltac2_gen h li levars newH false) in
   tac h li levars newH.
 
-Tactic Notation "especialize" constr(h) "at" ne_integer_list(li) "using" ne_ident_list(levars) "as" ident(newH) :=
+Tactic Notation "especialize" constr(h) "at" ne_integer_list(li) "with" ne_ident_list(levars) "as" ident(newH) :=
   let tac := ltac2:(h li levars newH |- call_specialize_ltac2_gen h li levars newH false) in
   tac h li levars newH.
 
-Tactic Notation "especialize" constr(h) "at" ne_integer_list(li) "using" ne_ident_list(levars) :=
+Tactic Notation "especialize" constr(h) "at" ne_integer_list(li) "with" ne_ident_list(levars) :=
   let tac := ltac2:(h li levars |- call_specialize_ltac2 h li levars) in
   tac h li levars.
 
 
-Tactic Notation "especialize" constr(h) "using" ne_ident_list(levars) "at" ne_integer_list(li) :=
+Tactic Notation "especialize" constr(h) "with" ne_ident_list(levars) "at" ne_integer_list(li) :=
   let tac := ltac2:(h li levars |- call_specialize_ltac2 h li levars) in
   tac h li levars.
    
@@ -459,86 +464,98 @@ Tactic Notation "especialize" constr(h) "using" ne_ident_list(levars) "at" ne_in
   tac h li.
 
 
-(* "using" must be first, probably because it is not a keyword: *)
-Tactic Notation "especialize" constr(h) "until" ne_integer_list(li) "using" ne_ident_list(levars)  "as" ident(newH) :=
+(* "with" must be first, probably because it is not a keyword: *)
+Tactic Notation "especialize" constr(h) "until" ne_integer_list(li) "with" ne_ident_list(levars)  "as" ident(newH) :=
   let tac := ltac2:(h li levars newH |- call_specialize_until_ltac2_gen h li levars newH false) in
   tac h li levars newH.
 
 
-(* "using" must be first, probably because it is not a keyword: *)
-Tactic Notation "especialize" constr(h) "until" ne_integer_list(li) "using" ne_ident_list(levars) "as" "?" :=
+(* "with" must be first, probably because it is not a keyword: *)
+Tactic Notation "especialize" constr(h) "until" ne_integer_list(li) "with" ne_ident_list(levars) "as" "?" :=
   let tac := ltac2:(h li levars newH |- call_specialize_until_ltac2_gen h li levars newH false) in
   let nme := fresh "__h_" in
   tac h li levars ident:(nme).
 
 
-(* "using" must be first, probably because it is not a keyword: *)
-Tactic Notation "especialize" constr(h) "until" ne_integer_list(li) "using" ne_ident_list(levars) :=
+(* "with" must be first, probably because it is not a keyword: *)
+Tactic Notation "especialize" constr(h) "until" ne_integer_list(li) "with" ne_ident_list(levars) :=
   let tac := ltac2:(h li levars newH |- call_specialize_until_ltac2_gen h li levars newH true) in
   let nme := fresh "__h_" in
   tac h li levars ident:(nme).
 
-(* "using" must be first, probably because it is not a keyword: *)
+(* "with" must be first, probably because it is not a keyword: *)
 Tactic Notation "especialize" constr(h) "until" ne_integer_list(li) :=
   let tac := ltac2:(h li newH |- call_specialize_until_ltac2_no_evar_gen h li newH true) in
   let nme := fresh "__h_" in
   tac h li ident:(nme).
 
-(* "using" must be first, probably because it is not a keyword: *)
+(* "with" must be first, probably because it is not a keyword: *)
 Tactic Notation "especialize" constr(h) "until" ne_integer_list(li) "as"  ident(newH) :=
   let tac := ltac2:(h li newH |- call_specialize_until_ltac2_no_evar_gen h li newH false) in
   let nme := fresh "__h_" in
   tac h li newH.
 
-(* tests:
+(* tests *)
 Definition hidden_product := forall i j :nat, i+1=j -> i+1=j -> i+1=j.
 
 Lemma foo: forall x y : nat,
     (forall (n m p :nat) (hhh:n < m) (iii:n <= m),
         p > 0
-        -> p > 0
-        -> p > 0
-        -> p > 0
-        -> p > 0
-        -> p > 0
-        -> p > 0
-        -> p > 0
-        -> p > 0
-        -> p > 0
-        -> p > 0
-        -> p > 0
-        -> p > 0
-        -> p > 0
-        -> p > 0
-        -> p > 0
         -> p > 2
         -> p > 1
         -> hidden_product) -> False.
 Proof.
   intros x y H. 
 
-  especialize H until 1 using p as h.
+  especialize H until 2 with p as h ;
+    [ match goal with |- ?n < ?m => idtac end
+    | match goal with H:?n < ?m  |- ?n <= ?m => idtac end
+    | match goal with |- False => idtac end;
+      match type of h with forall n m, (?q > _) -> _ => idtac end
+    ].
   Undo 1.
-  especialize H until 1 as h.
+  especialize H until 2 as h;
+    [ match goal with |- ?n < ?m => idtac end
+    | match goal with H:?n < ?m  |- ?n <= ?m => idtac end
+    | match goal with |- False => idtac end;
+      match type of h with forall n m p, (?q > _) -> _ => idtac end ].
   Undo 1.
-  especialize H until 1.
+  especialize H until 2;[
+      match goal with |- ?n < ?m => idtac end
+    | match goal with H:?n < ?m  |- ?n <= ?m => idtac end
+    | match goal with |- False => idtac end;
+      match type of H with forall n m p, (?q > _) -> _ => idtac end ].
+  Fail Check h.
   Undo 1.
-  especialize H at 2 using p as h.
+  especialize H at 2 with p as h2;
+    [ match goal with H:?n < ?m |- ?n <= ?m => idtac end
+    | match goal with |- False => idtac end;
+      match type of h2 with forall n m, (n < m) -> _ => idtac end ].
   Undo 1.
-  especialize H at 2.
+  especialize H at 2;[
+      match goal with H:?n < ?m |- ?n <= ?m => idtac end
+    | match goal with |- False => idtac end;
+      match type of H with forall n m p, (n < m) -> _ => idtac end ].
   Undo 1.
-  especialize H at 2 using p.
+  especialize H at 2 with p;[
+      match goal with H:?n < ?m |- ?n <= ?m => idtac end
+    | match goal with |- False => idtac end;
+      match type of H with forall n m, (n < m) -> _ => idtac end ].
   Undo 1.
-  
+  especialize H until 3 with n p;
+    [ match goal with | |- ?n < ?m => idtac end
+    | match goal with | h: ?n < ?m  |- ?n <= ?m => idtac end
+    | match goal with | h: ?n < ?m , h':?n <= ?m |- ?p > 0 => idtac end
+    | match goal with | |- False => idtac end].
+  Undo 1.
+  especialize H at 4 with p;[
+      match goal with H:?n < ?m , H':?n <= ?m, H'':?p > 0 |- ?p > 2 => idtac end
+    | match goal with |- False => idtac end;
+      match type of H with forall n m, (n < m) -> _ => idtac end ].
+  Undo 1.
+(*
 
-  especialize H at 19 20 using p.
-
-  especialize H until 3 using n p.
-
-  
-
-
-  especialize H at 2 3 using n m.
+  especialize H at 2 6 with n m.
   1: match goal with
        |- ?lft <= ?rght => is_evar lft; is_evar rght
      end.
@@ -550,7 +567,7 @@ Proof.
      end.
   Undo 4.
 
-  especialize H using n m at 2 3.
+  especialize H with n m at 2 3.
   1: match goal with
        |- ?lft <= ?rght => is_evar lft; is_evar rght
      end.
@@ -574,7 +591,7 @@ Proof.
      end.
   Undo 4.
 
-  especialize H at 2 3 using n p as hfoo.
+  especialize H at 2 3 with n p as hfoo.
   1: match goal with
        |- ?lft <= m => is_evar lft
      end.
@@ -590,7 +607,7 @@ Proof.
      end.
   Undo 5.
 
-  especialize H using n p at 2 3 as hfoo.
+  especialize H with n p at 2 3 as hfoo.
   1: match goal with
        |- ?lft <= m => is_evar lft
      end.
@@ -605,9 +622,53 @@ Proof.
        forall m : nat, ?lft < m -> hidden_product => idtac
      end.
   Undo 5.
-
-Abort.
 *)
+Abort.
+
+
+
+
+Lemma foo': forall x y : nat,
+    (forall (n m p :nat) (hhh:n < m) (iii:n <= m),
+        p > 0
+        -> p > 0
+        -> p > 0
+        -> p > 0
+        -> p > 0
+        -> p > 0
+        -> p > 0
+        -> p > 0
+        -> p > 0
+        -> p > 0
+        -> p > 0
+        -> p > 0
+        -> p > 0
+        -> p > 0
+        -> p > 0
+        -> p > 0
+        -> p > 2
+        -> p > 1
+        -> hidden_product) -> False.
+Proof.
+  intros x y H. 
+  especialize H at 19 20 with p;[ | | ]; [ 
+      (* test generated names *)
+      match type of h_premis with
+        _> _ => idtac
+      end;
+      match goal with
+        hhh : ?n < ?m, iii : ?n <= ?m |- _ > 2 => idtac
+      end
+    |  match goal with
+         hhh : ?n < ?m, iii : ?n <= ?m |- _ > 1 => idtac
+       end
+    |  match goal with
+       | |- False => idtac
+       end ].
+  Undo 1.
+Abort.
+
+
 (*
 (* Experimenting a small set of tactic to manipulate a hyp: *)
 
