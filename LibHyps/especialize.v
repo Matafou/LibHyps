@@ -6,6 +6,7 @@ Import Constr.Unsafe.
 Declare Scope specialize_scope.
 Delimit Scope specialize_scope with spec.
 Local Open Scope specialize_scope.
+Require IdentParsing.
 
 From Stdlib Require Import String Ascii.
 Open Scope string_scope.
@@ -34,10 +35,11 @@ Definition spec_args := list spec_arg .
 
 (* List storing heterogenous terms, for storing telescopes. A simple
    product could also be used. *)
+(*
 Inductive Depl :=
 | DNil: Depl
 | DCons: forall (A:Type) (x:A), Depl -> Depl.
-
+*)
 
 (* if H head product is dependent, call tac1, else call tac2 *)
 Ltac if_is_dep_prod H tac1 tac2 :=
@@ -55,9 +57,6 @@ Ltac if_is_dep_prod H tac1 tac2 :=
   | |- _ => tac1
   end.
 
-Import Constr.Unsafe.
-
-
 Ltac2 rec length_constr_string (xs : constr) : int :=
   match kind xs with
   | App _ args =>
@@ -69,16 +68,15 @@ Ltac2 rec length_constr_string (xs : constr) : int :=
   | _ => Control.throw No_value
   end.
 
-
 Ltac2 string_of_constr_string (s : constr) : string :=
   let s := eval vm_compute in ($s : String.string) in
   let ret := String.make (length_constr_string s) (Char.of_int 0) in
   let t := constr:(true) in
   let rec fill i s :=
-    match kind s with
+    (match kind s with
     | App _ args =>
-      if Int.equal (Array.length args) 2 then
-        String.set ret i (match kind (Array.get args 0) with App _ b => Char.of_int (
+      (if Int.equal (Array.length args) 2 then
+         (String.set ret i (match kind (Array.get args 0) with App _ b => Char.of_int (
             Int.add (if equal (Array.get b 0) t then 1 else 0) (
             Int.add (if equal (Array.get b 1) t then 2 else 0) (
             Int.add (if equal (Array.get b 2) t then 4 else 0) (
@@ -88,11 +86,12 @@ Ltac2 string_of_constr_string (s : constr) : string :=
             Int.add (if equal (Array.get b 6) t then 64 else 0) (
                     (if equal (Array.get b 7) t then 128 else 0)))))))))
           | _ => Control.throw No_value end);
-        fill (Int.add i 1) (Array.get args 1)
-      else ()
+        fill (Int.add i 1) (Array.get args 1))
+      else ())
     | _ => ()
-    end in
-  fill 0 s; ret.
+    end) in
+  fill 0 s;
+  ret.
 
 Ltac if_eqstr :=
   ltac2:(ident s tac1 tac2 |-
@@ -252,11 +251,6 @@ Local Ltac espec_gen H l name clearb :=
       assert ev1 as name; [ (refine_spec H l) | ]
   end.
   
-Local Ltac especialize_clear H args :=
-  let dummy_name := fresh "__" in
-  espec_gen H args dummy_name true.
-
-
 (* ltac2 int -> constr nat *)
 Ltac2 rec int_to_coq_nat n :=
   match Int.equal n 0 with
@@ -287,8 +281,6 @@ Ltac2 rec li_to_speclist_SAU (li: int list): constr :=
       constr:(cons (SubGoalUntilNum $ci) $cl)
   end.
 
-Require IdentParsing.
-
 Ltac2 rec li_to_speclist_EAU (li: ident list): constr :=
   match li with
     [] => constr:(@nil spec_arg)
@@ -309,65 +301,11 @@ Ltac2 occurrences_to_quantifatnum (occs:Std.occurrences): constr :=
 
 Ltac2 occurrences_to_evaratname (li:ident list): constr := li_to_speclist_EAU li.
 
-Ltac2 espec_at (h:constr) (occs:Std.occurrences) :=
-  let c := occurrences_to_quantifatnum occs in
-  ltac1:(h c |- especialize_clear h c) (Ltac1.of_constr h) (Ltac1.of_constr c).
-
-Ltac2 espec_at_using (h:constr) (occs:Std.occurrences) (occsevar:ident list) :=
-  let c1 := occurrences_to_quantifatnum occs in  
-  let c2 := occurrences_to_evaratname occsevar in
-  let c := Std.eval_red constr:(List.app $c2 $c1) in
-  ltac1:(h c |- especialize_clear h c) (Ltac1.of_constr h) (Ltac1.of_constr c).
-
-
-(* Ltac2 Notation "especialize" h(constr) occs(occurrences) := *)
-(*   espec_at_using h occs []. *)
-
-(* Ltac2 Notation "especialize" h(constr) occs(occurrences) "evar" levars(list1(ident)):= *)
-(*   espec_at_using h occs levars. *)
-
-(* Ltac2 Notation "especialize" h(constr) "using" levars(list1(ident)) occs(occurrences) := *)
-(*   espec_at_using h occs levars. *)
-
-
-(*
-Ltac2 espec_until_using_ltac1_gen (h:constr) (li:int list) (occsevar:ident list) (newH: ident opt) (clearb:bool):unit :=
-  match identopt,clearb with
-  | false => 
-  end
-
-  let c1 := li_to_speclist_SAU li in
-  let c2 := occurrences_to_evaratname occsevar in
-  let c := Std.eval_red constr:(List.app $c2 $c1) in  
-  let clearb := if clearb then constr:(true) else constr:(false) in
-  ltac1:(h c newH clearb |- espec_gen h c newH clearb)
-          (Ltac1.of_constr h)
-          (Ltac1.of_constr c)
-          (Ltac1.of_ident newH)
-          (Ltac1.of_constr clearb)
-.
-*)
-(* Ltac2 tac1 (li:Ltac1.t list option) := (). *)
-Ltac2 espec_at_ltac1 (h:constr) (li:int list) :=
-  let cl := li_to_speclist_QAU li in
-  ltac1:(h c |- especialize_clear h c) (Ltac1.of_constr h) (Ltac1.of_constr cl).
-
-Ltac2 espec_at_using_ltac1 (h:constr) (li:int list) (occsevar:ident list):unit :=
-  let c1 := li_to_speclist_QAU li in
-  let c2 := occurrences_to_evaratname occsevar in
-  let c := Std.eval_red constr:(List.app $c2 $c1) in
-  
-  ltac1:(h c |- especialize_clear h c)
-          (Ltac1.of_constr h)
-          (Ltac1.of_constr c)
-.
-
-
 Ltac2 espec_at_using_ltac1_gen (h:constr) (li:int list) (occsevar:ident list) (newH: ident) (clearb:bool):unit :=
   let c1 := li_to_speclist_QAU li in
   let c2 := occurrences_to_evaratname occsevar in
   let c := Std.eval_red constr:(List.app $c2 $c1) in  
-  let clearb := constr:(false) in
+  let clearb := if clearb then constr:(true) else constr:(false) in
   ltac1:(h c newH clearb |- espec_gen h c newH clearb)
           (Ltac1.of_constr h)
           (Ltac1.of_constr c)
@@ -396,35 +334,39 @@ Ltac2 interp_ltac1_int_list (li:Ltac1.t) : int list :=
 Ltac2 interp_ltac1_hyp (h:Ltac1.t) : constr := Option.get (Ltac1.to_constr h).
 
 (* call Ltac2'especialize on argscoming from Ltac1 notation *)
-Ltac2 call_specialize_ltac2_nousing h li :=
-  espec_at_using_ltac1 (interp_ltac1_hyp h) (interp_ltac1_int_list li) [].
-
-(* call Ltac2'especialize on argscoming from Ltac1 notation *)
-Ltac2 call_specialize_ltac2 h li levars :=
-  espec_at_using_ltac1
-    (interp_ltac1_hyp h)
-    (interp_ltac1_int_list li)
-    (interp_ltac1_id_list levars).
-
-(* call Ltac2'especialize on argscoming from Ltac1 notation *)
-Ltac2 call_specialize_ltac2_gen h li levars newh clearb :=
+Ltac2 call_specialize_ltac2_gen h (li:Ltac1.t) levars newh (clearb:bool) :=
+  let li2 := match Ltac1.to_list li with
+              None => []
+            | Some _ => interp_ltac1_int_list li
+            end in
+  let levar2 := match Ltac1.to_list levars with
+               None => []
+             | Some _ => interp_ltac1_id_list levars
+             end in
   espec_at_using_ltac1_gen
     (interp_ltac1_hyp h)
-    (interp_ltac1_int_list li)
-    (interp_ltac1_id_list levars)
+    li2
+    levar2
     (Option.get (Ltac1.to_ident newh))
-    clearb.
+    clearb .
 
 (* call Ltac2'especialize on argscoming from Ltac1 notation *)
 
 Ltac2 call_specialize_until_ltac2_gen h li levars newh clearb :=
-  let li' := interp_ltac1_int_list li in
-  if Int.gt (List.length li') 1
+  let li2 := match Ltac1.to_list li with
+               None => []
+             | Some _ => interp_ltac1_int_list li
+             end in
+  let levar2 := match Ltac1.to_list levars with
+                  None => []
+                | Some _ => interp_ltac1_id_list levars
+                end in
+  if Int.gt (List.length li2) 1
   then
     (* msgi (List.length li'); *)
     Control.zero (Tactic_failure (Some (fprintf "In 'specialize X until I', I must be a singleton.")))
   else 
-    espec_until_using_ltac1_gen (interp_ltac1_hyp h) li' (interp_ltac1_id_list levars)
+    espec_until_using_ltac1_gen (interp_ltac1_hyp h) li2 levar2
          (Option.get (Ltac1.to_ident newh)) clearb.
 
 Ltac2 call_specialize_until_ltac2_no_evar_gen h li newh clearb :=
@@ -437,11 +379,16 @@ Ltac2 call_specialize_until_ltac2_no_evar_gen h li newh clearb :=
     espec_until_using_ltac1_gen (interp_ltac1_hyp h) li' []
          (Option.get (Ltac1.to_ident newh)) clearb.
 
+Ltac gen_hyp_name h := lazymatch goal with
+                       | |- _ => let _ := is_var h in fresh h "_spec_"
+                       | |- _ => fresh "H_spec_"
+                       end.
+Ltac dummy_term := constr:(Prop).
 
 
-
-Tactic Notation "especialize" constr(h) "with" ne_ident_list(levars) "at" ne_integer_list(li)
-  "as" ident(newH) :=
+(* ESPECIALIZE AT *)
+(* ********************* *)
+Tactic Notation "especialize" constr(h) "with" ne_ident_list(levars) "at" ne_integer_list(li) "as" ident(newH) :=
   let tac := ltac2:(h li levars newH |- call_specialize_ltac2_gen h li levars newH false) in
   tac h li levars newH.
 
@@ -449,51 +396,92 @@ Tactic Notation "especialize" constr(h) "at" ne_integer_list(li) "with" ne_ident
   let tac := ltac2:(h li levars newH |- call_specialize_ltac2_gen h li levars newH false) in
   tac h li levars newH.
 
+(* ********************* *)
 Tactic Notation "especialize" constr(h) "at" ne_integer_list(li) "with" ne_ident_list(levars) :=
-  let tac := ltac2:(h li levars |- call_specialize_ltac2 h li levars) in
-  tac h li levars.
-
+  let tac := ltac2:(h li levars newH |- call_specialize_ltac2_gen h li levars newH true) in
+  let dummy_id := gen_hyp_name h in
+  tac h li levars ident:(dummy_id).
 
 Tactic Notation "especialize" constr(h) "with" ne_ident_list(levars) "at" ne_integer_list(li) :=
-  let tac := ltac2:(h li levars |- call_specialize_ltac2 h li levars) in
-  tac h li levars.
-   
+  let tac := ltac2:(h li levars newH |- call_specialize_ltac2_gen h li levars newH true) in
+  let dummy_id := gen_hyp_name h in
+  tac h li levars ident:(dummy_id).
 
- Tactic Notation "especialize" constr(h) "at" ne_integer_list(li) :=
-  let tac := ltac2:(h li |- call_specialize_ltac2_nousing h li) in
-  tac h li.
+(* ********************* *)
+
+Tactic Notation "especialize" constr(h) "with" ne_ident_list(levars) "as" ident(newH) :=
+  let tac := ltac2:(h li levars newH |- call_specialize_ltac2_gen h li levars newH false) in
+  let li := dummy_term in       (* something that is not a list. *)
+  tac h li levars newH.
+
+(* ********************* *)
+Tactic Notation "especialize" constr(h) "at" ne_integer_list(li) "as" ident(newH) :=
+    let tac := ltac2:(h li levars newH |- call_specialize_ltac2_gen h li levars newH false) in
+    let levars := dummy_term in       (* something that is not a list. *)
+    tac h li levars newH.
+
+(* ********************* *)
+Tactic Notation "especialize" constr(h) "with" ne_ident_list(levars) :=
+  let tac := ltac2:(h li levars newH |- call_specialize_ltac2_gen h li levars newH true) in
+  let li := dummy_term  in       (* something that is not a list. *)
+  let dummy_id := gen_hyp_name h in
+  tac h li levars ident:(dummy_id).
+
+(* ********************* *)
+Tactic Notation "especialize" constr(h) "at" ne_integer_list(li) :=
+    let tac := ltac2:(h li levars newH |- call_specialize_ltac2_gen h li levars newH true) in
+    let levars := dummy_term in       (* something that is not a list. *)
+    let dummy_id := gen_hyp_name h in
+    tac h li levars ident:(dummy_id).
 
 
-(* "with" must be first, probably because it is not a keyword: *)
+
+(* ESPECIALIZE UNTIL *)
+(* ********************* *)
 Tactic Notation "especialize" constr(h) "until" ne_integer_list(li) "with" ne_ident_list(levars)  "as" ident(newH) :=
   let tac := ltac2:(h li levars newH |- call_specialize_until_ltac2_gen h li levars newH false) in
   tac h li levars newH.
 
+(* Strangely putting "with" before "until" is not recognized at
+   parsing. Probably because "until" is not a keyword.
+   Error: Syntax error: [ltac_use_default] expected after [tactic] (in
+   [tactic_command]). *)
+ Tactic Notation "especialize" constr(h) "with" ne_ident_list(levars) "until" ne_integer_list(li) "as" ident(newH) :=
+  let tac := ltac2:(h li levars newH |- call_specialize_until_ltac2_gen h li levars newH false) in
+  tac h li levars newH.
 
-(* "with" must be first, probably because it is not a keyword: *)
 Tactic Notation "especialize" constr(h) "until" ne_integer_list(li) "with" ne_ident_list(levars) "as" "?" :=
   let tac := ltac2:(h li levars newH |- call_specialize_until_ltac2_gen h li levars newH false) in
-  let nme := fresh "__h_" in
+  let nme := gen_hyp_name h in
   tac h li levars ident:(nme).
 
 
 (* "with" must be first, probably because it is not a keyword: *)
 Tactic Notation "especialize" constr(h) "until" ne_integer_list(li) "with" ne_ident_list(levars) :=
   let tac := ltac2:(h li levars newH |- call_specialize_until_ltac2_gen h li levars newH true) in
-  let nme := fresh "__h_" in
+  let nme := gen_hyp_name h in
+  tac h li levars ident:(nme).
+
+(* "with" must be first, probably because it is not a keyword: *)
+Tactic Notation "especialize" constr(h) "until" ne_integer_list(li) "as"  ident(newH) :=
+  let tac := ltac2:(h li levars newH |- call_specialize_until_ltac2_gen h li levars newH false) in
+  let levars := dummy_term in
+  tac h li levars ident:(newH).
+
+(* "with" must be first, probably because it is not a keyword: *)
+Tactic Notation "especialize" constr(h) "until" ne_integer_list(li) "as"  "?" :=
+  let tac := ltac2:(h li levars newH |- call_specialize_until_ltac2_gen h li levars newH false) in
+  let nme := gen_hyp_name h in
+  let levars := dummy_term in
   tac h li levars ident:(nme).
 
 (* "with" must be first, probably because it is not a keyword: *)
 Tactic Notation "especialize" constr(h) "until" ne_integer_list(li) :=
-  let tac := ltac2:(h li newH |- call_specialize_until_ltac2_no_evar_gen h li newH true) in
-  let nme := fresh "__h_" in
-  tac h li ident:(nme).
+  let tac := ltac2:(h li levars newH |- call_specialize_until_ltac2_gen h li levars newH true) in
+  let nme := gen_hyp_name h in
+  let levars := dummy_term in
+  tac h li levars ident:(nme).
 
-(* "with" must be first, probably because it is not a keyword: *)
-Tactic Notation "especialize" constr(h) "until" ne_integer_list(li) "as"  ident(newH) :=
-  let tac := ltac2:(h li newH |- call_specialize_until_ltac2_no_evar_gen h li newH false) in
-  let nme := fresh "__h_" in
-  tac h li newH.
 
 (* tests *)
 Definition hidden_product := forall i j :nat, i+1=j -> i+1=j -> i+1=j.
@@ -507,11 +495,77 @@ Lemma foo: forall x y : nat,
 Proof.
   intros x y H. 
 
+  especialize H at 2;
+    [ now apply PeanoNat.Nat.lt_le_incl | match goal with | |- False => idtac end;
+                                          match type of H with forall (n:_) (m:_) (p:_), n < m -> _ => idtac end ].
+  Undo 1.
+  especialize H at 2 as h;
+    [ now apply PeanoNat.Nat.lt_le_incl | match goal with | |- False => idtac end;
+                                          match type of h with forall (n:_) (m:_) (p:_), n < m -> _ => idtac end ].
+  Undo 1.
+  especialize H with p;
+    [ match goal with | |- False => idtac end; match type of H with forall (n:_) (m:_), n < m -> _ => idtac end ].
+  Undo 1.
+  especialize H with n p;
+    [ match goal with | |- False => idtac end; match type of H with forall (m:_), _ < m -> _ => idtac end ].
+  Undo 1.
+  especialize H with p as h;
+    [ match goal with | |- False => idtac end; match type of h with forall (n:_) (m:_), n < m -> _ => idtac end ].
+  Undo 1.
+  especialize H with n p as h;
+    [ match goal with | |- False => idtac end; match type of h with forall (m:_), _ < m -> _ => idtac end ].
+  Undo 1.
+
+  especialize H at 4 with p;[
+      match goal with h: ?n < ?m , h':?n <= ?m, H'':?p > 0 |- ?p > 2 => idtac end
+    | match goal with |- False => idtac end; match type of H with forall n m, (n < m) -> _ => idtac end ].
+  Undo 1.
+  especialize H at 3 with n p;
+    [ match goal with | h: ?n < ?m , h':?n <= ?m |- ?p > 0 => is_evar p end
+    | match goal with | |- False => idtac end; match type of H with forall (m:_), _ < m -> _ => idtac end ].
+  Undo 1.
+  especialize H  with p at 3;
+    [ match goal with | h: ?n < ?m , h':?n <= ?m |- ?p > 0 => is_evar p end
+    | match goal with | |- False => idtac end; match type of H with forall (n:_) (m:_), n < m-> _ => idtac end ].
+  Undo 1.
+  especialize H with n p at 3;
+    [ match goal with | h: ?n < ?m , h':?n <= ?m |- ?p > 0 => is_evar p end
+    | match goal with | |- False => idtac end; match type of H with forall (m:_), _ < m -> _ => idtac end ].
+  Undo 1.
+
+  especialize H at 2 with p as h2;
+    [ match goal with H:?n < ?m |- ?n <= ?m => idtac end
+    | match goal with |- False => idtac end;
+      match type of h2 with forall n m, (n < m) -> _ => idtac end ].
+  Undo 1.
+  especialize H with p at 2 as h2;
+    [ match goal with H:?n < ?m |- ?n <= ?m => idtac end
+    | match goal with |- False => idtac end;
+      match type of h2 with forall n m, (n < m) -> _ => idtac end ].
+  Undo 1.
+
+
   especialize H until 2 with p as h ;
     [ match goal with |- ?n < ?m => idtac end
     | match goal with H:?n < ?m  |- ?n <= ?m => idtac end
     | match goal with |- False => idtac end;
       match type of h with forall n m, (?q > _) -> _ => idtac end
+    ].
+  Undo 1.
+(* This syntax ("with" before "until") does not work due to "until" not being a keyword. *)
+(*  especialize H with p until 2 as h ;
+    [ match goal with |- ?n < ?m => idtac end
+    | match goal with H:?n < ?m  |- ?n <= ?m => idtac end
+    | match goal with |- False => idtac end;
+      match type of h with forall n m, (?q > _) -> _ => idtac end
+    ].
+  Undo 1. *)
+  rename H into Hyp;
+  especialize Hyp until 2 with p as ?;
+    [ match goal with |- ?n < ?m => idtac end
+    | match goal with H:?n < ?m  |- ?n <= ?m => idtac end
+    | match goal with |- False => idtac end;
+      match type of Hyp_spec_ with forall n m, (?q > _) -> _ => idtac end
     ].
   Undo 1.
   especialize H until 2 as h;
@@ -520,6 +574,13 @@ Proof.
     | match goal with |- False => idtac end;
       match type of h with forall n m p, (?q > _) -> _ => idtac end ].
   Undo 1.
+  rename H into hyp;
+  especialize hyp until 2 as ?;
+    [ match goal with |- ?n < ?m => idtac end
+    | match goal with H:?n < ?m  |- ?n <= ?m => idtac end
+    | match goal with |- False => idtac end;
+      match type of hyp_spec_ with forall n m p, (?q > _) -> _ => idtac end ].
+  Undo 1.
   especialize H until 2;[
       match goal with |- ?n < ?m => idtac end
     | match goal with H:?n < ?m  |- ?n <= ?m => idtac end
@@ -527,102 +588,26 @@ Proof.
       match type of H with forall n m p, (?q > _) -> _ => idtac end ].
   Fail Check h.
   Undo 1.
-  especialize H at 2 with p as h2;
-    [ match goal with H:?n < ?m |- ?n <= ?m => idtac end
-    | match goal with |- False => idtac end;
-      match type of h2 with forall n m, (n < m) -> _ => idtac end ].
-  Undo 1.
-  especialize H at 2;[
-      match goal with H:?n < ?m |- ?n <= ?m => idtac end
-    | match goal with |- False => idtac end;
-      match type of H with forall n m p, (n < m) -> _ => idtac end ].
-  Undo 1.
-  especialize H at 2 with p;[
-      match goal with H:?n < ?m |- ?n <= ?m => idtac end
-    | match goal with |- False => idtac end;
-      match type of H with forall n m, (n < m) -> _ => idtac end ].
-  Undo 1.
   especialize H until 3 with n p;
     [ match goal with | |- ?n < ?m => idtac end
     | match goal with | h: ?n < ?m  |- ?n <= ?m => idtac end
     | match goal with | h: ?n < ?m , h':?n <= ?m |- ?p > 0 => idtac end
     | match goal with | |- False => idtac end].
   Undo 1.
-  especialize H at 4 with p;[
-      match goal with H:?n < ?m , H':?n <= ?m, H'':?p > 0 |- ?p > 2 => idtac end
-    | match goal with |- False => idtac end;
-      match type of H with forall n m, (n < m) -> _ => idtac end ].
-  Undo 1.
-(*
 
-  especialize H at 2 6 with n m.
+
+  especialize H at 2 4 with n m.
   1: match goal with
        |- ?lft <= ?rght => is_evar lft; is_evar rght
      end.
   2: match goal with
-       H: ?lft < ?rght |- p > 0 => is_evar lft; is_evar rght
+       H: p > 0 , H':?lft <= ?rght |- p > 2 => is_evar lft; is_evar rght
      end.
   3: match goal with
-       H: nat -> ?lft < ?rght -> hidden_product |- False => is_evar lft; is_evar rght
+       H: forall p:nat, ?lft < ?rght -> p > 0 -> p > 1 -> _ |- False => is_evar lft; is_evar rght
      end.
   Undo 4.
 
-  especialize H with n m at 2 3.
-  1: match goal with
-       |- ?lft <= ?rght => is_evar lft; is_evar rght
-     end.
-  2: match goal with
-       H: ?lft < ?rght |- p > 0 => is_evar lft; is_evar rght
-     end.
-  3: match goal with
-       H: nat -> ?lft < ?rght -> hidden_product |- False => is_evar lft; is_evar rght
-     end.
-  Undo 4.
-
-  especialize H at 2 3.
-  1: match goal with
-     H: n < m |- n <= m => idtac
-     end.
-  2: match goal with
-       H: n < m |- p > 0 => idtac
-     end.
-  3: match goal with
-       H: forall n m : nat, nat -> n < m -> hidden_product |- False => idtac
-     end.
-  Undo 4.
-
-  especialize H at 2 3 with n p as hfoo.
-  1: match goal with
-       |- ?lft <= m => is_evar lft
-     end.
-  2: match goal with
-       H: ?lft < m |- ?rght > 0 => is_evar lft; is_evar rght
-     end.
-  3: match goal with
-       H : (forall n m p : nat, n < m -> n <= m -> p > 0 -> hidden_product),
-         H': forall m : nat, ?lft < m -> hidden_product |- False => is_evar lft
-     end.
-  3: match type of hfoo with
-       forall m : nat, ?lft < m -> hidden_product => idtac
-     end.
-  Undo 5.
-
-  especialize H with n p at 2 3 as hfoo.
-  1: match goal with
-       |- ?lft <= m => is_evar lft
-     end.
-  2: match goal with
-       H: ?lft < m |- ?rght > 0 => is_evar lft; is_evar rght
-     end.
-  3: match goal with
-       H : (forall n m p : nat, n < m -> n <= m -> p > 0 -> hidden_product),
-         H': forall m : nat, ?lft < m -> hidden_product |- False => is_evar lft
-     end.
-  3: match type of hfoo with
-       forall m : nat, ?lft < m -> hidden_product => idtac
-     end.
-  Undo 5.
-*)
 Abort.
 
 
@@ -669,9 +654,9 @@ Proof.
 Abort.
 
 
-(*
-(* Experimenting a small set of tactic to manipulate a hyp: *)
 
+(* Experimenting a small set of tactic to manipulate a hyp: *)
+(*
 Ltac quantify H :=
   match type of H with
     (forall x:?t, _) => refine (fun (x:t) => _); specialize (H x)
