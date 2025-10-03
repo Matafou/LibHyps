@@ -2,7 +2,8 @@
   This file is part of LibHyps. It is distributed under the MIT
   "expat license". You should have recieved a LICENSE file with it. *)
 
-Require Import Arith ZArith List LibHyps.TacNewHyps.
+From Stdlib Require Import Arith ZArith List.
+Require Import LibHyps.TacNewHyps.
 Import ListNotations.
 Local Open Scope list.
 
@@ -14,7 +15,7 @@ Local Open Scope list.
 
 (* Comment this and the Z-dependent lines below if you don't want
    ZArith to be loaded *)
-Require Import ZArith.
+From Stdlib Require Import ZArith.
 
 (** ** The custom renaming tactic
 

@@ -4,7 +4,7 @@
 
 Require Export LibHyps.TacNewHyps.
 Require Export LibHyps.LibHypsNaming.
-Require Export LibHyps.LibSpecialize.
+(* Require Export LibHyps.LibSpecialize. *)
 
 (* debug
 Module Prgoal_Notation.

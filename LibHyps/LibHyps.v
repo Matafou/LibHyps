@@ -4,9 +4,10 @@
 
 Require Export LibHyps.TacNewHyps.
 Require Export LibHyps.LibHypsNaming.
-(* Require Export LibHyps.LibSpecialize. *)
+Require Export LibHyps.Especialize.
 Require Export LibHyps.LibHypsTactics.
 (* We export ; { } etc. ";;" also. *)
+
 
 Export TacNewHyps.Notations.
 
@@ -72,6 +73,7 @@ Module LegacyNotations.
     tac1 /s/n!.
 End LegacyNotations.
 
+
 (*
 Goal forall x1 x3:bool, forall a z e : nat,
       z+e = a
@@ -84,12 +86,15 @@ Proof.
   (* Set Ltac Debug. *)
   (* then_nh_rev ltac:(intros) ltac:(subst_or_idtac).   *)
   intros ; {! group_up_list }.
+
   (* intros ? ? ? ? ? ? ? ? ? ?. *)
   (* group_up_list (DCons bool b1 DNil). *)
   Undo.
   intros ; { move_up_types }.
-  intros /n!.
-  intros /s/n!.
+  Undo.
+  intros /n.
+  Undo.
+  intros /s/n.
   Undo.
   intros /n.
   match goal with

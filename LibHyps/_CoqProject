@@ -1,0 +1,10 @@
+-R . LibHyps.LibHyps
+
+./LibHypsNaming.v
+./Especialize.v
+./IdentParsing.v
+./LibHypsTactics.v
+./LibSpecialize.v
+./LibDecomp.v
+./TacNewHyps.v
+./LibHyps.v

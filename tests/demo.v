@@ -16,10 +16,48 @@ playing the Undos. *)
 opam install coq_libhyps *)
 
 (*** Proof maintenance ***)
-Unset Printing Compact Contexts.
-Require Import Arith ZArith  List.
+From Stdlib Require Import Arith ZArith  List.
 Require Import LibHyps.LibHyps.
 
+Lemma demo: forall x y z:nat,
+    x = y -> forall  a b t : nat, a+1 = t+2 -> b + 5 = t - 7 ->  (forall u v, v+1 = 1 -> u+1 = 1 -> a+1 = z+2)  -> z = b + x-> True.
+Proof.
+  intros.
+  (* ugly names *)
+  Undo.
+  (* Example of using the iterator on new hyps: this prints each new hyp name. *)
+  intros; {fun h => idtac h}.
+  Undo.
+  (* This gives sensible names to each new hyp. *)
+  intros ; { autorename }.
+  Undo.
+  (* short syntax: *)
+  intros /n.
+  Undo.
+  (* same thing but use subst if possible, and group non prop hyps to the top. *)
+  intros ; { substHyp }; { autorename}; {move_up_types}.
+  Undo.
+  (* short syntax: *)  
+  intros /s/n/g.
+  Undo.
+  (* Even shorter: *)  
+  intros /sng.
+  (* Let us instantiate the 2nd premis of h_all_eq_add_add without copying its type: *)
+  (* BROKEN IN COQ 8.18*)
+  especialize h_all_eq_add_add_ with u at 2.
+  { apply Nat.add_0_l. }
+  (* now h_all_eq_add_add is specialized *)
+  Undo 6.
+
+  intros until 1.
+  (** The taticals apply after any tactic. Notice how H:x=y is not new
+    and hence not substituted, whereas z = b + x is. *)
+  destruct x eqn:heq;intros /sng.
+  - apply I.
+  - apply I.
+Qed.
+
+Unset Printing Compact Contexts.
 
 Lemma foo: forall (x:nat) (b1:bool) (y:nat) (b2:bool),
     x = y
@@ -91,7 +129,7 @@ Abort.
 
 
 (*** Large Goals - Foraward reasoning and reordering and autorenaming of hypothesis. ***)
-
+Unset Silent.
 Lemma foo: forall (x:nat) (b1:bool) (y:nat) (b2:bool),
     x = y ->
     orb b2 b1 = false ->
@@ -148,7 +186,7 @@ Proof.
   (* You can also specify that you want to instantiate the n first premisses. *)
   (* THIS HAS CHANGED in libHyps 3 *)
   especialize H3 with n,m,p until 3.
-  Show 4.
+  (* Show 4. *)
   Undo.
 
   (* VARIABLES MIXED WITH HYPOTHESIS. *)
@@ -197,9 +235,9 @@ Proof.
 
   (* experimental: (setq coq-libhyps-intros t) *)
   Undo 2.
-  Show.
+  (* Show. *)
   Restart.
-  Show.
+  (* Show. *)
   (* Again, better combine it with "; { }". *)
   intros ; { autorename }.
   (* You can still shorten big hyps. but hiding most of the time is better. *)
@@ -207,7 +245,9 @@ Proof.
   Undo 2.
   (* shortcut: *)
   intros /n.
-  Restart. Show. Set Printing Compact Contexts.
+  Restart.
+  (* Show. *)
+  Set Printing Compact Contexts.
   (* Combining with other cleaning operators: *)
   intros /s/n/g. (* /sng is also accepted *)
   (* Long names, this is configurable (next demo), but IDE provides
@@ -219,7 +259,7 @@ Proof.
   decompose [ex and or] h_ex_and_neq_and_/sng.
   (* No more obscure "as" to maintain *)
   inversion h_le_y_y_ /sng.
-  Show 2.
+  (* Show 2. *)
   (* You can still use destructive pattern, but without inventing names: *)
   Undo.
   assert (y < a /\ b < t /\ z' < t) /n.
