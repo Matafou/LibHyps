@@ -5,7 +5,8 @@
 
 function gen_projet_file () {
     FILES="$1"
-    PROJECTFILE=$2
+    DIR=$2
+    PROJECTFILE=$DIR/_CoqProject
     RESOURCEFILE=$3
 
     cat < $RESOURCEFILE > "$PROJECTFILE"
@@ -21,16 +22,16 @@ function gen_projet_file () {
 
     cat < $PROJECTFILE
 
-    echo "Calling coq_makefile in LibHyps"
-    (cd LibHyps && coq_makefile -f _CoqProject -o Makefile )
+    echo "Calling coq_makefile in $DIR"
+    (cd $DIR && coq_makefile -f _CoqProject -o Makefile )
 }
 
 
 FILESLH=$(cd LibHyps && find . -name "*.v" | grep -v "ident_of_string\|especialize_ltac2\|LibEspecialize" )
-PROJECTFILELH="LibHyps/_CoqProject"
-gen_projet_file "$FILESLH" "$PROJECTFILELH" "resources/coq_project.libhyps"
+PROJECTDIRLH="LibHyps"
+gen_projet_file "$FILESLH" "$PROJECTDIRLH" "resources/coq_project.libhyps"
 
 
 FILESTEST=$(cd tests && find . -name "*.v" | grep -v "incremental" )
-PROJECTFILETESTS="tests/_CoqProject"
-gen_projet_file "$FILESTEST" "$PROJECTFILETESTS" "resources/coq_project.tests"
+PROJECTDIRTESTS="tests"
+gen_projet_file "$FILESTEST" "$PROJECTDIRTESTS" "resources/coq_project.tests"
