@@ -1,3 +1,7 @@
 Makefile
 Makefile.conf
 .coqdeps.d
+tests/_CoqProject
+tests/Makefile
+LibHyps/_CoqProject
+LibHyps/Makefile

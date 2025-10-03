@@ -1,0 +1,7 @@
+-R . LibHyps.tests
+-R ../LibHyps LibHyps.LibHyps
+-arg -async-proofs-cache
+-arg force
+-arg -w
+-arg -undo-batch-mode
+

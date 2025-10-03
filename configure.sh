@@ -1,9 +1,36 @@
-#!/bin/sh
+#!/bin/bash
 
-FILES=`find . -name "*.v" -exec echo {} \;`
-echo "-R LibHyps LibHyps" > _CoqProject
-echo "" >> _CoqProject
-for i in `find LibHyps -name "*.v"| grep -v LibHypsNaming2 | grep -v LibEspecialize. | grep -v LibHypsExamples | grep -v LibHypsDemo | grep -v LibHypsTest | grep -v LibHypsRegression`; do
-  echo $i >> _CoqProject
-done
-coq_makefile -f _CoqProject -o Makefile
+
+
+
+function gen_projet_file () {
+    FILES="$1"
+    PROJECTFILE=$2
+    RESOURCEFILE=$3
+
+    cat < $RESOURCEFILE > "$PROJECTFILE"
+
+    echo "" >> "$PROJECTFILE"
+
+    for i in $FILES
+    do
+        echo "$i" >> "$PROJECTFILE"
+    done
+
+    echo "Content of $PROJECTFILE"
+
+    cat < $PROJECTFILE
+
+    echo "Calling coq_makefile in LibHyps"
+    (cd LibHyps && coq_makefile -f _CoqProject -o Makefile )
+}
+
+
+FILESLH=$(cd LibHyps && find . -name "*.v" | grep -v "ident_of_string\|especialize_ltac2\|LibEspecialize" )
+PROJECTFILELH="LibHyps/_CoqProject"
+gen_projet_file "$FILESLH" "$PROJECTFILELH" "resources/coq_project.libhyps"
+
+
+FILESTEST=$(cd tests && find . -name "*.v" | grep -v "incremental" )
+PROJECTFILETESTS="tests/_CoqProject"
+gen_projet_file "$FILESTEST" "$PROJECTFILETESTS" "resources/coq_project.tests"
