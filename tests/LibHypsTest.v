@@ -2,9 +2,9 @@
   This file is part of LibHyps. It is distributed under the MIT
   "expat license". You should have recieved a LICENSE file with it. *)
 
-From Stdlib Require Import Arith ZArith List.
+From Coq Require Import Arith ZArith List.
 Require Import  LibHyps.LibHyps (*LibHyps.LibSpecialize*).
-From Stdlib Require Import List.
+From Coq Require Import List.
 
 Local Open Scope autonaming_scope.
 Import ListNotations.

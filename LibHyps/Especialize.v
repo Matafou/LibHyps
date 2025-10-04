@@ -1,4 +1,4 @@
-From Stdlib Require Import String.
+From Coq Require Import String.
 (* Require ident_of_string. *)
 Require Import Ltac2.Ltac2.
 From Ltac2 Require Import Option Constr Printf.
@@ -8,7 +8,7 @@ Import Constr.Unsafe.
 (* Local Open Scope specialize_scope. *)
 Require IdentParsing.
 
-From Stdlib Require Import String Ascii.
+From Coq Require Import String Ascii.
 Open Scope string_scope.
 Local Set Default Proof Mode "Classic".
 
@@ -229,13 +229,13 @@ Ltac refine_hd_OLD h largs n :=
           | cons (SubGoalAtNum ?num) ?largs' => 
               if_is_dep_prod h
                 ltac:((idtac;refine_hd_OLD h (cons Quantif largs) n))
-                ltac:(idtac;tryif convert num newn
+                ltac:(idtac;tryif constr_eq_strict num newn
                              then refine_hd_OLD h (cons SubGoal largs') n
                              else refine_hd_OLD h (cons Quantif largs) n)
           | cons (SubGoalUntilNum ?num) ?largs' => 
               if_is_dep_prod h
                 ltac:((idtac;refine_hd_OLD h (cons Quantif largs) n))
-                ltac:(idtac;tryif convert num newn
+                ltac:(idtac;tryif constr_eq_strict num newn
                              then refine_hd_OLD h (cons SubGoal largs') n
                              else refine_hd_OLD h (cons SubGoal largs) n)
           | cons (Evar ?ename) ?largs' => 
@@ -331,9 +331,10 @@ Ltac refine_hd h ldirectarg lnameargs lnumargs n :=
               if_is_dep_prod h
                 ltac:(fail 0)
                        ltac:(idtac;
-                             tryif convert constr:(PeanoNat.Nat.leb newn num) constr:(true)
+                             let le_b := eval compute in (PeanoNat.Nat.leb newn num) in
+                             tryif constr_eq_strict le_b constr:(true)
                              then
-                               tryif convert num newn
+                               tryif constr_eq_strict num newn
                                then refine_hd h (cons SubGoal nil) lnameargs lnumargs' n
                                else (fail 3)
                              else
@@ -341,7 +342,7 @@ Ltac refine_hd h ldirectarg lnameargs lnumargs n :=
           | (SubGoalUntilNum ?num) => 
               if_is_dep_prod h
                 ltac:(fail 0)
-                ltac:(idtac;tryif convert num newn
+                ltac:(idtac;tryif constr_eq_strict num newn
                              then refine_hd h (cons SubGoal nil) lnameargs lnumargs' n
                              else refine_hd h (cons SubGoal nil) lnameargs lnumargs n)
           | SubGoalAtAll => 
@@ -371,7 +372,7 @@ Ltac refine_spec h lnameargs lnumargs := refine_hd h constr:(@nil spec_arg) lnam
    replacing h or naming the new hyp. *)
 (* Precondition: name is already fresh *)
 
-From Stdlib Require Sorting.Mergesort Structures.OrdersEx.
+From Coq Require Sorting.Mergesort Structures.OrdersEx.
 
 
 Module SpecargOrder <: Structures.Orders.TotalLeBool.

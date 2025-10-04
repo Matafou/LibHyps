@@ -1,5 +1,5 @@
 (*! Frontend | Ltac2-based identifier parsing for prettier notations !*)
-From Stdlib Require Import NArith.NArith Strings.String Init.Byte.
+From Coq Require Import NArith.NArith Strings.String Init.Byte.
 Require Import Ltac2.Ltac2.
 
 Import Ltac2.Init.

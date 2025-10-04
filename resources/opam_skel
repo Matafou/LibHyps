@@ -27,10 +27,6 @@ run-test: [
 
 install: [make "install"]
 
-depends: [
-  "coq" {(>= "8.11" & <= "8.21~") | (= "dev")}
-]
-
 tags: [
   "keyword:proof environment manipulation"
   "keyword:forward reasoning"
@@ -55,7 +51,27 @@ It also provides the especialize tactic to ease forward reasoning by
 instantianting one, several or all premisses of a hypothesis.
 "
 
+
+########################## version compatible with coq-8.20 and before  ################
+
+depends: [
+  "coq" {(>= "8.11" & <= "8.19~") | (= "dev")}
+]
+
 url {
   src: "https://github.com/Matafou/LibHyps/archive/refs/tags/3.0.1.tar.gz"
   checksum: "sha512=d29114cd6ed5a4c88283b7598a0720b693bf978c4e5c42d5451e1bf21e8bfdc7d9b0a274ef34b27f8ab97635240628a1349c175bd52fc3acedb993dd3e816548"
 }
+
+######################### version compatible with rocq-9 and later
+
+depends: [
+  "coq" {(>= "8.20" & <= "9.2~") | (= "dev")}
+]
+
+url {
+  src: "https://github.com/Matafou/LibHyps/archive/refs/tags/3.1.0.tar.gz"
+  checksum: "???"
+}
+
+##########################

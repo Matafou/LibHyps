@@ -7,7 +7,7 @@ Require Export LibHyps.TacNewHyps.
 Require Export LibHyps.LibHypsNaming.
 Require Export LibHyps.LibHyps.
 Export TacNewHyps.Notations.
-From Stdlib Require Import Arith ZArith List.
+From Coq Require Import Arith ZArith List.
 
 Import LibHyps.LegacyNotations.
 
