@@ -22,19 +22,15 @@ jobs:
     strategy:
       matrix:
         image:
-          - 'coqorg/coq:dev'
-          - 'coqorg/coq:8.20'
-          - 'coqorg/coq:8.19'
-          - 'coqorg/coq:8.18'
-          - 'coqorg/coq:8.17'
-          - 'coqorg/coq:8.16'
+          - 'rocq/rocq-prover:9.0'
+          - 'rocq/rocq-prover:dev'
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
       - uses: coq-community/docker-coq-action@v1
         with:
-          opam_file: 'coq-libhyps.opam'
+          opam_file: 'rocq-libhyps.opam'
           custom_image: ${{ matrix.image }}
         env:
           OPAMWITHTEST: 'true'
@@ -46,19 +42,15 @@ jobs:
     strategy:
       matrix:
         image:
-          - 'coqorg/coq:dev'
-          - 'coqorg/coq:8.20'
-          - 'coqorg/coq:8.19'
-          - 'coqorg/coq:8.18'
-          - 'coqorg/coq:8.17'
-          - 'coqorg/coq:8.16'
+          - 'rocq/rocq-prover:9.0'
+          - 'rocq/rocq-prover:dev'
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
       - uses: coq-community/docker-coq-action@v1
         with:
-          opam_file: 'coq-libhyps.opam'
+          opam_file: 'rocq-libhyps.opam'
           custom_image: ${{ matrix.image }}
           export: 'OPAMWITHTEST'  # space-separated list of variables
     env:
