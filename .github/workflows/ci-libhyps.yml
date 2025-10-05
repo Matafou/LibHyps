@@ -52,8 +52,7 @@ jobs:
           custom_image: ${{ matrix.image }}
          # export: 'OPAMWITHTEST'  # space-separated list of variables
       - name: test libhyps
-          run: |
-            make test        
+        run: make test        
        # env:
        # OPAMWITHTEST: 'true'
 
