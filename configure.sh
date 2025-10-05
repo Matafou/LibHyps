@@ -22,8 +22,8 @@ function gen_projet_file () {
 
     cat < $PROJECTFILE
 
-    echo "Calling coq_makefile in $DIR"
-    (cd $DIR && coq_makefile -f _CoqProject -o Makefile )
+    echo "Calling rocq makefile in $DIR"
+    (cd $DIR && rocq makefile -f _CoqProject -o Makefile )
 }
 
 
