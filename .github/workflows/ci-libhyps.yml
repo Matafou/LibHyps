@@ -31,8 +31,8 @@ jobs:
         with:
           opam_file: 'rocq-libhyps.opam'
           custom_image: ${{ matrix.image }}
-        env:
-          OPAMWITHTEST: 'true'
+       # env:
+       #   OPAMWITHTEST: 'true'
 
   # This workflow contains a single job called "build"
   test:
@@ -50,12 +50,11 @@ jobs:
         with:
           opam_file: 'rocq-libhyps.opam'
           custom_image: ${{ matrix.image }}
-          export: 'OPAMWITHTEST'  # space-separated list of variables
-      - script: |
-          startGroup "Test"
-            make test
-          endGroup
-    env:
-      OPAMWITHTEST: 'true'
+         # export: 'OPAMWITHTEST'  # space-separated list of variables
+      - name: test libhyps
+          run: |
+            make test        
+       # env:
+       # OPAMWITHTEST: 'true'
 
 
