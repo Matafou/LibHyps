@@ -15,37 +15,21 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        image:
-          - 'rocq/rocq-prover:dev'
-          - 'rocq/rocq-prover:9.0.0'
-    # Steps represent a sequence of tasks that will be executed as part of the job
-    steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v3
-      - uses: coq-community/docker-coq-action@v1
-        with:
-          opam_file: 'rocq-libhyps.opam'
-          custom_image: ${{ matrix.image }}
-       # env:
-       #   OPAMWITHTEST: 'true'
-
-  # This workflow contains a single job called "build"
+  # this builds libhyps and also runs the tests
   build-and-test:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
+    # this shell variable is detected by "opam install" and triggers
+    # the "run-test" part of the opam project file
     env:
       OPAMWITHTEST: 'true'
     strategy:
       matrix:
         image:
+          - 'rocq/rocq-prover:latest'
           - 'rocq/rocq-prover:dev'
-          - 'rocq/rocq-prover:9.0.0'
+          - 'rocq/rocq-prover:9.1'
+          - 'rocq/rocq-prover:9.0'
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
