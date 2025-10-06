@@ -39,4 +39,4 @@ jobs:
         with:
           opam_file: 'coq-libhyps.opam'
           custom_image: ${{ matrix.image }}
-         # export: 'OPAMWITHTEST'  # space-separated list of variables
+          export: 'OPAMWITHTEST'  # space-separated list of variables
