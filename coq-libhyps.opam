@@ -53,7 +53,7 @@ It also provides the especialize tactic to ease forward reasoning by
 instantianting one, several or all premisses of a hypothesis.
 "
 
-url {
-  src: "https://github.com/Matafou/LibHyps/archive/refs/tags/3.0.2.tar.gz"
-  checksum: "sha512=???"
-}
+# url {
+#   src: "https://github.com/Matafou/LibHyps/archive/refs/tags/3.0.2.tar.gz"
+#   checksum: "sha512=???"
+# }
