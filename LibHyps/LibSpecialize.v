@@ -63,7 +63,7 @@ Ltac fail_if_not_hyp c :=
 Ltac proveprem_as_prem H i idpremis idnewH :=
   (* prefer this to evar, which is not well "typed" by Ltac (does not
      know that it creates an evar (coq bug?). *)
-  let ev := open_constr:((_:Prop)) in
+  let ev := open_constr:((_)) in
   assert (idpremis:ev);
   [|specialize H with (i:=idpremis) as idnewH].
 
@@ -113,7 +113,7 @@ Tactic Notation "especialize" constr(H) "at" int_or_var(i) "as" "?" := proveprem
    hypand it is modified, or the new hyp is generalized). *)
 
 Ltac proveprem_prem H i idpremis :=
-  let ev := open_constr:((_:Prop)) in
+  let ev := open_constr:((_)) in
   assert (idpremis:ev);
   [|specialize H with (i:=idpremis)].
 
@@ -179,8 +179,8 @@ Ltac proveprem_as_2 H idnewH i1 i2 :=
   let prefx := fresh_unfail H in
   let idprem1 := fresh prefx "_prem" in (* FIXME when H is not freshable, and in all others. *)
   let idprem2 := fresh prefx "_prem'" in
-  let ev1 := open_constr:((_:Prop)) in
-  let ev2 := open_constr:((_:Prop)) in
+  let ev1 := open_constr:((_)) in
+  let ev2 := open_constr:((_)) in
   assert (idprem1:ev1);
   [ |
     assert (idprem2:ev2);
@@ -193,8 +193,8 @@ Ltac proveprem_2 H i1 i2 :=
   let prefx := fresh_unfail H in
   let idprem1 := fresh prefx "_prem" in
   let idprem2 := fresh prefx "_prem'" in
-  let ev1 := open_constr:((_:Prop)) in
-  let ev2 := open_constr:((_:Prop)) in
+  let ev1 := open_constr:((_)) in
+  let ev2 := open_constr:((_)) in
   assert (idprem1:ev1);
   [ |
     assert (idprem2:ev2);
@@ -207,9 +207,9 @@ Ltac proveprem_as_3 H idnewH i1 i2 i3 :=
   let idprem1 := fresh prefx "_prem" in
   let idprem2 := fresh prefx "_prem" in
   let idprem3 := fresh prefx "_prem" in
-  let ev1 := open_constr:((_:Prop)) in
-  let ev2 := open_constr:((_:Prop)) in
-  let ev3 := open_constr:((_:Prop)) in
+  let ev1 := open_constr:((_)) in
+  let ev2 := open_constr:((_)) in
+  let ev3 := open_constr:((_)) in
   assert (idprem1:ev1);
   [ | assert (idprem2:ev2);
       [ | assert (idprem3:ev3);
@@ -222,9 +222,9 @@ Ltac proveprem_3 H i1 i2 i3 :=
   let idprem1 := fresh prefx "_prem" in
   let idprem2 := fresh prefx "_prem" in
   let idprem3 := fresh prefx "_prem" in
-  let ev1 := open_constr:((_:Prop)) in
-  let ev2 := open_constr:((_:Prop)) in
-  let ev3 := open_constr:((_:Prop)) in
+  let ev1 := open_constr:((_)) in
+  let ev2 := open_constr:((_)) in
+  let ev3 := open_constr:((_)) in
   assert (idprem1:ev1);
   [ | assert (idprem2:ev2);
       [ | assert (idprem3:ev3);
@@ -238,10 +238,10 @@ Ltac proveprem_as_4 H idnewH i1 i2 i3 i4 :=
   let idprem2 := fresh prefx "_prem" in
   let idprem3 := fresh prefx "_prem" in
   let idprem4 := fresh prefx "_prem" in
-  let ev1 := open_constr:((_:Prop)) in
-  let ev2 := open_constr:((_:Prop)) in
-  let ev3 := open_constr:((_:Prop)) in
-  let ev4 := open_constr:((_:Prop)) in
+  let ev1 := open_constr:((_)) in
+  let ev2 := open_constr:((_)) in
+  let ev3 := open_constr:((_)) in
+  let ev4 := open_constr:((_)) in
   assert (idprem1:ev1); [
   | assert (idprem2:ev2); [
     | assert (idprem3:ev3); [
@@ -257,10 +257,10 @@ Ltac proveprem_4 H i1 i2 i3 i4 :=
   let idprem2 := fresh prefx "_prem" in
   let idprem3 := fresh prefx "_prem" in
   let idprem4 := fresh prefx "_prem" in
-  let ev1 := open_constr:((_:Prop)) in
-  let ev2 := open_constr:((_:Prop)) in
-  let ev3 := open_constr:((_:Prop)) in
-  let ev4 := open_constr:((_:Prop)) in
+  let ev1 := open_constr:((_)) in
+  let ev2 := open_constr:((_)) in
+  let ev3 := open_constr:((_)) in
+  let ev4 := open_constr:((_)) in
   assert (idprem1:ev1); [
   | assert (idprem2:ev2); [
     | assert (idprem3:ev3); [
@@ -278,11 +278,11 @@ Ltac proveprem_as_5 H idnewH i1 i2 i3 i4 i5 :=
   let idprem3 := fresh prefx "_prem" in
   let idprem4 := fresh prefx "_prem" in
   let idprem5 := fresh prefx "_prem" in
-  let ev1 := open_constr:((_:Prop)) in
-  let ev2 := open_constr:((_:Prop)) in
-  let ev3 := open_constr:((_:Prop)) in
-  let ev4 := open_constr:((_:Prop)) in
-  let ev5 := open_constr:((_:Prop)) in
+  let ev1 := open_constr:((_)) in
+  let ev2 := open_constr:((_)) in
+  let ev3 := open_constr:((_)) in
+  let ev4 := open_constr:((_)) in
+  let ev5 := open_constr:((_)) in
   assert (idprem1:ev1); [
   | assert (idprem2:ev2); [
     | assert (idprem3:ev3); [
@@ -300,11 +300,11 @@ Ltac proveprem_5 H i1 i2 i3 i4 i5 :=
   let idprem3 := fresh prefx "_prem" in
   let idprem4 := fresh prefx "_prem" in
   let idprem5 := fresh prefx "_prem" in
-  let ev1 := open_constr:((_:Prop)) in
-  let ev2 := open_constr:((_:Prop)) in
-  let ev3 := open_constr:((_:Prop)) in
-  let ev4 := open_constr:((_:Prop)) in
-  let ev5 := open_constr:((_:Prop)) in
+  let ev1 := open_constr:((_)) in
+  let ev2 := open_constr:((_)) in
+  let ev3 := open_constr:((_)) in
+  let ev4 := open_constr:((_)) in
+  let ev5 := open_constr:((_)) in
   assert (idprem1:ev1); [
   | assert (idprem2:ev2); [
     | assert (idprem3:ev3); [
@@ -323,12 +323,12 @@ Ltac proveprem_as_6 H idnewH i1 i2 i3 i4 i5 i6 :=
   let idprem4 := fresh prefx "_prem" in
   let idprem5 := fresh prefx "_prem" in
   let idprem6 := fresh prefx "_prem" in
-  let ev1 := open_constr:((_:Prop)) in
-  let ev2 := open_constr:((_:Prop)) in
-  let ev3 := open_constr:((_:Prop)) in
-  let ev4 := open_constr:((_:Prop)) in
-  let ev5 := open_constr:((_:Prop)) in
-  let ev6 := open_constr:((_:Prop)) in
+  let ev1 := open_constr:((_)) in
+  let ev2 := open_constr:((_)) in
+  let ev3 := open_constr:((_)) in
+  let ev4 := open_constr:((_)) in
+  let ev5 := open_constr:((_)) in
+  let ev6 := open_constr:((_)) in
   assert (idprem1:ev1); [
   | assert (idprem2:ev2); [
     | assert (idprem3:ev3); [
@@ -348,12 +348,12 @@ Ltac proveprem_6 H i1 i2 i3 i4 i5 i6 :=
   let idprem4 := fresh prefx "_prem" in
   let idprem5 := fresh prefx "_prem" in
   let idprem6 := fresh prefx "_prem" in
-  let ev1 := open_constr:((_:Prop)) in
-  let ev2 := open_constr:((_:Prop)) in
-  let ev3 := open_constr:((_:Prop)) in
-  let ev4 := open_constr:((_:Prop)) in
-  let ev5 := open_constr:((_:Prop)) in
-  let ev6 := open_constr:((_:Prop)) in
+  let ev1 := open_constr:((_)) in
+  let ev2 := open_constr:((_)) in
+  let ev3 := open_constr:((_)) in
+  let ev4 := open_constr:((_)) in
+  let ev5 := open_constr:((_)) in
+  let ev6 := open_constr:((_)) in
   assert (idprem1:ev1); [
   | assert (idprem2:ev2); [
     | assert (idprem3:ev3); [
@@ -374,13 +374,13 @@ Ltac proveprem_as_7 H idnewH i1 i2 i3 i4 i5 i6 i7 :=
   let idprem5 := fresh prefx "_prem" in
   let idprem6 := fresh prefx "_prem" in
   let idprem7 := fresh prefx "_prem" in
-  let ev1 := open_constr:((_:Prop)) in
-  let ev2 := open_constr:((_:Prop)) in
-  let ev3 := open_constr:((_:Prop)) in
-  let ev4 := open_constr:((_:Prop)) in
-  let ev5 := open_constr:((_:Prop)) in
-  let ev6 := open_constr:((_:Prop)) in
-  let ev7 := open_constr:((_:Prop)) in
+  let ev1 := open_constr:((_)) in
+  let ev2 := open_constr:((_)) in
+  let ev3 := open_constr:((_)) in
+  let ev4 := open_constr:((_)) in
+  let ev5 := open_constr:((_)) in
+  let ev6 := open_constr:((_)) in
+  let ev7 := open_constr:((_)) in
   assert (idprem1:ev1); [
   | assert (idprem2:ev2); [
     | assert (idprem3:ev3); [
@@ -402,13 +402,13 @@ Ltac proveprem_7 H i1 i2 i3 i4 i5 i6 i7:=
   let idprem5 := fresh prefx "_prem" in
   let idprem6 := fresh prefx "_prem" in
   let idprem7 := fresh prefx "_prem" in
-  let ev1 := open_constr:((_:Prop)) in
-  let ev2 := open_constr:((_:Prop)) in
-  let ev3 := open_constr:((_:Prop)) in
-  let ev4 := open_constr:((_:Prop)) in
-  let ev5 := open_constr:((_:Prop)) in
-  let ev6 := open_constr:((_:Prop)) in
-  let ev7 := open_constr:((_:Prop)) in
+  let ev1 := open_constr:((_)) in
+  let ev2 := open_constr:((_)) in
+  let ev3 := open_constr:((_)) in
+  let ev4 := open_constr:((_)) in
+  let ev5 := open_constr:((_)) in
+  let ev6 := open_constr:((_)) in
+  let ev7 := open_constr:((_)) in
   assert (idprem1:ev1); [
   | assert (idprem2:ev2); [
     | assert (idprem3:ev3); [
