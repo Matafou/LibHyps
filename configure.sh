@@ -1,5 +1,27 @@
 #!/bin/bash
 
+DEVOPT=no
+
+POSITIONAL=()
+while [[ $# -gt 0 ]]
+do
+key="$1"
+
+case $key in
+    --dev)
+        DEVOPT=yes
+        shift
+        ;;
+    *)    # unknown option
+        POSITIONAL+=("$1") # save it in an array for later
+        shift # past argument
+        ;;
+esac
+done
+
+set -- "${POSITIONAL[@]}" # restore positional parameters (i.e.
+                          # parameters that were not recognized by the
+                          # previous code.)
 
 
 
@@ -27,9 +49,16 @@ function gen_projet_file () {
 }
 
 
-FILESLH=$(cd LibHyps && find . -name "*.v" | grep -v "ident_of_string\|especialize_ltac2\|LibEspecialize" )
+if [ "$DEVOPT" = "no" ]
+then
+    FILESLH=$(cd LibHyps && find . -name "*.v" | grep -v "ident_of_string\|especialize_ltac2\|LibEspecialize\|LibHypsDebug" )
+else
+        FILESLH=$(cd LibHyps && find . -name "*.v" | grep -v "ident_of_string\|especialize_ltac2\|LibEspecialize" )
+fi
+
 PROJECTDIRLH="LibHyps"
 gen_projet_file "$FILESLH" "$PROJECTDIRLH" "resources/coq_project.libhyps"
+
 
 
 FILESTEST=$(cd tests && find . -name "*.v" | grep -v "incremental" )
