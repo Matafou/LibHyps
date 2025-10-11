@@ -1,4 +1,4 @@
-Require Import LibHyps.LibHypsTactics.
+(* Require Import LibHyps.LibHypsTactics. *)
 Require Import LibHyps.Especialize.
 
 (* tests *)
