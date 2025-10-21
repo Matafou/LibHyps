@@ -11,15 +11,6 @@ Local Ltac2 is_dep_prod (t:constr): bool :=
   | _ => false
   end.
 
-Local Ltac2 pr_list (pr: unit -> 'a -> message) () (l: 'a list) :=
-  let rec pr_list_  () (l: 'a list) :=
-    match l with
-    | [] => fprintf ""
-    | [e] => fprintf "%a" pr e
-    | e::l' => fprintf "%a , %a" pr e pr_list_ l'
-    end in
-  fprintf "[ %a ]" pr_list_ l.
-
 
 (* ESPECIALIZE INTERNAL DOC *)
 (* We show here by hand what the especialize tactic does. We start

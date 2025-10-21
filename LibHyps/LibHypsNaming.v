@@ -4,9 +4,16 @@
 
 From Stdlib Require Import Arith ZArith List.
 Require Import LibHyps.TacNewHyps.
-Import ListNotations.
-Local Open Scope list.
+(* Import ListNotations. *)
+(* Local Open Scope list. *)
+Require Import Ltac2.Ltac2.
+From Ltac2 Require Import Option Constr Printf.
+Import Constr.Unsafe.
+Local Set Default Proof Mode "Classic".
+Require Import LibHyps.LibHypsDebug.
 
+Local Ltac2 backtrack (msg:string) := Control.zero (Tactic_failure (Some (fprintf "Backtrack: %s" msg))).
+ 
 (** This file defines a tactic "autorename h" (and "autorename_strict
     h") that automatically rename hypothesis h followinh a systematic,
     but customizable heuristic.
@@ -44,6 +51,539 @@ Ltac rename_hyp1 n th :=
 <<
 Ltac rename_hyp ::= my_rename_hyp.
 >> *)
+
+Ltac2 Type hypnames := string list.
+Ltac2 add_suffix := true.
+
+(* Elements of l are supposed to already start with "_" *)
+Ltac2 build_name_gen (sep:string) (suffx:bool) (l:string list) :=
+  String.app (String.concat sep l) (if suffx then "_" else "").
+
+Ltac2 build_name l := build_name_gen "_" add_suffix l.
+Ltac2 build_name_no_suffix l := build_name_gen "_" false l.
+
+(* This sets the way numerical constants are displayed, default value
+   is set below to numerical_names_nosufx, which will give the same
+   name to (O<1)%nat and (O<1)%Z and (O<1)%N, i.e. h_lt_0_1_.
+
+   but you can use this in your development to change it
+   h_lt_0n_1n_/h_lt_0z_1z_/h_lt_0N_1N_:
+   Ltac numerical_names ::= numerical_names_sufx *)
+
+Ltac2 Type numerical_names_style := bool.
+
+Ltac2 string_of_int (i:int) := Message.to_string (Message.of_int i).
+
+(** Generate fresh name for numerical constants.
+
+   Warning: problem here: hyps names may end with a digit: Coq may
+   *replace* the digit in case of name clash. If you are bitten by
+   this, you should switch to "Ltac add_suffix ::= constr:(true)." so
+   that every hyp name ends with "_", so that coq never mangle with
+   the digits *)
+Ltac2 num_nosufx (i:int) :=
+  msgs ".   num_nosufx";
+  printf "<infomsg>.    i = %s</infomsg>" (string_of_int i);
+  let res := String.app "_" (string_of_int i) in
+  printf "<infomsg>.    res = %s</infomsg>" res;
+  msgs ".   num_nosufx: end";
+  res.
+Ltac2 num_sufx (i:int) (sfx:string) := String.app "_" (String.app (string_of_int i) sfx).
+
+(* TODO: find a way to make a string from nat, Z and N *)
+Ltac2 numerical_names_nosufx (t:constr):string :=
+  printf  "<infomsg>...NUM: %t</infomsg>" t;
+  if is_closed t then
+    match! t with
+    | 0%Z => num_nosufx 0
+    | 1%Z => num_nosufx 1
+    | 2%Z => num_nosufx 2
+    | 3%Z => num_nosufx 3
+    | 4%Z => num_nosufx 4
+    | 5%Z => num_nosufx 5
+    | 6%Z => num_nosufx 6
+    | 7%Z => num_nosufx 7
+    | 8%Z => num_nosufx 8
+    | 9%Z => num_nosufx 9
+    | 10%Z => num_nosufx 10
+    (* | Z0 => num_nosufx 0 *)
+    | O%nat => num_nosufx 0
+    | 1%nat => num_nosufx 1
+    | 2%nat => num_nosufx 2
+    | 3%nat => num_nosufx 3
+    | 4%nat => num_nosufx 4
+    | 5%nat => num_nosufx 5
+    | 6%nat => num_nosufx 6
+    | 7%nat => num_nosufx 7
+    | 8%nat => num_nosufx 8
+    | 9%nat => num_nosufx 9
+    | 10%nat => num_nosufx 10
+    | O%N => num_nosufx 0
+    | 1%N => num_nosufx 1
+    | 2%N => num_nosufx 2
+    | 3%N => num_nosufx 3
+    | 4%N => num_nosufx 4
+    | 5%N => num_nosufx 5
+    | 6%N => num_nosufx 6
+    | 7%N => num_nosufx 7
+    | 8%N => num_nosufx 8
+    | 9%N => num_nosufx 9
+    | 10%N => num_nosufx 10
+    | _ => backtrack "not recognized as a number "
+    end
+  else
+    backtrack "not a nameable number".
+
+Ltac2 numerical_names_sufx t :=
+  match! t with
+  | 0%Z => num_sufx 0 "z"
+  | 1%Z => num_sufx 1 "z"
+  | 2%Z => num_sufx 2 "z"
+  | 3%Z => num_sufx 3 "z"
+  | 4%Z => num_sufx 4 "z"
+  | 5%Z => num_sufx 5 "z"
+  | 6%Z => num_sufx 6 "z"
+  | 7%Z => num_sufx 7 "z"
+  | 8%Z => num_sufx 8 "z"
+  | 9%Z => num_sufx 9 "z"
+  | 10%Z => num_sufx 10 "z"
+  (* | Z0 => num_sufx 0 *)
+  | O%nat => num_sufx 0 "n"
+  | 1%nat => num_sufx 1 "n"
+  | 2%nat => num_sufx 2 "n"
+  | 3%nat => num_sufx 3 "n"
+  | 4%nat => num_sufx 4 "n"
+  | 5%nat => num_sufx 5 "n"
+  | 6%nat => num_sufx 6 "n"
+  | 7%nat => num_sufx 7 "n"
+  | 8%nat => num_sufx 8 "n"
+  | 9%nat => num_sufx 9 "n"
+  | 10%nat => num_sufx 10 "n"
+  | O%N => num_sufx 0 "N"
+  | 1%N => num_sufx 1 "N"
+  | 2%N => num_sufx 2 "N"
+  | 3%N => num_sufx 3 "N"
+  | 4%N => num_sufx 4 "N"
+  | 5%N => num_sufx 5 "N"
+  | 6%N => num_sufx 6 "N"
+  | 7%N => num_sufx 7 "N"
+  | 8%N => num_sufx 8 "N"
+  | 9%N => num_sufx 9 "N"
+  | 10%N => num_sufx 10 "N"
+  end.
+
+(* Redefine at will *)
+Ltac2 numerical_names: constr -> string:= numerical_names_nosufx.
+
+(** This determines the depth of the recursive analysis of a type to
+    compute the corresponding hypothesis name. generally 2 or 3 is
+    enough. More gives too log names, less may give identical names
+    too often. *)
+Ltac2 rename_depth := 3.
+
+(** Default prefix for hypothesis names. *)
+Ltac2 default_prefix():string := "h".
+
+(** A few special default chunks, for special cases in the naming heuristic. *)
+Ltac2 impl_prefix() := "_impl".
+Ltac2 forall_prefix() := "_all".
+Ltac2 exists_prefix() := "_ex".
+
+
+(** This is the customizable naming tactic that the user should
+    REDEFINE along his development. See above for an example of such
+    redefinition. It should always fail when no name suggestion is
+    found, to give a chance to the default naming scheme to apply. *)
+Ltac2 rename_hyp stop th := backtrack "rename_hyp".
+Ltac2 rename_hyp_default n th := backtrack "rename_hyp_default".
+
+(* TODO: find something better to detect implicits!! *)
+(* Determines the number of non "head" implicit arguments, i.e. implicit
+   arguments that are before any explicit one. This shall be ignored
+   when naming an application. This is done in very ugly way. Any
+   better solution welcome. *)
+Ltac2 count_impl th :=
+  (*  match Unsafe.kind th with | App _ args => Array.length args | _ => 0  end. *)
+  match Unsafe.kind th with
+  | App _ _ => 
+      lazy_match! th with
+      | (?z _ _ _ _ _ _ _ _ _ _ _) =>
+          match! th with
+          | _ => let _ := constr:(fun a b c d e f g h i j k => ($z a b c d e f g h i j k , $z _ _ _ _ _ _ _ _ _ _ k)) in 1
+          | _ => let _ := constr:(fun a b c d e f g h i j k => ($z a b c d e f g h i j k , $z _ _ _ _ _ _ _ _ _ j k)) in 2
+          | _ => let _ := constr:(fun a b c d e f g h i j k => ($z a b c d e f g h i j k , $z _ _ _ _ _ _ _ _ i j k)) in 3
+          | _ => let _ := constr:(fun a b c d e f g h i j k => ($z a b c d e f g h i j k , $z _ _ _ _ _ _ _ h i j k)) in 4
+          | _ => let _ := constr:(fun a b c d e f g h i j k => ($z a b c d e f g h i j k , $z _ _ _ _ _ _ g h i j k)) in 5
+          | _ => let _ := constr:(fun a b c d e f g h i j k => ($z a b c d e f g h i j k , $z _ _ _ _ _ f g h i j k)) in 6
+          | _ => let _ := constr:(fun a b c d e f g h i j k => ($z a b c d e f g h i j k , $z _ _ _ _ e f g h i j k)) in 7
+          | _ => let _ := constr:(fun a b c d e f g h i j k => ($z a b c d e f g h i j k , $z _ _ _ d e f g h i j k)) in 8
+          | _ => let _ := constr:(fun a b c d e f g h i j k => ($z a b c d e f g h i j k , $z _ _ c d e f g h i j k)) in 9
+          | _ => let _ := constr:(fun a b c d e f g h i j k => ($z a b c d e f g h i j k , $z _ b c d e f g h i j k)) in 10
+          | _ => let _ := constr:(fun a b c d e f g h i j k => ($z a b c d e f g h i j k , $z a b c d e f g h i j k)) in 11
+          end
+      | (?z _ _ _ _ _ _ _ _ _ _) =>
+          match! th with
+          | _ => let _ := constr:(fun b c d e f g h i j k => ($z b c d e f g h i j k , $z _ _ _ _ _ _ _ _ _ k)) in 1
+          | _ => let _ := constr:(fun b c d e f g h i j k => ($z b c d e f g h i j k , $z _ _ _ _ _ _ _ _ j k)) in 2
+          | _ => let _ := constr:(fun b c d e f g h i j k => ($z b c d e f g h i j k , $z _ _ _ _ _ _ _ i j k)) in 3
+          | _ => let _ := constr:(fun b c d e f g h i j k => ($z b c d e f g h i j k , $z _ _ _ _ _ _ h i j k)) in 4
+          | _ => let _ := constr:(fun b c d e f g h i j k => ($z b c d e f g h i j k , $z _ _ _ _ _ g h i j k)) in 5
+          | _ => let _ := constr:(fun b c d e f g h i j k => ($z b c d e f g h i j k , $z _ _ _ _ f g h i j k)) in 6
+          | _ => let _ := constr:(fun b c d e f g h i j k => ($z b c d e f g h i j k , $z _ _ _ e f g h i j k)) in 7
+          | _ => let _ := constr:(fun b c d e f g h i j k => ($z b c d e f g h i j k , $z _ _ d e f g h i j k)) in 8
+          | _ => let _ := constr:(fun b c d e f g h i j k => ($z b c d e f g h i j k , $z _ c d e f g h i j k)) in 9
+          | _ => let _ := constr:(fun b c d e f g h i j k => ($z b c d e f g h i j k , $z b c d e f g h i j k)) in 10
+          end
+      | (?z _ _ _ _ _ _ _ _ _) =>
+          match! th with
+          | _ => let _ := constr:(fun c d e f g h i j k => ($z c d e f g h i j k , $z _ _ _ _ _ _ _ _ k)) in 1
+          | _ => let _ := constr:(fun c d e f g h i j k => ($z c d e f g h i j k , $z _ _ _ _ _ _ _ j k)) in 2
+          | _ => let _ := constr:(fun c d e f g h i j k => ($z c d e f g h i j k , $z _ _ _ _ _ _ i j k)) in 3
+          | _ => let _ := constr:(fun c d e f g h i j k => ($z c d e f g h i j k , $z _ _ _ _ _ h i j k)) in 4
+          | _ => let _ := constr:(fun c d e f g h i j k => ($z c d e f g h i j k , $z _ _ _ _ g h i j k)) in 5
+          | _ => let _ := constr:(fun c d e f g h i j k => ($z c d e f g h i j k , $z _ _ _ f g h i j k)) in 6
+          | _ => let _ := constr:(fun c d e f g h i j k => ($z c d e f g h i j k , $z _ _ e f g h i j k)) in 7
+          | _ => let _ := constr:(fun c d e f g h i j k => ($z c d e f g h i j k , $z _ d e f g h i j k)) in 8
+          | _ => let _ := constr:(fun c d e f g h i j k => ($z c d e f g h i j k , $z c d e f g h i j k)) in 9
+          end
+      | (?z _ _ _ _ _ _ _ _) =>
+          match! th with
+          | _ => let _ := constr:(fun d e f g h i j k => ($z d e f g h i j k , $z _ _ _ _ _ _ _ k)) in 1
+          | _ => let _ := constr:(fun d e f g h i j k => ($z d e f g h i j k , $z _ _ _ _ _ _ j k)) in 2
+          | _ => let _ := constr:(fun d e f g h i j k => ($z d e f g h i j k , $z _ _ _ _ _ i j k)) in 3
+          | _ => let _ := constr:(fun d e f g h i j k => ($z d e f g h i j k , $z _ _ _ _ h i j k)) in 4
+          | _ => let _ := constr:(fun d e f g h i j k => ($z d e f g h i j k , $z _ _ _ g h i j k)) in 5
+          | _ => let _ := constr:(fun d e f g h i j k => ($z d e f g h i j k , $z _ _ f g h i j k)) in 6
+          | _ => let _ := constr:(fun d e f g h i j k => ($z d e f g h i j k , $z _ e f g h i j k)) in 7
+          | _ => let _ := constr:(fun d e f g h i j k => ($z d e f g h i j k , $z d e f g h i j k)) in 8
+          end
+      | (?z _ _ _ _ _ _ _) =>
+          match! th with
+          | _ => let _ := constr:(fun e f g h i j k => ($z e f g h i j k , $z _ _ _ _ _ _ k)) in 1
+          | _ => let _ := constr:(fun e f g h i j k => ($z e f g h i j k , $z _ _ _ _ _ j k)) in 2
+          | _ => let _ := constr:(fun e f g h i j k => ($z e f g h i j k , $z _ _ _ _ i j k)) in 3
+          | _ => let _ := constr:(fun e f g h i j k => ($z e f g h i j k , $z _ _ _ h i j k)) in 4
+          | _ => let _ := constr:(fun e f g h i j k => ($z e f g h i j k , $z _ _ g h i j k)) in 5
+          | _ => let _ := constr:(fun e f g h i j k => ($z e f g h i j k , $z _ f g h i j k)) in 6
+          | _ => let _ := constr:(fun e f g h i j k => ($z e f g h i j k , $z e f g h i j k)) in 7
+          end
+      | (?z _ _ _ _ _ _) =>
+          match! th with
+          | _ => let _ := constr:(fun f g h i j k => ($z f g h i j k , $z _ _ _ _ _ k)) in 1
+          | _ => let _ := constr:(fun f g h i j k => ($z f g h i j k , $z _ _ _ _ j k)) in 2
+          | _ => let _ := constr:(fun f g h i j k => ($z f g h i j k , $z _ _ _ i j k)) in 3
+          | _ => let _ := constr:(fun f g h i j k => ($z f g h i j k , $z _ _ h i j k)) in 4
+          | _ => let _ := constr:(fun f g h i j k => ($z f g h i j k , $z _ g h i j k)) in 5
+          | _ => let _ := constr:(fun f g h i j k => ($z f g h i j k , $z f g h i j k)) in 6
+          end
+      | (?z _ _ _ _ _) =>
+          match! th with
+          | _ => let _ := constr:(fun g h i j k => ($z g h i j k , $z _ _ _ _ k)) in 1
+          | _ => let _ := constr:(fun g h i j k => ($z g h i j k , $z _ _ _ j k)) in 2
+          | _ => let _ := constr:(fun g h i j k => ($z g h i j k , $z _ _ i j k)) in 3
+          | _ => let _ := constr:(fun g h i j k => ($z g h i j k , $z _ h i j k)) in 4
+          | _ => let _ := constr:(fun g h i j k => ($z g h i j k , $z g h i j k)) in 5
+          end
+      | (?z _ _ _ _) =>
+          match! th with
+          | _ => let _ := constr:(fun h i j k => ($z h i j k , $z _ _ _ k)) in 1
+          | _ => let _ := constr:(fun h i j k => ($z h i j k , $z _ _ j k)) in 2
+          | _ => let _ := constr:(fun h i j k => ($z h i j k , $z _ i j k)) in 3
+          | _ => let _ := constr:(fun h i j k => ($z h i j k , $z h i j k)) in 4
+          end
+      | (?z _ _ _) =>
+          match! th with
+          | _ => let _ := constr:(fun a b c => ($z a b c, $z _ _ c)) in 1
+          | _ => let _ := constr:(fun a b c => ($z a b c, $z _ b c)) in 2
+          | _ => let _ := constr:(fun a b c => ($z a b c, $z a b c)) in 3
+          end
+      | (?z _ _) =>
+          match! th with
+          | _ => let _ := constr:(fun a b => ($z a b, $z _ b)) in 1
+          | _ => let _ := constr:(fun a b => ($z a b, $z a b)) in 2
+          end
+      | (?z _) =>
+          match! th with
+          | _ => let _ := constr:(fun b => ($z b, $z _)) in 1
+          | _ => let _ := constr:(fun b => ($z b, $z b)) in 2
+          end
+      end
+  | _ => 0
+  end.
+
+
+
+Ltac2 percent():char := (Char.of_int 37).
+Ltac2 arobase():char := (Char.of_int 64).
+Ltac2 space():char := (Char.of_int 32).
+Ltac2 parg():char := (Char.of_int 40).
+Ltac2 pard():char := (Char.of_int 41).
+
+(* Ltac2 Eval (Char.to_int (String.get ")" 0)). *)
+
+Ltac2 set_forbidden_chars (): char list := [space();pard();parg()].
+Ltac2 set_removable_chars (): char list := [percent();arobase()].
+Ltac2 set_suspect_chars (): char list := List.append (set_forbidden_chars()) (set_removable_chars()).
+Ltac2 set_forbidden_charints (): int list := List.map Char.to_int (set_forbidden_chars()).
+Ltac2 set_removable_charints (): int list := List.map Char.to_int (set_removable_chars()).
+Ltac2 set_suspect_charints (): int list := List.map Char.to_int (set_suspect_chars()).
+
+Ltac2 string_forall (p:char -> bool) (s:string) : bool :=
+  let rec check i :=
+    if Int.ge i (String.length s) then true
+    else if p (String.get s i) then check (Int.add 1 i) else false
+    in
+  check 0.
+
+Ltac2 string_count_if (p:char -> bool) (s:string) : int :=
+  let lgth := String.length s in
+  let rec count acc i :=
+    if Int.ge i lgth then acc
+    else if p (String.get s i) then count (Int.add 1 acc) (Int.add 1 i)
+         else  count acc (Int.add 1 i)
+  in
+  count 0 0.
+
+Ltac2 string_remove (p:char -> bool) (s:string) : string :=
+  let lgth := String.length s in  
+  let nbgood := string_count_if (fun c => Bool.neg (p c)) s in
+  let res := String.make nbgood (arobase()) in
+  let rec fill k i: unit :=
+    if Int.ge i lgth then ()
+    else
+      let c := String.get s i in
+      if p c then fill k (Int.add 1 i)
+      else (String.set res k c; fill  (Int.add 1 k)  (Int.add 1 i)) in
+  fill 0 0;
+  res.
+
+Ltac2 forbidden_charint (c:char):bool := (List.mem Int.equal (Char.to_int c) (set_forbidden_charints())).
+Ltac2 removeable_charint (c:char):bool := (List.mem Int.equal (Char.to_int c) (set_removable_charints())).
+Ltac2 suspect_charint (c:char):bool := (List.mem Int.equal (Char.to_int c) (set_suspect_charints())).
+  
+Ltac2 Eval (string_remove (fun c => (Char.equal c (arobase()))) "az@er% % @o").
+Ltac2 Eval (string_remove forbidden_charint "az@er% % @o").
+Ltac2 Eval (string_remove suspect_charint "az@er% % @o").
+
+Ltac2 id_of_constr (t:constr) : string option :=
+  let s:string := Message.to_string (fprintf "%t" t) in
+  if string_forall (fun c => Bool.neg (forbidden_charint c)) s
+  then 
+    let s := string_remove removeable_charint s in
+    if string_forall (fun c => Bool.neg (Char.equal (space()) c)) s then Some s else None
+    else None.
+
+
+
+(* Ltac2 print_id (t:constr) : string option := *)
+(*   let (idopt,_) := Fresh.next (Fresh.Free.empty) t in *)
+(*   Some (Ident.to_string idopt). *)
+
+(** Build a chunk from a simple term: either a number or a freshable
+   term. *)
+Ltac2 box_name t : ident :=
+  let s:string := Message.to_string (fprintf "%t" t) in
+  let s := if Char.equal (String.get s 0) (arobase())
+          then String.sub s 1 (Int.sub (String.length s) 1)
+          else  s in
+  match Ident.of_string s with
+  | Some s => s
+  | None => 
+      match Unsafe.kind t with 
+      | Unsafe.Constant cstt _ =>
+          let id:ident := List.last (Env.path (Std.ConstRef cstt)) in
+          id
+      | Unsafe.Var id => id
+      | Unsafe.Ind _ _ =>
+          printf "<infomsg>IND: %t</infomsg>" t;
+          let s:string := Message.to_string (fprintf "%t" t) in
+          let s := if Char.equal (String.get s 0) (arobase())
+                   then String.sub s 1 (Int.sub (String.length s) 1)
+                   else  s in
+          Option.get (Ident.of_string s)
+      | _ =>
+          if is_closed t then
+            printf "<infomsg>.    BEFORE NUM %t</infomsg>" t;
+            let s := numerical_names t in
+            printf "<infomsg>.    AFTER NUM %t -> %s</infomsg>" t s;
+            Option.get (Ident.of_string s)
+          else backtrack "cannot be a number"
+      end
+  end.
+
+Local Ltac2 is_dep_prod (t:constr): bool :=
+  match kind t with
+  | Prod _ subt => Bool.neg (is_closed subt)
+  | _ => false
+  end.
+
+
+(** Default naming of an application: we name the function if possible
+   or fail, then we name all parameters that can be named either
+   recursively or simply. Parameters at positions below nonimpl are
+   considered implicit and not considered. *)
+Ltac2 rec rename_app (nonimpl:int) (stop:int) (acc:string list) th: string list :=
+  match id_of_constr th with
+  | Some s => s::acc
+  | None => 
+      printf "<infomsg>## rename_app (nonimpl=%i) (stop=%i) %t </infomsg>" nonimpl stop th;
+      match Unsafe.kind th with
+      | App f args =>
+          let newstop:int := Int.sub stop 1 in
+          printf "<infomsg>...Arrays.sub args %i %i: </infomsg>" (Int.sub (Array.length args) nonimpl) nonimpl;
+          Array.iter (fun e => printf "<infomsg>....%t</infomsg>" e) args;
+          let nonimplicitsargs := Array.sub args (Int.sub (Array.length args) nonimpl) nonimpl in
+          let nme_array :=
+            Array.map (fun arg => (*Control.plus*) ((*fun () => *) fallback_rename_hyp newstop arg) (* (fun _ => [])*))
+              nonimplicitsargs in
+          let l: string list := List.flatten (Array.to_list nme_array) in
+          let f' :=  Control.plus (fun() => Ident.to_string(box_name f)) (fun _ => "?1") in
+          f' :: (List.append l acc)
+      | _ => (let f':string := Control.plus (fun() => Ident.to_string(box_name th)) (fun _ => "?2") in
+              printf "<infomsg>.  NO APP %s</infomsg>" f'; f' :: acc)
+end
+end
+(** ** Calls the (user-defined) rename_hyp + and fallbacks to some
+    default namings if needed. [h] is the hypothesis (ident) to
+    rename, [th] is its type. *)
+with fallback_rename_hyp_quantif stop (th:constr) : string list :=
+  printf "<infomsg>## fallback_rename_hyp_quantif (stop=%i) %t </infomsg>" stop th;
+    let newstop := Int.sub stop 1 in
+    match Unsafe.kind th with
+    | Prod bnd subth =>
+        if is_dep_prod th
+        then
+          let sufx:ident := Option.default (Option.get (Ident.of_string "_h")) (Constr.Binder.name bnd) in
+          let remain := fallback_rename_hyp newstop subth in
+          forall_prefix() :: Ident.to_string sufx :: remain
+        else
+          let sufx := fallback_rename_hyp 1 (Constr.Binder.type bnd) in
+          let remain := fallback_rename_hyp newstop subth in
+          impl_prefix() :: (List.append sufx remain)
+    | _ => backtrack "no product"
+    end
+
+with fallback_rename_hyp_specials stop th :string list :=
+    printf "<infomsg>## fallback_rename_hyp_specials (stop=%i) %t </infomsg>" stop th;
+    let newstop := Int.sub stop 1 in
+    Control.plus 
+       (* First see if user has something that applies *)
+       (fun() => rename_hyp newstop th)
+       (* if it fails try default specials *)
+       (fun _ => rename_hyp_default newstop th)
+
+with fallback_rename_hyp stop th:string list :=
+          printf "<infomsg>## fallback_rename_hyp (stop=%i) %t </infomsg>" stop th;
+          if Int.le stop 0 then []
+          else
+            Control.plus (fun () => fallback_rename_hyp_specials stop th)
+              (fun _ => match Unsafe.kind th with
+                         | Prod _ _ => fallback_rename_hyp_quantif stop th
+                         | _ => 
+                             printf "<infomsg>...before count_impl: %t</infomsg>" th;
+                             let numnonimpl := count_impl th in
+                             printf "<infomsg>..after count_impl: %i</infomsg>" numnonimpl;
+                             printf "<infomsg>## FALLBACK 1 rename_app %i %i %t </infomsg>" numnonimpl stop th;
+                             let res := rename_app numnonimpl stop [] th in
+                             msgs "..FALLBACK 2";
+                             res
+                         end).
+
+
+  Unset Printing Notations.
+
+(* Ltac2 Eval (count_impl constr:(3 + 4)). *)
+
+Parameters X Y: nat -> Prop.
+Parameters PX: X 3.
+Parameters PY: Y 3.
+
+Goal forall [A : Type] (P Q : A -> Prop) (x : A), P x -> Q x -> (exists2 x : A, P x & Q x) -> False.
+
+  intros A P Q x H H0 H1.
+  ltac2:(let l := fallback_rename_hyp 9 constr:(exists2 x0 : A, P x0 & Q x0) in
+         printf "<infomsg>BEFORE BUILDNAME %a </infomsg>" (pr_list pr_string) l;
+         let nme := build_name l in
+         printf "%s" nme).
+Abort.
+
+Goal forall n m p : nat, n<m -> m<= p -> True.
+Proof.
+  intros n m p H H0.
+
+  Unset Printing Notations.
+
+  ltac2:(let l := fallback_rename_hyp 9 constr:(Nat.clearbit n m = p) in
+         printf "<infomsg>BEFORE BUILDNAME %a </infomsg>" (pr_list pr_string) l;
+         let nme := build_name l in
+         printf "%s" nme).
+
+  ltac2:(let l := fallback_rename_hyp 3 constr:(Nat.clearbit 3 4%nat = 0) in
+         printf "BEFORE BUILDNAME";
+         let nme := build_name l in
+         printf "%s" nme).
+
+  ltac2:(let l := fallback_rename_hyp 4 constr:(Nat.clearbit 3 4%nat = 0 -> Nat.clearbit 3 4%nat = 7) in
+         printf "BEFORE BUILDNAME";
+         let nme := build_name l in
+         printf "%s" nme).
+
+  ltac2:(let l := fallback_rename_hyp 4 constr:(forall x:nat, Nat.clearbit x 4%nat = 0) in
+         printf "BEFORE BUILDNAME";
+         let nme := build_name l in
+         printf "%s" nme).
+
+  ltac2:(let l := fallback_rename_hyp 4 constr:(forall x:Z, BinIntDef.Z.quot x x = 1%Z) in
+         printf "BEFORE BUILDNAME";
+         let nme := build_name l in
+         printf "%s" nme).
+
+
+  ltac2:(let l := fallback_rename_hyp 4 constr:(Nat.clearbit 3%nat 4%nat) in
+         let nme := build_name l in
+         printf "%s" nme).
+         
+  ltac2:(let l := fallback_rename_hyp 4 constr:(Nat.clearbit 3%nat 4%nat) in
+         printf "%a" (pr_list (fun () s => fprintf "%s" s)) l).
+
+  ltac2:(let nme := rename_app 1 2 [] constr:(Nat.clearbit 3%nat 4%nat) in
+         printf "%s" (List.hd nme)).
+  .
+  
+
+
+(** This is the customizable naming tactic that the user should
+    REDEFINE along his development. See above for an example of such
+    redefinition. It should always fail when no name suggestion is
+    found, to give a chance to the default naming scheme to apply. *)
+Ltac rename_hyp stop th := fail.
+(** This will later contain a few default fallback naming strategy. *)
+Ltac rename_hyp_default stop th :=
+  fail.
+
+(** Builds an id from a sequence of chunks. fresh is not supposed to
+    add suffixes anywhere because all the ids we use start with "_".
+    As long as no constant or hyp name start with "_" it is ok. *)
+Ltac build_name_gen suffx l :=
+  let l := eval lazy beta delta [List.app] iota in l in
+  match l with
+  | nil => fail
+  | (forall id1:Prop, DUMMY id1)::nil =>
+    match suffx with
+    | true => fresh id1 "_"
+    | false => fresh id1
+    end
+  | (forall id1:Prop, DUMMY id1)::?l' =>
+    let recres := build_name_gen suffx l' in
+    (* id1 starts with "_", so fresh do not add any suffix *)
+    let res := fresh id1 recres in
+    res
+  end.
+
+
+Ltac build_name l := build_name_gen add_suffix l.
+Ltac build_name_no_suffix l := build_name_gen constr:(false) l.
+
 
 
 (** * Implementation principle:
@@ -531,7 +1071,7 @@ Local Close Scope autonaming_scope.
 (* Entry point of the renaming code. *)
 Ltac fallback_rename_hyp_name th :=
   let depth := rename_depth in
-  let h := constr:(ltac:(let x := default_prefix in exact x)) in
+  let $h := constr:(ltac:(let x := default_prefix in exact x)) in
   let l := fallback_rename_hyp depth th in
   match l with
     nil => fail 1
@@ -543,38 +1083,38 @@ Ltac fallback_rename_hyp_name th :=
 Inductive LHMsg t (h:t) := LHMsgC: LHMsg t h.
 
 Notation "h : t" := (LHMsgC t h) (at level 1,only printing, format
-"'[ ' h ':' '/' '[' t ']' ']'").
+"'[ ' $h ':' '/' '[' t ']' ']'").
 
-Ltac rename_hyp_with_name h th := fail.
+Ltac rename_hyp_with_name $h th := fail.
 
 
 (* Tactic renaming hypothesis H. Ignore Type-sorted hyps, fails if no
 renaming can be computed. Example of failing type: H:((fun x => True) true). *)
-Ltac autorename_strict H :=
-  match type of H with
+Ltac autorename_strict $h :=
+  match type of $h with
   | ?th =>
     match type of th with
     | _ =>
-      let l := rename_hyp_with_name H th in
+      let l := rename_hyp_with_name $h th in
       let dummy_name := fresh "dummy" in
-      rename H into dummy_name; (* frees current name of H, in case of idempotency *)
+      rename $h into dummy_name; (* frees current name of H, in case of idempotency *)
       let newname := build_name_no_suffix l in
       rename dummy_name into newname
     | Prop =>
       let dummy_name := fresh "dummy" in
-      rename H into dummy_name; (* frees current name of H, in case of idempotency *)
+      rename $h into dummy_name; (* frees current name of H, in case of idempotency *)
       let newname := fallback_rename_hyp_name th in
       rename dummy_name into newname
     | Prop =>
       let c := constr:(LHMsgC th H) in
-      fail 1 "no renaming pattern for " c (* "no renaming pattern for " H *)
-    | _ => idtac (* not in Prop or "no renaming pattern for " H *)
+      fail 1 "no renaming pattern for " c (* "no renaming pattern for " $h *)
+    | _ => idtac (* not in Prop or "no renaming pattern for " $h *)
     end
   end.
 
 (* Tactic renaming hypothesis H. *)
 
-Ltac autorename H := try autorename_strict H.
+Ltac autorename $h := try autorename_strict H.
 
 (*
 (* Tests *)
@@ -586,9 +1126,9 @@ Ltac rename_hyp1 n th :=
   | ((?min <= ?x) /\ (?x <= ?max))%nat => name (x#n ++ `_bounded` ++ min#n ++ max#n)
   end.
 (* example of adhoc naming from hyp name: *)
-Ltac rename_hyp_with_name h th ::=
+Ltac rename_hyp_with_name $h th ::=
   match reverse goal with
-  | H: ?A = h |- _  =>
+  | H: ?A = $h |- _  =>
     name ( A## ++ `_same`)
     (* let _ := freshable A in *)
     (* name (`same_as` ++ A#1) *)
