@@ -440,7 +440,6 @@ Ltac2 rec rename_app (nonimpl:int) (stop:int) (acc:string list ref) th: unit :=
   Control.plus (fun () => let s := box_name th in
                           Ref.set acc (s:: Ref.get acc))
     (fun _ =>
-       printf "<infomsg>## rename_app (nonimpl=%i) (stop=%i) %t </infomsg>" nonimpl stop th;
        match Unsafe.kind th with
        | App f args =>
            (* control_try? *)
@@ -461,7 +460,6 @@ with rename_hyp_chained_quantifs stop (acc:string list ref) (th:constr) : unit :
     | Prod bnd subth =>
         if is_dep_prod th
         then
-          let _ := msgs "ICI DEP 20" in
           let nme:ident := Option.get(Binder.name bnd) in
           let typ := Binder.type bnd in
           (* If there is already a hyp named nme, we rename it so that the
@@ -469,16 +467,15 @@ with rename_hyp_chained_quantifs stop (acc:string list ref) (th:constr) : unit :
              other way around but we prefer keeping the name found in the
              binder. *)
           (if is_hyp nme then Std.rename [(nme , Fresh.in_goal nme)] else ()) ;
-          Ref.set acc (Ident.to_string nme :: Ref.get acc);
+          (* Ref.set acc (Ident.to_string nme :: Ref.get acc); *)
           let tac_under_binder :=
               fun () =>
                 let nme_c:constr := Unsafe.make (Var(nme)) in
                 let subth' := Constr.Unsafe.substnl [nme_c] 0 subth in
-                rename_hyp_chained_quantifs newstop acc subth' in
+                rename_hyp_chained_quantifs stop acc subth' in
            (in_context nme typ tac_under_binder);
            ()
         else
-          let _ := msgs "ICI DEP 20" in
           rename_hyp_chained_quantifs stop acc subth
     | _ => fallback_rename_hyp stop acc th
     end
@@ -487,10 +484,8 @@ with fallback_rename_hyp_quantif stop (acc:string list ref) (th:constr) : unit :
     let newstop := Int.sub stop 1 in
     match Unsafe.kind th with
     | Prod bnd subth =>
-        msgs "ICI 12";
         if is_dep_prod th
         then
-          let _ := msgs "ICI 13" in
           let nme:ident := Option.get(Binder.name bnd) in
           let typ := Binder.type bnd in
           (* If there is already a hyp named nme, we rename it so that the
@@ -498,7 +493,7 @@ with fallback_rename_hyp_quantif stop (acc:string list ref) (th:constr) : unit :
              other way around but we prefer keeping the name found in the
              binder. *)
           (if is_hyp nme then Std.rename [(nme , Fresh.in_goal nme)] else ()) ;
-          Ref.set acc (Ident.to_string nme :: forall_prefix() :: Ref.get acc);
+          Ref.set acc ((*Ident.to_string nme ::*) forall_prefix() :: Ref.get acc);
          let tac_under_binder :=
               fun () =>
                 let nme_c:constr := Unsafe.make (Var(nme)) in
@@ -509,14 +504,26 @@ with fallback_rename_hyp_quantif stop (acc:string list ref) (th:constr) : unit :
 
         else
           (Ref.set acc (impl_prefix() :: Ref.get acc);
-           (* fallback_rename_hyp 1 acc (Constr.Binder.type bnd); *)
            rename_hyp_chained_quantifs newstop acc subth)
-    | _ => backtrack "no product"
+    | App f args =>
+        match Unsafe.kind f, Unsafe.kind constr:(@Init.Logic.ex) with
+        | Ind ind _, Ind ind' _ =>
+            if Ind.equal ind ind'
+            then (
+                msgs "EXXXX";
+                Ref.set acc ((*Ident.to_string a ::*) exists_prefix() :: Ref.get acc);
+                  match Unsafe.kind (Array.get args 1) with
+                  | Lambda bnd subth => rename_hyp_chained_quantifs newstop acc subth
+                  | _ => backtrack "not exist"
+                  end)
+            else backtrack "not exist"
+        | _ => backtrack "not exist"
+        end
+    | _ => backtrack "no quantif"
     end
 
 
 with fallback_rename_hyp_specials stop (acc:string list ref) th :unit :=
-    printf "<infomsg>## fallback_rename_hyp_specials (stop=%i) %t </infomsg>" stop th;
     let newstop := Int.sub stop 1 in
     Control.plus 
        (* First see if user has something that applies *)
@@ -527,16 +534,16 @@ with fallback_rename_hyp_specials stop (acc:string list ref) th :unit :=
                  interp_directives acc (List.rev dirs))
 
 with fallback_rename_hyp stop (acc:string list ref) th:unit :=
-          printf "<infomsg>## fallback_rename_hyp (stop=%i) %t (acc = %a) </infomsg>" stop th (pr_list pr_string) (Ref.get acc);
           if Int.le stop 0 then ()
           else
             Control.plus (fun () => fallback_rename_hyp_specials stop acc th)
-              (fun _ => match Unsafe.kind th with
-                         | Prod _ _ => fallback_rename_hyp_quantif stop acc th
-                         | _ => let numnonimpl := count_impl th in
-                                let _ := rename_app numnonimpl stop acc th in
-                                ()
-                         end)
+              (fun _ => match! th with
+                        | forall _, _ => fallback_rename_hyp_quantif stop acc th
+                        | exists _, _ => fallback_rename_hyp_quantif stop acc th
+                        | _ => let numnonimpl := count_impl th in
+                               let _ := rename_app numnonimpl stop acc th in
+                               ()
+                        end)
 
 with interp_directives acc ld:unit :=
   List.fold_right (fun d _ => interp_directive acc d) ld ()
@@ -573,7 +580,6 @@ Ltac2 rename_hyp_with_name h th := fail.
 renaming can be computed. Example of failing type: H:((fun x => True) true). *)
 Ltac2 autorename_strict (h:ident) :=
   let th := Constr.type (Control.hyp h) in
-  printf "<infomsg>th = %t</infomsg>" th ;
   let tth := Constr.type th in
   printf "<infomsg>th = %t</infomsg>" tth ;
   match! tth with
@@ -717,7 +723,6 @@ Lemma dummy: forall x y,
       (forall w w',w < w' -> ~(true=false)) ->
       (0 < 1 -> ~(1<0)) ->
       (0 < 1 -> 1<0) -> 0 < z -> True.
-
   intros;{(fun h => autorename h)}.
 
   match type of x with nat => idtac | _ => fail "test failed!" end.
@@ -735,23 +740,23 @@ Lemma dummy: forall x y,
   match type of h_eq_1n_0n with 1 = 0 => idtac | _ => fail "test failed!" end.
   match type of h_neq_x_y0 with x <> y => idtac | _ => fail "test failed!" end.
   match type of h_not_lt_1n_0n with ~ 1 < 0 => idtac | _ => fail "test failed!" end.
-  match type of h_all_tNEQf with forall w w' : nat, w = w' -> true <> false => idtac | _ => fail "test failed!" end. *)
-  (* match type of h_all_and_tEQf_True with forall w w' : nat, w = w' -> true = false /\ True => idtac | _ => fail "test failed!" end. *)
+  match type of h_all_tNEQf with forall w w' : nat, w = w' -> true <> false => idtac | _ => fail "test failed!" end. 
+  match type of h_all_and_tEQf_True with forall w w' : nat, w = w' -> true = false /\ True => idtac | _ => fail "test failed!" end.
   match type of h_eq_cons_x0_3n_cons_2n with x0 :: 3 :: env = 2 :: env => idtac | _ => fail "test failed!" end.
 
-  (* match type of h_all_and_False_True with forall w w' : nat, w = w' -> False /\ True => idtac | _ => fail "test failed!" end. *)
-  (* match type of h_ex_and_neq_False with exists w : nat, w = w -> true <> (false && true)%bool /\ False => idtac | _ => fail "test failed!" end. *)
-  (* match type of h_ex_and_True_False with exists w : nat, w = w -> True /\ False => idtac | _ => fail "test failed!" end. *)
-  (* match type of h_all_tEQf with forall w w' : nat, w = w' -> true = false => idtac | _ => fail "test failed!" end. *)
-  (* match type of h_all_eq_eqb_eqb with forall w w' : nat, w = w' -> (3 =? 4) = (4 =? 3) => idtac | _ => fail "test failed!" end. *)
-  match type of h_eq_length_cons_1n with length (3::nil) = (fun _ : nat => 0) 1 => idtac | _ => fail "test failed!" end.
+  match type of h_all_and_False_True with forall w w' : nat, w = w' -> False /\ True => idtac | _ => fail "test failed!" end.
+  match type of h_ex_and_neq_False with exists w : nat, w = w -> true <> (false && true)%bool /\ False => idtac | _ => fail "test failed!" end.
+  match type of h_ex_and_True_False with exists w : nat, w = w -> True /\ False => idtac | _ => fail "test failed!" end.
+  match type of h_all_tEQf with forall w w' : nat, w = w' -> true = false => idtac | _ => fail "test failed!" end.
+  match type of h_all_eq_eqb_eqb with forall w w' : nat, w = w' -> (3 =? 4) = (4 =? 3) => idtac | _ => fail "test failed!" end.
+  (* match type of h_eq_length_cons_1n with length (3::nil) = (fun _ : nat => 0) 1 => idtac | _ => fail "test failed!" end. *)
   match type of h_eq_length_cons_0n with length (3::nil) = 0 => idtac | _ => fail "test failed!" end.
   match type of h_eq_add_0n_y_y with 0 + y = y => idtac | _ => fail "test failed!" end.
   match type of h_tEQf with true = false => idtac | _ => fail "test failed!" end.
   match type of h_impl_tEQf with False -> true = false => idtac | _ => fail "test failed!" end.
   match type of x0 with nat => idtac | _ => fail "test failed!" end.
   match type of env with list nat => idtac | _ => fail "test failed!" end.
-  match type of h_not_In_x0_nil with ~ In x0 [] => idtac | _ => fail "test failed!" end.
+  match type of h_not_In_x0_nil with ~ In x0 nil => idtac | _ => fail "test failed!" end.
   match type of h_eq_cons_x0_3n_cons_2n with x0 :: 3 :: env = 2 :: env => idtac | _ => fail "test failed!" end.
   match type of h_IDProp with IDProp => idtac | _ => fail "test failed!" end.
   match type of h_impl_tNEQf with 0 < 1 -> 0 < 0 -> true = false -> true <> false => idtac | _ => fail "test failed!" end.
