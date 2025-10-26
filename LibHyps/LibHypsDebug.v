@@ -54,3 +54,5 @@ Ltac2 pr_goal() :=
   printf "⊢ %t" (Control.goal());
   printf "</infomsg>".
 
+Ltac2 pr_acc () (acc:string list) :=
+  fprintf "[%a]" (pr_list pr_string) acc.
