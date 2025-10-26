@@ -39,8 +39,13 @@ Ltac2 pr_directive () (d:rename_directive) :=
 
 Ltac2 Type hypnames := string list.
 
+(** This determines the depth of the recursive analysis of a type to
+    compute the corresponding hypothesis name. generally 2 or 3 is
+    enough. More gives too log names, less may give identical names
+    too often. *)
+Ltac2 mutable rename_depth := 3.
 (* The pretty printing of numerical values is by default 1, 2... Set this to
-   true (Ltac2 Set numerical_names := true) to have 1z, 1n or 1N depending of the type nat, Z or N. *)  
+   true (Ltac2 Set numerical_sufs := true) to have 1z, 1n or 1N depending of the type nat, Z or N. *)  
 Ltac2 mutable numerical_sufx := false.
 (* Whether autorename should add a "_" at the end of every hypothesis name *)
 Ltac2 mutable add_suffix := true.
@@ -100,6 +105,41 @@ Ltac2 build_name (l:string list): string := build_name_gen "_" add_prefix add_su
 
 Ltac2 string_of_int (i:int) := Message.to_string (Message.of_int i).
 
+
+
+Ltac2 string_forall (p:char -> bool) (s:string) : bool :=
+  let rec check i :=
+    if Int.ge i (String.length s) then true
+    else if p (String.get s i) then check (Int.add 1 i) else false
+    in
+  check 0.
+
+
+Ltac2 codepercent():int := (Char.to_int (String.get "%" 0)).
+Ltac2 code0() := Char.to_int (String.get "0" 0).
+Ltac2 code9() := Char.to_int (String.get "9" 0).
+
+Ltac2 is_digit (c:char): bool :=
+  let code := Char.to_int c in
+  Bool.and (Int.le (code0()) code) (Int.le code (code9())).
+
+Ltac2 string_first (p:char -> bool) (s:string) : int :=
+  let lgth := String.length s in
+  let rec count i :=
+    if Int.ge i lgth then i
+    else if p (String.get s i) then i
+         else count (Int.add 1 i)
+  in
+  count 0.
+
+Ltac2 Eval (string_first (fun c => Int.equal (Char.to_int c) (codepercent())) "xxxcc").
+
+Ltac2 string_shorten_percent (s:string) : string :=
+  let lgth := String.length s in  
+  let i := string_first (fun c => Int.equal (Char.to_int c) (codepercent())) s in
+  String.sub s 0 i.
+
+  
 (** Generate fresh name for numerical constants.
 
    Warning: problem here: hyps names may end with a digit: Coq may
@@ -108,101 +148,24 @@ Ltac2 string_of_int (i:int) := Message.to_string (Message.of_int i).
    that every hyp name ends with "_", so that coq never mangle with
    the digits *)
 
-(* TODO: find a way to make a string from nat, Z and N *)
-Ltac2 numerical_names_nosufx (t:constr):string :=
-  if is_closed t then
-    match! t with
-    | 0%Z => "0"
-    | 1%Z => "1"
-    | 2%Z => "2"
-    | 3%Z => "3"
-    | 4%Z => "4"
-    | 5%Z => "5"
-    | 6%Z => "6"
-    | 7%Z => "7"
-    | 8%Z => "8"
-    | 9%Z => "9"
-    | 10%Z => "10"
-    | O%nat => "0"
-    | 1%nat => "1"
-    | 2%nat => "2"
-    | 3%nat => "3"
-    | 4%nat => "4"
-    | 5%nat => "5"
-    | 6%nat => "6"
-    | 7%nat => "7"
-    | 8%nat => "8"
-    | 9%nat => "9"
-    | 10%nat => "10"
-    | O%N => "0"
-    | 1%N => "1"
-    | 2%N => "2"
-    | 3%N => "3"
-    | 4%N => "4"
-    | 5%N => "5"
-    | 6%N => "6"
-    | 7%N => "7"
-    | 8%N => "8"
-    | 9%N => "9"
-    | 10%N => "10"
-    | _ => backtrack "not recognized as a number "
-    end
-  else
-    backtrack "not a nameable number".
-
-Ltac2 numerical_names_sufx t :=
-  match! t with
-  | 0%Z => "0z"
-  | 1%Z => "1z"
-  | 2%Z => "2z"
-  | 3%Z => "3z"
-  | 4%Z => "4z"
-  | 5%Z => "5z"
-  | 6%Z => "6z"
-  | 7%Z => "7z"
-  | 8%Z => "8z"
-  | 9%Z => "9z"
-  | 10%Z => "10z"
-  (* | Z0 => num_sufx 0 *)
-  | O%nat => "0n"
-  | 1%nat => "1n"
-  | 2%nat => "2n"
-  | 3%nat => "3n"
-  | 4%nat => "4n"
-  | 5%nat => "5n"
-  | 6%nat => "6n"
-  | 7%nat => "7n"
-  | 8%nat => "8n"
-  | 9%nat => "9n"
-  | 10%nat => "10n"
-  | O%N => "0N"
-  | 1%N => "1N"
-  | 2%N => "2N"
-  | 3%N => "3N"
-  | 4%N => "4N"
-  | 5%N => "5N"
-  | 6%N => "6N"
-  | 7%N => "7N"
-  | 8%N => "8N"
-  | 9%N => "9N"
-  | 10%N => "10N"
-  end.
-
-(* Redefine at will *)
-Ltac2 add_numerical_names (): constr -> string:=
-  if numerical_sufx then numerical_names_sufx else numerical_names_nosufx.
+(* FIXME: this relies on printf to build a string from a constr in
+   nat, Z and N. It feels wrong. *)
+Ltac2 build_numerical_name (t:constr):string :=
+  let s := Message.to_string (fprintf "%t" t) in
+  let s := string_shorten_percent s in (* remove trailing "%scope" *)
+  if string_forall is_digit s
+  then if Bool.neg numerical_sufx then s
+       else 
+         let typ := Constr.type t in
+         match! typ with
+         | Z => String.app s "z"
+         | nat => String.app s "n"
+         | N => String.app s "N"
+         end
+       else backtrack "numerical_names_nosufx".
 
 
-(** This determines the depth of the recursive analysis of a type to
-    compute the corresponding hypothesis name. generally 2 or 3 is
-    enough. More gives too log names, less may give identical names
-    too often. *)
-Ltac2 mutable rename_depth := 3.
-
-
-
-
-(* TODO: find something better to detect implicits!! *)
+(* FIXME: find something better to detect implicits!! *)
 (* Determines the number of non "head" implicit arguments, i.e. implicit
    arguments that are before any explicit one. This shall be ignored
    when naming an application. This is done in very ugly way. Any
@@ -344,7 +307,7 @@ Ltac2 box_name t : string :=
                    then String.sub s 1 (Int.sub (String.length s) 1)
                    else  s in
           s
-      | _ => add_numerical_names () t
+      | _ => build_numerical_name t
       end
   end.
 
@@ -516,11 +479,12 @@ Ltac2 rename_hyp_with_name h th := fail.
 
 (* Tactic renaming hypothesis H. Ignore Type-sorted hyps, fails if no
 renaming can be computed. Example of failing type: H:((fun x => True) true). *)
+#[global]
 Ltac2 autorename_strict (h:ident) :=
   let th := Constr.type (Control.hyp h) in
   let tth := Constr.type th in
   (* printf "<infomsg>th = %t</infomsg>" tth ; *)
-  match! tth with
+  lazy_match! tth with
   (* TODO: the deep entry point *)
     (* | _ => *)
     (*   let l := rename_hyp_with_name $h th in *)
@@ -536,7 +500,11 @@ Ltac2 autorename_strict (h:ident) :=
   | Prop =>
       let msg := fprintf "no renaming pattern for %I : %t" h th in
       backtrack (Message.to_string msg)
-  (* | _ => () (* not in Prop or "no renaming pattern for " $h *) *)
+  | _ =>
+      if Constr.equal constr:(Prop) tth
+      then  let msg := fprintf "no renaming pattern for %I : %t" h th in
+            backtrack (Message.to_string msg)
+      else () (* not in Prop or "no renaming pattern for " $h *)
   end.
 
 (* Tactic renaming hypothesis H. *)
@@ -548,9 +516,16 @@ Ltac2 ltac1_autorename (h:Ltac1.t) :=
   let h: ident := Option.get (Ltac1.to_ident h) in
   ltac2_autorename h.
 
+#[global]Ltac2 ltac1_autorename_strict (h:Ltac1.t) :=
+  let h: ident := Option.get (Ltac1.to_ident h) in
+  autorename_strict h.
 
 Tactic Notation "autorename" hyp(h) :=
   let tac := ltac2:(h |- ltac1_autorename h) in
+  tac h.
+
+Tactic Notation "autorename_strict" hyp(h) :=
+  let tac := ltac2:(h |- ltac1_autorename_strict h) in
   tac h.
 
 Ltac2 decr (n:int):int :=
@@ -586,15 +561,6 @@ Ltac2 recRename n x :=
 
 
 (* ********** CUSTOMIZATION ********** *)
-
-(** If this is true, then all hyps names will have a trailing "_". In
-    case of names ending with a digit (like in "le_1_2" or "le_x1_x2")
-    this additional suffix avoids Coq's fresh name generation to
-    *replace* the digit. Although this is esthetically bad, it makes
-    things more predictable. You may set this to true for backward
-    compatility. *)
-
-
 
 (* TESTS *)
 
@@ -633,6 +599,7 @@ Lemma dummy: forall x y,
     x = y ->
     Some x = Some y ->
     0 = 1 ->
+    223 = 426 ->
     (0 = 1)%Z ->
     ~x = y ->
     true = Nat.eqb 3 4  ->
@@ -662,8 +629,7 @@ Lemma dummy: forall x y,
       (forall w w',w < w' -> ~(true=false)) ->
       (0 < 1 -> ~(1<0)) ->
       (0 < 1 -> 1<0) -> 0 < z -> True.
-
-
+Proof.
   intros;{(fun h => autorename h)}.
 
   match type of x with nat => idtac | _ => fail "test failed!" end.
@@ -672,6 +638,7 @@ Lemma dummy: forall x y,
   match type of h_le_0z_1z with (0 <= 1)%Z => idtac | _ => fail "test failed!" end.
   match type of h_le_x_y with x <= y => idtac | _ => fail "test failed!" end.
   match type of h_eq_x_y with x = y => idtac | _ => fail "test failed!" end.
+  match type of h_eq_223n_426n with 223 = 426 => idtac | _ => fail "test failed!" end.
   match type of h_eq_0n_1n with 0 = 1 => idtac | _ => fail "test failed!" end.
   match type of h_eq_0z_1z with 0%Z = 1%Z => idtac | _ => fail "test failed!" end.
   match type of h_neq_x_y with x <> y => idtac | _ => fail "test failed!" end.
