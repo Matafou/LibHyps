@@ -269,6 +269,7 @@ Ltac count_impl th :=
   lazymatch th with
   | (?z ?a ?b ?c ?d ?e ?f ?g ?h ?i ?j ?k) =>
     match th with
+    | _ => let foo := constr:(z _ _ _ _ _ _ _ _ _ _ _) in constr:(0%nat)
     | _ => let foo := constr:(z _ _ _ _ _ _ _ _ _ _ k) in constr:(1%nat)
     | _ => let foo := constr:(z _ _ _ _ _ _ _ _ _ j k) in constr:(2%nat)
     | _ => let foo := constr:(z _ _ _ _ _ _ _ _ i j k) in constr:(3%nat)
@@ -283,6 +284,7 @@ Ltac count_impl th :=
     end
   | (?z ?b ?c ?d ?e ?f ?g ?h ?i ?j ?k) =>
     match th with
+    | _ => let foo := constr:(z _ _ _ _ _ _ _ _ _ _) in constr:(0%nat)
     | _ => let foo := constr:(z _ _ _ _ _ _ _ _ _ k) in constr:(1%nat)
     | _ => let foo := constr:(z _ _ _ _ _ _ _ _ j k) in constr:(2%nat)
     | _ => let foo := constr:(z _ _ _ _ _ _ _ i j k) in constr:(3%nat)
@@ -296,6 +298,7 @@ Ltac count_impl th :=
     end
   | (?z ?c ?d ?e ?f ?g ?h ?i ?j ?k) =>
     match th with
+    | _ => let foo := constr:(z _ _ _ _ _ _ _ _ _) in constr:(0%nat)
     | _ => let foo := constr:(z _ _ _ _ _ _ _ _ k) in constr:(1%nat)
     | _ => let foo := constr:(z _ _ _ _ _ _ _ j k) in constr:(2%nat)
     | _ => let foo := constr:(z _ _ _ _ _ _ i j k) in constr:(3%nat)
@@ -308,6 +311,7 @@ Ltac count_impl th :=
     end
   | (?z ?d ?e ?f ?g ?h ?i ?j ?k) =>
     match th with
+    | _ => let foo := constr:(z _ _ _ _ _ _ _ _) in constr:(0%nat)
     | _ => let foo := constr:(z _ _ _ _ _ _ _ k) in constr:(1%nat)
     | _ => let foo := constr:(z _ _ _ _ _ _ j k) in constr:(2%nat)
     | _ => let foo := constr:(z _ _ _ _ _ i j k) in constr:(3%nat)
@@ -319,6 +323,7 @@ Ltac count_impl th :=
     end
   | (?z ?e ?f ?g ?h ?i ?j ?k) =>
     match th with
+    | _ => let foo := constr:(z _ _ _ _ _ _ _) in constr:(0%nat)
     | _ => let foo := constr:(z _ _ _ _ _ _ k) in constr:(1%nat)
     | _ => let foo := constr:(z _ _ _ _ _ j k) in constr:(2%nat)
     | _ => let foo := constr:(z _ _ _ _ i j k) in constr:(3%nat)
@@ -329,6 +334,7 @@ Ltac count_impl th :=
     end
   | (?z ?f ?g ?h ?i ?j ?k) =>
     match th with
+    | _ => let foo := constr:(z _ _ _ _ _ _) in constr:(0%nat)
     | _ => let foo := constr:(z _ _ _ _ _ k) in constr:(1%nat)
     | _ => let foo := constr:(z _ _ _ _ j k) in constr:(2%nat)
     | _ => let foo := constr:(z _ _ _ i j k) in constr:(3%nat)
@@ -338,6 +344,7 @@ Ltac count_impl th :=
     end
   | (?z ?g ?h ?i ?j ?k) =>
     match th with
+    | _ => let foo := constr:(z _ _ _ _ _) in constr:(0%nat)
     | _ => let foo := constr:(z _ _ _ _ k) in constr:(1%nat)
     | _ => let foo := constr:(z _ _ _ j k) in constr:(2%nat)
     | _ => let foo := constr:(z _ _ i j k) in constr:(3%nat)
@@ -346,6 +353,7 @@ Ltac count_impl th :=
     end
   | (?z ?h ?i ?j ?k) =>
     match th with
+    | _ => let foo := constr:(z _ _ _ _) in constr:(0%nat)
     | _ => let foo := constr:(z _ _ _ k) in constr:(1%nat)
     | _ => let foo := constr:(z _ _ j k) in constr:(2%nat)
     | _ => let foo := constr:(z _ i j k) in constr:(3%nat)
@@ -353,16 +361,22 @@ Ltac count_impl th :=
     end
   | (?z ?i ?j ?k) =>
     match th with
+    | _ => let foo := constr:(z _ _ _) in constr:(0%nat)
     | _ => let foo := constr:(z _ _ k) in constr:(1%nat)
     | _ => let foo := constr:(z _ j k) in constr:(2%nat)
     | _ => let foo := constr:(z i j k) in constr:(3%nat)
     end
   | (?z ?j ?k) =>
     match th with
+    | _ => let foo := constr:(z _ _) in constr:(0%nat)
     | _ => let foo := constr:(z _ k) in constr:(1%nat)
     | _ => let foo := constr:(z j k) in constr:(2%nat)
     end
-  | (?z ?j) => constr:(1%nat)
+  | (?z ?k) =>
+    match th with
+    | _ => let foo := constr:(z _) in constr:(0%nat)
+    | _ => let foo := constr:(z k) in constr:(1%nat)
+    end
   | _ => constr:(0%nat)
   end.
 
