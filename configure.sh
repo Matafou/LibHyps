@@ -1,6 +1,7 @@
 #!/bin/bash
 
 DEVOPT=no
+STDLIB=
 
 POSITIONAL=()
 while [[ $# -gt 0 ]]
@@ -8,6 +9,11 @@ do
 key="$1"
 
 case $key in
+    --stdlib|-stdlib)
+        shift
+        STDLIB=$1
+        shift
+        ;;
     --dev)
         DEVOPT=yes
         shift
@@ -28,10 +34,18 @@ set -- "${POSITIONAL[@]}" # restore positional parameters (i.e.
 function gen_projet_file () {
     FILES="$1"
     DIR=$2
+    STDLIB=$4
     PROJECTFILE=$DIR/_CoqProject
     RESOURCEFILE=$3
 
-    cat < $RESOURCEFILE > "$PROJECTFILE"
+    if [ "$STDLIB" != "" ]
+    then
+        echo "stdlib detected"
+        echo "-Q $STDLIB Stdlib" > "$PROJECTFILE"
+    else echo "" > "$PROJECTFILE"
+    fi
+
+    cat < $RESOURCEFILE >> "$PROJECTFILE"
 
     echo "" >> "$PROJECTFILE"
 
@@ -57,10 +71,10 @@ else
 fi
 
 PROJECTDIRLH="LibHyps"
-gen_projet_file "$FILESLH" "$PROJECTDIRLH" "resources/coq_project.libhyps"
+gen_projet_file "$FILESLH" "$PROJECTDIRLH" "resources/coq_project.libhyps" "$STDLIB"
 
 
 
 FILESTEST=$(cd tests && find . -name "*.v" | grep -v "incremental" )
 PROJECTDIRTESTS="tests"
-gen_projet_file "$FILESTEST" "$PROJECTDIRTESTS" "resources/coq_project.tests"
+gen_projet_file "$FILESTEST" "$PROJECTDIRTESTS" "resources/coq_project.tests" "$STDLIB"

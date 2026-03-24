@@ -5,8 +5,36 @@
 Require Export LibHyps.TacNewHyps.
 Require Export LibHyps.LibHypsNaming.
 Require Export LibHyps.Especialize.
-Require Export LibHyps.LibHypsTactics.
+(* Require Export LibHyps.LibHypsTactics. *)
 (* We export ; { } etc. ";;" also. *)
+
+
+Ltac rename_or_revert H := autorename_strict H + generalize dependent H.
+
+(* Some usual tactics one may want to use on new hyps. *)
+
+(* This is similar to subst x, but ensures that H and only H is used.
+   Even if there is another hyp with the same variable *)
+Ltac substHyp H :=
+  match type of H with
+  (* | Depl => fail 1 (* fail immediately, we are applying on a list of hyps. *) *)
+  | ?x = ?y =>
+    (* subst would maybe subst using another hyp, so use replace to be sure *)
+    once ((is_var(x); replace x with y in *; [try clear x ; try clear H] )
+          + (is_var(y); replace y with x in * ; [try clear y; try clear H]))
+  | _ => idtac
+  end.
+
+(* revert, fails if impossible, should not fail if hyps are ordered in the right order *)
+Ltac revertHyp H := revert H. (* revert is a tactic notation, so we need to define this *)
+
+(* revert if subst fails. Never fail, be careful not to use this tactic in the
+   left member of a "+" tactical: *)
+Ltac subst_or_revert H := try first [progress substHyp H | generalize dependent H].
+
+(* try subst. Never fail, be careful to not use this tactic in the
+   left member of a "+" tactical: *)
+Ltac subst_or_idtac H := substHyp H.
 
 
 Export TacNewHyps.Notations.
@@ -27,30 +55,33 @@ Tactic Notation (at level 4) "/" "n?" := (onAllHyps rename_or_revert).
 Tactic Notation (at level 4) tactic4(Tac) "/" "r" := Tac ; {< revertHyp }.
 Tactic Notation (at level 4) "/" "r" := (onAllHypsRev revertHyp).
 
+(*
 (* WARNING group_up_list applies to the whole list of hyps directly. *)
 (* Tactic Notation (at level 4) tactic4(Tac) "/" "g" := (then_allnh Tac group_up_list). *)
-Tactic Notation (at level 4) tactic4(Tac) "/" "g" := Tac ; {! group_up_list }.
-Tactic Notation (at level 4) "/" "g" := (group_up_list all_hyps).
+(* Tactic Notation (at level 4) tactic4(Tac) "/" "g" := Tac ; {! group_up_list }. *)
 
+(* Not yet reimplemented in ltac2 *)
+Tactic Notation (at level 4) "/" "g" := (group_up_list all_hyps).
+*)
 (* Tactic Notation (at level 4) tactic4(Tac) "/" "s" := (then_eachnh Tac subst_or_idtac). *)
 Tactic Notation (at level 4) tactic4(Tac) "/" "s" := Tac ; { subst_or_idtac }.
 Tactic Notation (at level 4) "/" "s" := (onAllHyps subst_or_idtac).
 
 (* usual combinations *)
-Tactic Notation (at level 4) tactic4(Tac) "//" := (Tac /s/n/g).
+(*Tactic Notation (at level 4) tactic4(Tac) "//" := (Tac /s/n/g).
 Tactic Notation (at level 4) tactic4(Tac) "/" "sng" := (Tac /s/n/g).
-Tactic Notation (at level 4) tactic4(Tac) "/" "sgn" := (Tac /s/g/n).
+Tactic Notation (at level 4) tactic4(Tac) "/" "sgn" := (Tac /s/g/n). *)
 Tactic Notation (at level 4) tactic4(Tac) "/" "sn" := (Tac /s/n).
 Tactic Notation (at level 4) tactic4(Tac) "/" "sr" := (Tac /s/r).
-Tactic Notation (at level 4) tactic4(Tac) "/" "sg" := (Tac /s/g).
+(*Tactic Notation (at level 4) tactic4(Tac) "/" "sg" := (Tac /s/g).
 Tactic Notation (at level 4) tactic4(Tac) "/" "ng" := (Tac /n/g).
-Tactic Notation (at level 4) tactic4(Tac) "/" "gn" := (Tac /g/n).
+Tactic Notation (at level 4) tactic4(Tac) "/" "gn" := (Tac /g/n).*)
 
-Tactic Notation (at level 4) "/" "sng" :=
-  (onAllHyps subst_or_idtac); (onAllHyps autorename); group_up_list all_hyps.
+(* Tactic Notation (at level 4) "/" "sng" := *)
+  (* (onAllHyps subst_or_idtac); (onAllHyps autorename); group_up_list all_hyps. *)
 Tactic Notation (at level 4) "/" "sn" := (onAllHyps subst_or_idtac); (onAllHyps autorename).
 Tactic Notation (at level 4) "/" "sr" := (onAllHyps subst_or_idtac); (onAllHyps revertHyp).
-Tactic Notation (at level 4) "/" "ng" := ((onAllHyps autorename) ; group_up_list all_hyps).
+(* Tactic Notation (at level 4) "/" "ng" := ((onAllHyps autorename) ; group_up_list all_hyps). *)
 
 Module LegacyNotations.
   Import Notations.
@@ -61,7 +92,7 @@ Module LegacyNotations.
   (* like !!tac + tries to subst with each new hypothesis. *)
   Tactic Notation "!!!" tactic3(Tac) := Tac/s/n?.
   (* Like !!! + regroup new Type-sorted hyps at top. *)
-  Tactic Notation (at level 4) "!!!!" tactic4(Tac) := Tac /s/n?/g.
+  (* Tactic Notation (at level 4) "!!!!" tactic4(Tac) := Tac /s/n?/g. *)
 
   (* Other Experimental combinations *)
 
@@ -85,49 +116,50 @@ Goal forall x1 x3:bool, forall a z e : nat,
 Proof.
   (* Set Ltac Debug. *)
   (* then_nh_rev ltac:(intros) ltac:(subst_or_idtac).   *)
-  intros ; {! group_up_list }.
+  (* intros ; {! group_up_list }. *)
 
   (* intros ? ? ? ? ? ? ? ? ? ?. *)
   (* group_up_list (DCons bool b1 DNil). *)
-  Undo.
-  intros ; { move_up_types }.
-  Undo.
+  (* Undo. *)
+  (* intros ; { move_up_types }. *)
+  (* Undo. *)
   intros /n.
   Undo.
   intros /s/n.
   Undo.
   intros /n.
-  match goal with
-  | h: bool => assert 
-  end
   Undo.
-  intros/n.
+  intros ; { autorename }. (*; {! group_up_list }.*)
   Undo.
-  intros ; { autorename }; {! group_up_list }.
+  (* intros/ng. *)
+  (* Undo. *)
+  intros ; {subst_or_idtac} ; { autorename }. (* ; {! group_up_list }.*)
   Undo.
-  intros/ng.
-  Undo.
-  intros ; {subst_or_idtac} ; { autorename } ; {! group_up_list }.
-  Undo.
-  intros/sng.
-  Fail progress intros ; { revertHyp }.
+  (* intros/sng. *)
+  (* Fail progress intros ; { revertHyp }. *)
 
-  subst_or_idtac (DCons (z0 + r = a) H DNil).
+  (* subst_or_idtac (DCons (z0 + r = a) H DNil). *)
  
 
-  let hyps := all_hyps in
-  idtac hyps.
-  subst_or_idtac hyps.
+  (* let hyps := all_hyps in *)
+  (* idtac hyps. *)
+  (* subst_or_idtac hyps. *)
 
-  intros  ;!;  ltac:(subst_or_idtac_l).
+  (* intros  ;!;  ltac:(subst_or_idtac_l). *)
 
-  then_nh_one_by_one ltac:(intros) ltac:(subst_or_idtac).  
-; {< subst_or_idtac }. ; { group_up_list } ; { autorename_l }.
-  subst_or_idtac h_eq_a_add_z0_t.
-  intros ; { fun h => autorename_strict h }.
+  (* then_nh_one_by_one ltac:(intros) ltac:(subst_or_idtac).   *)
+(* ; {< subst_or_idtac }. ; { group_up_list } ; { autorename_l }. *)
+  (* subst_or_idtac h_eq_a_add_z0_t. *)
+  Fail (intros ; { fun h => autorename_strict h }).
+  intros ; { fun h => autorename_orelse_revert h }.
+  match goal with
+  | |- (fun _ : bool => z = e) true -> True => idtac
+  end.
+  Undo 2.
   intros ; { fun h => idtac h }.
+  Undo.
   intros ; { ltac:(fun h => idtac h) }.
-   intros ; [H: sng H].
+  
 *)   
 (*
 Goal forall x1 x3:bool, True -> forall a z e r t z e r t z e r t z e r t y: nat, False -> forall u i o p q s d f g:nat, forall x2:bool,  True -> True.

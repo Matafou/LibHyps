@@ -20,7 +20,7 @@ From Stdlib Require Import Arith ZArith  List.
 Require Import LibHyps.LibHyps.
 
 Lemma demo: forall x y z:nat,
-    x = y -> forall  a b t : nat, a+1 = t+2 -> b + 5 = t - 7 ->  (forall u v, v+1 = 1 -> u+1 = 1 -> a+1 = z+2)  -> z = b + x-> True.
+    x = y -> x+y = y+ z -> forall  a b t : nat, a+1 = t+2 -> b + 5 = t - 7 ->  (forall u v, v+1 = 1 -> u+1 = 1 -> a+1 = z+2)  -> z = b + x-> True.
 Proof.
   intros.
   (* ugly names *)

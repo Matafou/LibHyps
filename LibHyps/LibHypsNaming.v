@@ -27,16 +27,23 @@ Local Ltac2 control_try tac := Control.plus tac (fun _ => ()).
    ZArith to be loaded *)
 From Stdlib Require Import ZArith.
 
-Ltac2 Type rename_directive := [ String(string) | RecRename(int,constr) ].
+Ltac2 decr (n:int):int :=
+  if Int.equal n 0 then 0 else Int.sub n 1.
+
+Ltac2 incr (n:int):int := Int.add n 1.
+
+Ltac2 Type rename_directive := [ String(string) | Rename(constr) | RenameN(int,constr) ].
 Ltac2 Type rename_directives := rename_directive list.
 
 (* For debugging *)
+Module Debug.
 Ltac2 pr_directive () (d:rename_directive) :=
   match d with
     String s => fprintf "%s" s
-  | RecRename i c => fprintf "(%i,%t)" i c
+  | Rename c => fprintf "%t" c
+  | RenameN i c => fprintf "N(%i,%t)" i c
   end.
-
+End Debug.
 Ltac2 Type hypnames := string list.
 
 (** This determines the depth of the recursive analysis of a type to
@@ -68,6 +75,7 @@ Ltac2 exists_prefix() := "ex".
   default naming scheme to apply. *)
 Ltac2 mutable rename_hyp (stop:int)  (th:constr): rename_directives := backtrack "rename_hyp".
 
+
 (*  Typical use, in increasing order of complexity, approximatively
   equivalent to the decreasing order of interest. *)
 (**
@@ -95,6 +103,7 @@ Ltac2 Set rename_hyp := rename_hyp_3.
 (* This one is similar but for internal use *)
 Ltac2 mutable rename_hyp_default (n:int) (th:constr): rename_directives := backtrack "rename_hyp_default".
 
+Module Ltac2.
 
 (* from [ "foo" ; "bar" ; "oof" ] to "h_oof_bar_foo_". Note the reversing of the list *)
 Ltac2 build_name_gen (sep:string) (prefx:bool) (suffx:bool) (l:string list) :=
@@ -324,7 +333,7 @@ Ltac2 is_hyp (id:ident) :=
 (** Default naming of an application: we name the function if possible
    or fail, then we name all parameters that can be named either
    recursively or simply. Parameters at positions below nonimpl are
-   considered implicit and not considered. *)
+   ignored as implicits. *)
 Ltac2 rec rename_app (nonimpl:int) (stop:int) (acc:string list ref) th: unit :=
   Control.once_plus (fun () => let s := box_name th in
                           Ref.set acc (s:: Ref.get acc))
@@ -344,7 +353,7 @@ Ltac2 rec rename_app (nonimpl:int) (stop:int) (acc:string list ref) th: unit :=
         namings if needed. [h] is the hypothesis (ident) to rename, [th] is its
         type. *)
 with rename_hyp_chained_quantifs stop (acc:string list ref) (th:constr) : unit :=
-    let newstop := Int.sub stop 1 in
+    let _newstop := Int.sub stop 1 in
     match Unsafe.kind th with
     | Prod bnd subth =>
         if is_dep_prod th
@@ -401,7 +410,7 @@ with fallback_rename_hyp_quantif stop (acc:string list ref) (th:constr) : unit :
             then (
                 Ref.set acc ((*Ident.to_string a ::*) exists_prefix() :: Ref.get acc);
                   match Unsafe.kind (Array.get args 1) with
-                  | Lambda bnd subth => rename_hyp_chained_quantifs newstop acc subth
+                  | Lambda _bnd subth => rename_hyp_chained_quantifs newstop acc subth
                   | _ => backtrack "not exist"
                   end)
             else backtrack "not exist"
@@ -417,11 +426,11 @@ with fallback_rename_hyp_specials stop (acc:string list ref) th :unit :=
     Control.once_plus 
        (* First see if user has something that applies *)
        (fun() => let dirs := rename_hyp newstop th in
-                 interp_directives acc (List.rev dirs) )
+                 interp_directives newstop acc (List.rev dirs) )
        (* if it fails try default specials *)
        (fun _ => let dirs := rename_hyp_default newstop th in
                   Ref.set acc freeze; (* backtracking acc by hand here *)
-                  interp_directives acc (List.rev dirs))
+                  interp_directives newstop acc (List.rev dirs))
 
 with fallback_rename_hyp stop (acc:string list ref) th:unit :=
           if Int.le stop 0 then ()
@@ -436,14 +445,15 @@ with fallback_rename_hyp stop (acc:string list ref) th:unit :=
                         ()
                  end)
 
-with interp_directives acc ld:unit :=
-  List.fold_right (fun d _ => interp_directive acc d) ld ()
+with interp_directives stop acc ld:unit :=
+  List.fold_right (fun d _ => interp_directive stop acc d) ld ()
 
-with interp_directive acc d :=
+with interp_directive stop acc d :=
     (* printf "<infomsg>interp_directive %a %a</infomsg>" pr_acc (Ref.get acc) pr_directive d; *)
   match d with
   | String s => Ref.set acc (s :: (Ref.get acc))
-  | RecRename n t => fallback_rename_hyp n acc t
+  | Rename t => fallback_rename_hyp stop acc t
+  | RenameN n t => fallback_rename_hyp n acc t
   end.
 
 (* Like in_context but then forget about the new goal. Only side effects are
@@ -509,58 +519,103 @@ Ltac2 autorename_strict (h:ident) :=
 
 (* Tactic renaming hypothesis H. *)
 
-Ltac2 ltac2_autorename (h:ident) :=
+Local Ltac2 ltac2_autorename (h:ident) :=
   control_try (fun () => autorename_strict h).
 
 Ltac2 ltac1_autorename (h:Ltac1.t) :=
   let h: ident := Option.get (Ltac1.to_ident h) in
   ltac2_autorename h.
 
-#[global]Ltac2 ltac1_autorename_strict (h:Ltac1.t) :=
+Ltac2 ltac1_autorename_strict (h:Ltac1.t) :=
   let h: ident := Option.get (Ltac1.to_ident h) in
   autorename_strict h.
-
-Tactic Notation "autorename" hyp(h) :=
-  let tac := ltac2:(h |- ltac1_autorename h) in
-  tac h.
-
-Tactic Notation "autorename_strict" hyp(h) :=
-  let tac := ltac2:(h |- ltac1_autorename_strict h) in
-  tac h.
-
-Ltac2 decr (n:int):int :=
-  if Int.equal n 0 then 0 else Int.sub n 1.
 
 Ltac2 rename_list l acc s :=
   List.iter (fun (n,t) => fallback_rename_hyp n acc t) l;
   Ref.set acc (s :: (Ref.get acc)).
 
+End Ltac2.
 
-
-(* Ltac2 Notation x(constr) "#" y(tactic(1)) := (RecRename x y). *)
-
-
+(* This is the default renaming hard-coded in LibHYps *)
 Ltac2 Set rename_hyp_default :=
-  fun n th: rename_directives =>
+  fun n th =>
     if Int.lt n 0 then []
     else
       lazy_match! th with
-      | ?x <> ?y => [String "neq"; RecRename (decr n) x; RecRename (decr n) y] 
-      | @cons _ ?x (cons ?y ?l) => [String "cons"; RecRename n x; RecRename n y; RecRename (decr (decr n)) l]
-      | @cons _ ?x ?l => if Int.ge n 1 then [String "cons"; RecRename n x; RecRename (decr n) l] else [String "cons"]
-      | (@Some _ ?x) =>  [RecRename (Int.add 1 n) x]
+      | ?x <> ?y => [ String "neq" ; Rename x ; Rename y ] 
+      | (@Some _ ?x) =>  [RenameN (incr n) x]
       | (@None _) => [String "None"]
       end.
 
-Definition DUMMY: Prop -> Prop.
-  exact (fun x:Prop => x).
-Qed.
+(* This may be due to the definition of ltac1_autorename which uses
+   Ltac1.to_ident, but this is the only way I found to have
+   "autorename h" be callable from ltac1: make it a notation expecting
+   an ident, and then define a tactic using this notation. If I define
+   directly the tatic autorename instead of a notation, then it does
+   not accept "autorename id". *)
+(* to reproduce:
+Ltac2 ltac1_autorename (h:Ltac1.t) :=
+  let h: ident := Option.get (Ltac1.to_ident h) in
+  ltac2_autorename h.
 
-Ltac2 recRename n x :=
-  RecRename (Option.get (Ltac1.to_int n)) (Option.get (Ltac1.to_constr x)).
+Global Ltac autorename h :=
+  let tac := ltac2:(h |- Ltac2.ltac1_autorename h) in
+  tac h.
+
+Goal 1 = 2 -> False.
+Proof.
+  intros H. 
+  autorename H. (* Ltac1.to_ident fails with Ltac2 exception: No_value *)
+
+More generally to reproduce:
+
+Ltac2 ltac2_mytac (id:ident) := printf "<infomsg>%I</infomsg>" id.
+
+Ltac2 ltac1_mytac (h:Ltac1.t) :=
+  let h: ident := Option.get (Ltac1.to_ident h) in
+  ltac2_mytac h.
+
+Global Ltac mytac h :=
+  let tac := ltac2:(h |- ltac1_mytac h) in
+  tac h.
+
+Local Set Default Proof Mode "Classic".
+
+Goal 1 = 2 -> False.
+Proof.
+  intros H. 
+  Fail mytac H. (* Ltac1.to_ident fails with Ltac2 exception: No_value *)
+Abort.
+
+(* Solution *)
+Tactic Notation "XXXmytac" hyp(h) :=
+  let tac := ltac2:(h |- ltac1_mytac h) in
+  tac h.
+
+Ltac mytac' h := XXXmytac h.
 
 
-(* ********** CUSTOMIZATION ********** *)
+Goal 1 = 2 -> False.
+Proof.
+  intros H. 
+  mytac' H. 
+
+*)
+
+
+Local Tactic Notation "Lautorename" hyp(h) :=
+  let tac := ltac2:(h |- Ltac2.ltac1_autorename h) in
+  tac h.
+
+Global Ltac autorename h := Lautorename h.
+
+Local Tactic Notation "Lautorename_strict" hyp(h) :=
+  let tac := ltac2:(h |- Ltac2.ltac1_autorename_strict h) in
+  tac h.
+Global Ltac autorename_strict h := Lautorename_strict h.
+
+(*
+(* ********** EXAMPLE CUSTOMIZATION ********** *)
 
 (* TESTS *)
 
@@ -569,11 +624,21 @@ Ltac2 recRename n x :=
 Ltac2 Set add_suffix := false.
 Ltac2 Set numerical_sufx := true.
 
+(* This should maybe be by default *)
+Ltac2 rename_hyp_1 n th :=
+    if Int.lt n 0 then []
+    else
+      lazy_match! th with
+      | @cons _ ?x (cons ?y ?l) => [String "cons"; Rename x; Rename y; RenameN (decr (decr n)) l]
+      | @cons _ ?x ?l => if Int.ge n 1 then [String "cons"; Rename x; RenameN (decr n) l] else [String "cons"]
+      end.
+
 (* From there this is LibHypTest from 1f7a1ed2289e439c291fcbd06c51705547feef1e *)
 Ltac2 rename_hyp_2 n th :=
   match! th with
   | true <> false => [String "tNEQf"]
   | true = false => [String "tEQf"]
+  |  _ => rename_hyp_1 n th (* call the previously defined tactic *)
   end.
 
 Ltac2 Set rename_hyp := rename_hyp_2.
@@ -581,8 +646,8 @@ Ltac2 Set rename_hyp := rename_hyp_2.
 (* Suppose I want to add later another naming rule: *)
 Ltac2 rename_hyp_3 n th :=
   match! th with
-  | Nat.eqb ?x ?y = true => [String "Neqb" ; RecRename n x ; RecRename n y]
-  | true = Nat.eqb ?x ?y => [String "Neqb" ; RecRename n x ; RecRename n y]
+  | Nat.eqb ?x ?y = true => [String "Neqb" ; Rename x ; Rename y]
+  | true = Nat.eqb ?x ?y => [String "Neqb" ; Rename x ; Rename y]
   | _ => rename_hyp_2 n th (* call the previously defined tactic *)
   end.
 
@@ -592,6 +657,7 @@ Ltac2 Set rename_depth := 3.
 Import TacNewHyps.Notations.
 Close Scope Z_scope.
 Open Scope nat_scope.
+
 Lemma dummy: forall x y,
     0 <= 1 ->
     (0%Z <= 1%Z)%Z ->
@@ -601,9 +667,11 @@ Lemma dummy: forall x y,
     0 = 1 ->
     223 = 426 ->
     (0 = 1)%Z ->
-    ~x = y ->
+    x <> y ->
+    Nat.eqb (x + 1) 0 <> Nat.eqb 1 y ->
     true = Nat.eqb 3 4  ->
-    Nat.eqb 3 4 = true  ->
+    Nat.eqb (x + 3) 4 = true  ->
+    Nat.eqb (2 * (x + 3)) 4 = true  ->
     true = Nat.leb 3 4  ->
     1 = 0 ->
     ~x = y ->
@@ -630,7 +698,10 @@ Lemma dummy: forall x y,
       (0 < 1 -> ~(1<0)) ->
       (0 < 1 -> 1<0) -> 0 < z -> True.
 Proof.
-  intros;{(fun h => autorename h)}.
+  intros x y H.
+  autorename H.
+  Undo 2.
+  intros;{ autorename }.
 
   match type of x with nat => idtac | _ => fail "test failed!" end.
   match type of y with nat => idtac | _ => fail "test failed!" end.
@@ -643,10 +714,12 @@ Proof.
   match type of h_eq_0z_1z with 0%Z = 1%Z => idtac | _ => fail "test failed!" end.
   match type of h_neq_x_y with x <> y => idtac | _ => fail "test failed!" end.
   match type of h_Neqb_3n_4n with true = (3 =? 4) => idtac | _ => fail "test failed!" end.
-  match type of h_Neqb_3n_4n0 with (3 =? 4) = true => idtac | _ => fail "test failed!" end.
+  match type of h_Neqb_add_x_3n_4n with (x + 3 =? 4) = true => idtac | _ => fail "test failed!" end.
+  match type of h_Neqb_mul_2n_add_4n with (2 * (x + 3) =? 4) = true => idtac | _ => fail "test failed!" end.
   match type of h_eq_true_leb_3n_4n with true = (3 <=? 4) => idtac | _ => fail "test failed!" end.
   match type of h_eq_1n_0n with 1 = 0 => idtac | _ => fail "test failed!" end.
   match type of h_neq_x_y0 with x <> y => idtac | _ => fail "test failed!" end.
+  match type of h_neq_eqb_add_0n_eqb_1n_y with  (x + 1 =? 0) <> (1 =? y) => idtac | _ => fail "test failed!" end.
   match type of h_not_lt_1n_0n with ~ 1 < 0 => idtac | _ => fail "test failed!" end.
   match type of h_all_tNEQf with forall w w' : nat, w = w' -> true <> false => idtac | _ => fail "test failed!" end. 
   match type of h_all_and_tEQf_True with forall w w' : nat, w = w' -> true = false /\ True => idtac | _ => fail "test failed!" end.
@@ -677,7 +750,9 @@ Proof.
 Qed. 
 
 
-(*
+
+
+
 (* Ltac autorename h := *)
   (* let tac := ltac2:(h |- ltac2_autorename h) in *)
   (* tac h. *)
@@ -686,31 +761,35 @@ Qed.
 
 (* Ltac2 Eval (count_impl constr:(3 + 4)). *)
 
+Import TacNewHyps.Notations.
 Parameters X Y: nat -> Prop.
 Parameters PX: X 3.
 Parameters PY: Y 3.
 
+Local Ltac rename_or_revert H := autorename_strict H + (try revert H).
 
-Goal forall [A : Type] (P Q : A -> Prop) (x : A), P x -> Q x -> (exists2 x : A, P x & Q x) -> ex2 P Q -> False.
+Goal forall [A : Type] (P Q : A -> Prop) (x : A), P x -> Q x -> (exists2 x : A, P x & Q x) -> ((fun x => x = x) 1) -> ex2 P Q -> False.
 
-  intros A P Q x H H0 H1 H2.
+  intros A P Q x H H0 H1 HH H2.
 
   autorename H1.
   autorename H2.
   autorename H.
   autorename H0.
-  assert (HH: (fun x => x = x) 1).
-  2:{ autorename HH. }
+  Fail autorename_strict HH.
+  rename_or_revert HH.
+  intros ; { rename_or_revert }.
+  Fail intros ; { autorename_strict }.
   
 
-  ltac2:(let l := rename_acc 3 constr:(exists2 x0 : A, P x0 & Q x0) in
+  ltac2:(let l := Ltac2.rename_acc 3 constr:(exists2 x0 : A, P x0 & Q x0) in
          printf "<infomsg>BEFORE BUILDNAME %a </infomsg>" (pr_list pr_string) l;
-         let nme := build_name l in
+         let nme := Ltac2.build_name l in
          printf "%s" nme).
 
-  ltac2:(let l := rename_acc 9 constr:(ex2 P Q) in
+  ltac2:(let l := Ltac2.rename_acc 9 constr:(ex2 P Q) in
          printf "<infomsg>BEFORE BUILDNAME %a </infomsg>" (pr_list pr_string) l;
-         let nme := build_name l in
+         let nme := Ltac2.build_name l in
          printf "%s" nme).
 Abort.
 

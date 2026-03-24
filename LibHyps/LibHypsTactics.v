@@ -6,7 +6,8 @@ Require Export LibHyps.TacNewHyps.
 Require Export LibHyps.LibHypsNaming.
 (* Require Export LibHyps.LibSpecialize. *)
 
-(* debug
+(* START DEBUG *)
+(* 
 Module Prgoal_Notation.
   Ltac pr_goal :=
     match goal with
@@ -26,81 +27,12 @@ Proof.
   (* specevar h_eqone at y. *)
   pr_goal.
 pr_goal.
-Abort. *)
+Abort.
 
-(* Default behaviour: generalize hypothesis that we failed to rename,
-   so that no automatic names are introduced by mistake. Of course one
-   can do "intros" to reintroduce them.
+(* END DEBUG *)
+ *)
 
-   Revert needs to be done in the other direction (so better do ";;
-   autorename ;!; revertHyp"), and may fail if something depends on
-   the reverted hyp. So we should revert everything depending on the
-   unrenamed hyp. *)
-Ltac revert_if_norename H :=
-  let t := type of H in
-  match type of t with
-  | Prop => match goal with
-            | _ =>  let x := fallback_rename_hyp_name t in idtac
-            (* since we are only in prop it is almost never the case
-               that something depends on H but if this happens we revert
-               everything that does. This needs testing. *)
-            | _ => try generalize dependent H
-            end
-  | _ => idtac
-  end.
-
-Ltac rename_or_revert H := autorename_strict H + revert H.
-
-(* Some usual tactics one may want to use with onNewHypsOf: *)
-(* apply subst using H if possible. *)
-(*Ltac substHyp H :=
-  match type of H with
-  | ?x = ?y => move H at top; (* to ensure subst will take this hyp *)
-               once (subst x + subst y)
-  end. *)
-
-(* This is similar to subst x, but ensures that H and only H is used.
-   Even if there is another hyp with the same variable *)
-Ltac substHyp H :=
-  match type of H with
-  | Depl => fail 1 (* fail immediately, we are applying on a list of hyps. *)
-  | ?x = ?y =>
-    (* subst would maybe subst using another hyp, so use replace to be sure *)
-    once ((is_var(x); replace x with y in *; [try clear x ; try clear H] )
-          + (is_var(y); replace y with x in * ; [try clear y; try clear H]))
-  | _ => idtac
-  end.
-
-(* revert, fails if impossible, should not fail if hyps are ordered in the right order *)
-Ltac revertHyp H := revert H. (* revert is a tactic notation, so we need to define this *)
-
-(* revert if subst fails. Never fail, be careful not to use this tactic in the
-   left member of a "+" tactical: *)
-Ltac subst_or_revert H := try first [progress substHyp H | revert H].
-
-(* try subst. Never fail, be careful to not use this tactic in the
-   left member of a "+" tactical: *)
-Ltac subst_or_idtac H := substHyp H.
-
-Ltac map_tac tac lH :=
-  lazymatch lH with
-    (DCons _ ?Hyp ?lH') => (try tac Hyp); map_tac tac lH'
-  | DNil => idtac
-  end.
-
-(* Naive variants for lists of hyps. We might want to optimize if
-   possible like group_up_list. *)
-Ltac subst_or_revert_l := map_tac subst_or_revert.
-Ltac subst_or_idtac_l := map_tac subst_or_idtac.
-Ltac revertHyp_l := map_tac revertHyp.
-Ltac substHyp_l := map_tac ltac:(fun x => try substHyp x) substHyp.
-Ltac revert_if_norename_l := map_tac revert_if_norename.
-Ltac autorename_l := map_tac autorename.
-
-(* Auto rename all hypothesis *)
-Ltac rename_all_hyps := autorename_l  all_hyps.
-
-
+(* TODO
 
 (* return the lowest hyp with type T in segment lH. We suppose lH is
 given lower-first. I.e. we return the first hyp of type T. *)
@@ -347,4 +279,5 @@ Proof.
   Fail intros ; { fun h => autorename_strict h }.
   intros ; { fun h => idtac h }.
   intros ; { ltac:(fun h => idtac h) }.
+*)
 *)
