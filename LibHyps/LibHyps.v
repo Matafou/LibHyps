@@ -5,11 +5,11 @@
 Require Export LibHyps.TacNewHyps.
 Require Export LibHyps.LibHypsNaming.
 Require Export LibHyps.Especialize.
-(* Require Export LibHyps.LibHypsTactics. *)
+Require Export LibHyps.LibHypsTactics.
 (* We export ; { } etc. ";;" also. *)
 
 
-Ltac rename_or_revert H := autorename_strict H + generalize dependent H.
+Ltac rename_or_revert H := autorename_strict H + revert dependent H.
 
 (* Some usual tactics one may want to use on new hyps. *)
 
@@ -55,6 +55,8 @@ Tactic Notation (at level 4) "/" "n?" := (onAllHyps rename_or_revert).
 Tactic Notation (at level 4) tactic4(Tac) "/" "r" := Tac ; {< revertHyp }.
 Tactic Notation (at level 4) "/" "r" := (onAllHypsRev revertHyp).
 
+Tactic Notation (at level 4) tactic4(Tac) "/" "g" := Tac ; { move_up_types }.
+(* Tactic Notation (at level 4) tactic4(Tac) "/" "g" := Tac ; {! group_up_list }. *)
 (*
 (* WARNING group_up_list applies to the whole list of hyps directly. *)
 (* Tactic Notation (at level 4) tactic4(Tac) "/" "g" := (then_allnh Tac group_up_list). *)
@@ -68,20 +70,20 @@ Tactic Notation (at level 4) tactic4(Tac) "/" "s" := Tac ; { subst_or_idtac }.
 Tactic Notation (at level 4) "/" "s" := (onAllHyps subst_or_idtac).
 
 (* usual combinations *)
-(*Tactic Notation (at level 4) tactic4(Tac) "//" := (Tac /s/n/g).
+Tactic Notation (at level 4) tactic4(Tac) "//" := (Tac /s/n/g).
 Tactic Notation (at level 4) tactic4(Tac) "/" "sng" := (Tac /s/n/g).
-Tactic Notation (at level 4) tactic4(Tac) "/" "sgn" := (Tac /s/g/n). *)
+Tactic Notation (at level 4) tactic4(Tac) "/" "sgn" := (Tac /s/g/n).
 Tactic Notation (at level 4) tactic4(Tac) "/" "sn" := (Tac /s/n).
 Tactic Notation (at level 4) tactic4(Tac) "/" "sr" := (Tac /s/r).
-(*Tactic Notation (at level 4) tactic4(Tac) "/" "sg" := (Tac /s/g).
+Tactic Notation (at level 4) tactic4(Tac) "/" "sg" := (Tac /s/g).
 Tactic Notation (at level 4) tactic4(Tac) "/" "ng" := (Tac /n/g).
-Tactic Notation (at level 4) tactic4(Tac) "/" "gn" := (Tac /g/n).*)
+Tactic Notation (at level 4) tactic4(Tac) "/" "gn" := (Tac /g/n).
 
 (* Tactic Notation (at level 4) "/" "sng" := *)
   (* (onAllHyps subst_or_idtac); (onAllHyps autorename); group_up_list all_hyps. *)
 Tactic Notation (at level 4) "/" "sn" := (onAllHyps subst_or_idtac); (onAllHyps autorename).
 Tactic Notation (at level 4) "/" "sr" := (onAllHyps subst_or_idtac); (onAllHyps revertHyp).
-(* Tactic Notation (at level 4) "/" "ng" := ((onAllHyps autorename) ; group_up_list all_hyps). *)
+Tactic Notation (at level 4) "/" "ng" := ((onAllHyps autorename) ; (onAllHyps move_up_types) ).
 
 Module LegacyNotations.
   Import Notations.
@@ -92,7 +94,7 @@ Module LegacyNotations.
   (* like !!tac + tries to subst with each new hypothesis. *)
   Tactic Notation "!!!" tactic3(Tac) := Tac/s/n?.
   (* Like !!! + regroup new Type-sorted hyps at top. *)
-  (* Tactic Notation (at level 4) "!!!!" tactic4(Tac) := Tac /s/n?/g. *)
+  Tactic Notation (at level 4) "!!!!" tactic4(Tac) := Tac /s/n?/g.
 
   (* Other Experimental combinations *)
 

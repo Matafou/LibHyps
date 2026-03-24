@@ -46,33 +46,6 @@ Ltac2 rename_hyp_3 n th :=
 
 Ltac2 Set rename_hyp := rename_hyp_3.
 
-(*
-Ltac add_suffix ::= constr:(false).
-Ltac numerical_names ::= numerical_names_sufx.
-
-Local Open Scope autonaming_scope.
-Import ListNotations.
-
-(* From there this is LibHypTest from 1f7a1ed2289e439c291fcbd06c51705547feef1e *)
-Ltac rename_hyp_2 n th :=
-  match th with
-  | true <> false => name(`_tNEQf`)
-  | true = false => name(`_tEQf`)
-  end.
-
-Ltac rename_hyp ::= rename_hyp_2.
-
-(* Suppose I want to add later another naming rule: *)
-Ltac rename_hyp_3 n th :=
-  match th with
-  | Nat.eqb ?x ?y = true => name(`_Neqb` ++ x#n ++ y#n)
-  | true = Nat.eqb ?x ?y => name(`_Neqb` ++ x#n ++ y#n)
-  | _ => rename_hyp_2 n th (* call the previously defined tactic *)
-  end.
-
-Ltac rename_hyp ::= rename_hyp_3.
-Ltac rename_depth ::= constr:(3).
-*)
 Close Scope Z_scope.
 Open Scope nat_scope.
 Lemma dummy: forall x y,
@@ -162,23 +135,23 @@ Qed.
 
 
 
-(*
+
 Definition eq_one (i:nat) := i = 1.
 Lemma test_espec_namings: forall n:nat, (eq_one n -> eq_one 1 -> False) -> True.
 Proof.
   intros n h_eqone.
-  especialize Nat.quadmul_le_squareadd with a at 1 as hh : h.
+  especialize Nat.quadmul_le_squareadd with a at 1 as hh (*: h*).
   { apply le_n. }
   especialize min_l with n,m at 1 as ?.
   { apply (le_n O). }
-  especialize h_eqone at 2 as h1 : h2.
+  especialize h_eqone at 2 as h1 (*: h2 *).
   { reflexivity. }
-  unfold eq_one in h2.
-  match type of h2 with 1 = 1 => idtac | _ => fail end.
+  (* unfold eq_one in h2. *)
+  (* match type of h2 with 1 = 1 => idtac | _ => fail end. *)
   match type of h1 with eq_one n -> False => idtac | _ => fail end.
   exact I.
 Qed.
-*)
+
 
 Ltac2 rename_hyp_4 n th :=
   match! th with
