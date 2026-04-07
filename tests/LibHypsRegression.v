@@ -7,7 +7,7 @@ Require Export LibHyps.TacNewHyps.
 Require Export LibHyps.LibHypsNaming.
 Require Export LibHyps.LibHyps.
 Export TacNewHyps.Notations.
-From Stdlib Require Import Arith ZArith List.
+Require Import Arith ZArith List.
 Require Import Ltac2.Ltac2.
 From Ltac2 Require Import Option Constr Printf.
 Local Set Default Proof Mode "Classic".

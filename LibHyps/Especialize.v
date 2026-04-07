@@ -1,4 +1,5 @@
 Require Import Ltac2.Ltac2.
+Require Sorting.Mergesort Structures.OrdersEx.
 From Ltac2 Require Import Option Constr Printf.
 Import Constr.Unsafe.
 Local Set Default Proof Mode "Classic".
@@ -398,7 +399,6 @@ Local Ltac2 sort_numargs (l: numarg list): numarg list:= List.sort cmp_numarg l.
    replacing h or naming the new hyp. *)
 (* Precondition: name is already fresh *)
 
-From Stdlib Require Sorting.Mergesort Structures.OrdersEx.
 
 
 Local Ltac2 dest_var (c:constr) : ident :=

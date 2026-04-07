@@ -16,7 +16,7 @@ playing the Undos. *)
 opam install coq_libhyps *)
 
 (*** Proof maintenance ***)
-From Stdlib Require Import Arith ZArith  List.
+Require Import Arith ZArith  List.
 Require Import LibHyps.LibHyps.
 
 Lemma demo: forall x y z:nat,

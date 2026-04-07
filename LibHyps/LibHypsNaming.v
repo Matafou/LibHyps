@@ -9,7 +9,7 @@
 
     Comments welcome. *)
 
-From Stdlib Require Import Arith ZArith List.
+Require Import Arith ZArith List.
 Require LibHyps.TacNewHyps.
 
 (* Import ListNotations. *)
@@ -25,7 +25,7 @@ Local Ltac2 control_try tac := Control.plus tac (fun _ => ()).
 
 (* Comment this and the Z-dependent lines below if you don't want
    ZArith to be loaded *)
-From Stdlib Require Import ZArith.
+Require Import ZArith.
 
 Ltac2 decr (n:int):int :=
   if Int.equal n 0 then 0 else Int.sub n 1.

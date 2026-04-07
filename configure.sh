@@ -58,8 +58,22 @@ function gen_projet_file () {
 
     cat < $PROJECTFILE
 
-    echo "Calling rocq makefile in $DIR"
-    (cd $DIR && rocq makefile -f _CoqProject -o Makefile )
+    which -s rocq ; rocqexists=$?
+    if [ $rocqexists -eq 0 ]
+    then
+       echo "Calling rocq makefile in $DIR"
+       (cd $DIR && rocq makefile -f _CoqProject -o Makefile )
+    else
+        which -s coqc ; coqexists=$?
+        if [ $coqexists -eq 0 ]
+         then
+             echo "Calling coq_makefile in $DIR"
+             (cd $DIR && coq_makefile -f _CoqProject -o Makefile )
+         else
+             echo "Neither rocq nor coq executable found"
+             exit 1
+        fi
+    fi
 }
 
 

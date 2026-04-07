@@ -2,10 +2,10 @@
   This file is part of LibHyps. It is distributed under the MIT
   "expat license". You should have recieved a LICENSE file with it. *)
 
-From Stdlib Require Import Arith ZArith List.
+Require Import Arith ZArith List.
 Require Import  LibHyps.LibHyps (*LibHyps.LibSpecialize*).
 Require Import Ltac2.Ltac2.
-From Stdlib Require Import List.
+Require Import List.
 
 Import ListNotations.
 
