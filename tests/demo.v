@@ -42,16 +42,32 @@ Proof.
   Undo.
   (* Even shorter: *)  
   intros /sng.
-  (* Let us instantiate the 2nd premis of h_all_eq_add_add without copying its type: *)
-  (* BROKEN IN COQ 8.18*)
+  (* Let us instantiate the 2nd premis of h_all_eq_add_add without
+     copying its type. Having variable u evarized (and then instantitated): *)
   especialize h_all_eq_add_add_ with u at 2.
   { apply Nat.add_0_l. }
-  (* now h_all_eq_add_add is specialized *)
-  Undo 6.
+  (* See how both u and (u + 1) have been removed from the hypothesis. *)
+  Undo 4.
+  (* We can do it for several hyps at a time: *)
+  especialize h_all_eq_add_add_ with u,v until 2.
+  { apply Nat.add_0_l. }
+  { apply Nat.add_0_l. }
+  Undo 7.
+  (* We can do it for several hyps at a time: *)
+  especialize h_all_eq_add_add_ with u,v at *.
+  { apply Nat.add_0_l. }
+  { apply Nat.add_0_l. }
+  Undo 7.
+  (* We can do it for several hyps at a time: *)
+  especialize h_all_eq_add_add_ with u,v at 1,2.
+  { apply Nat.add_0_l. }
+  { apply Nat.add_0_l. }
+  Undo 7.
 
+  Restart.
   intros until 1.
   (** The taticals apply after any tactic. Notice how H:x=y is not new
-    and hence not substituted, whereas z = b + x is. *)
+    and hence not substituted (and becomes 0=y), whereas z = b + x is. *)
   destruct x eqn:heq;intros /sng.
   - apply I.
   - apply I.
@@ -172,7 +188,7 @@ Proof.
   Undo 5.
   (* IDEs don't like Undo, replay the next ocommand twice will resync
      proofgeneral. *)
-  (* It accepts several (up to 7) premisses numers. *)
+  (* It accepts several (up to 7) premisses numbers. *)
   (* THIS HAS CHANGED in libHyps 3 *)
   especialize H3 with n,m,p at 2,3.
   Undo.
@@ -188,6 +204,10 @@ Proof.
   especialize H3 with n,m,p until 3.
   (* Show 4. *)
   Undo.
+
+  (* Note that non dependent variables must be given in order: *)
+  Fail especialize H3 with n,p,m until 3.
+
 
   (* VARIABLES MIXED WITH HYPOTHESIS. *)
   (* move_up_types X. moves X at top near something of the same type,

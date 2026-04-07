@@ -31,30 +31,84 @@ modification: see the remark about evars below
     of `H` (or of a new created hypothesis if the `as` option is
     given).
 
-+ `especialize H until n [as h].` Creates one subgoal for each n first
-    dependent premises of `H`, creating necessary evars for non
++ `especialize H until 3 [as h].` Creates one subgoal for each 3 first
+    dependent premises of `H`. Creating necessary evars for non
     unifiable variables. Once proved the subgoal is used to remove the
     premises of `H` (or of a new created hypothesis if the `as` option
     is given).
 
-+ all this variant accept (and may *need*) a supplementary argument
-  `with x,y,z` to declare the variables of the hypothesis which must
-  be transformed into existential variables. Examples:
++ By default all non-dependent hypothesis of `H` are left quantified.
+  But you can specify the ones that should rather be transformed into
+  existential variables. Examples:
 
-  `especialize H with x,z at n [as h].`,
-  `especialize H with a,b at * [as h].`, etc.
+  - `especialize H with x,z at n [as h].` makes xn and `z` evars.
+  - `especialize H with a at * [as h].`, etc.
   
-  These declarations are mandatory (from version 3 of libHyps) due to
-  restriction in coq >= 8.18. If you forget to mention such a variable
-  you will get an error message like this:
-  
-  ```coq
-  Unable to unify "?n0" with "u" (cannot instantiate "?n0"` <!-- -->
-  `because "u" is not in its scope: available arguments are "y" "a" "b" "t").
+Note that the variables declared in `with` must be **in the order of
+quantification**, otherwise you will get an error
+(`Invalid_argument`)".
+
+Note that (contrary to previous versions of this library), if you
+forget to list a variable, the tactic won't fail. Instead it will
+simply leave the variable quantified in the original hypothesis
+**and in suqsequentlky created subgoals**.
+
+For example, after this:
+
+  ``` coq
+  Lemma test_espec8: forall x:nat, (forall a :nat, a = 1 -> x = 1 -> False) -> x > 1.
+  Proof.
+    intros x h. 
   ```
 
-  I am considering the possibility to have a mode where some of these
-  variables may be declared implicitly.
+the goal looks like this
+
+``` coq
+  x : nat
+  h : forall a : nat, a = 1 -> x = 1 -> False
+  ============================
+  x > 1
+```
+
+the following tactic:
+
+``` coq
+especialize h with a at 1.
+```
+
+gives two subgoals:
+
+``` coq
+  x : nat
+  ============================
+  ?a = 1
+
+  x : nat
+  h : x = 1 -> False
+  ============================
+  x > 1
+
+```
+
+Whereas
+
+``` coq
+especialize h at 1.
+```
+
+gives (note how `a` is quantified in both subgoals, which makes the
+first one unprovable):
+
+``` coq
+  x, a : nat
+  ============================
+  a = 1
+  
+  x : nat
+  h : nat -> x = 1 -> False
+  ============================
+  x > 1
+```
 
 
 ## QUICK REF: Pre-defined tacticals /s /n...

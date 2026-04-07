@@ -14,8 +14,10 @@ echo "Sanity check (debug files)"
 if grep -q "LibHypsDebug.v"  LibHyps/_CoqProject
 then
     echo "REMAINING DEBUG CODE: ABORTING."
+    echo "LibHypsDebug.v shoiuld not be compiled in a released code."
     echo "Use ./configure.sh to remove rerferences to debug code."
     echo "then make clean; make lib tests"
+    echo "If this fails, remove the calls to LibHypsDebug.v in the code"
     exit 1
 else
     exit 0

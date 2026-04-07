@@ -1,26 +1,79 @@
+# Changes from 4 to 5.0
+
+
+- Almost all tactics are implementd in Ltac2.
+  - consequently they are musch faster
+  - also no more "list" variant of the tactical `; { }`. Typically
+    `/g` now is a shotcut for `; { move_up_types }` (`group_up_list`
+    removed).
+  - for auto naming, the user defined naming schemes need to be
+    written as ltac2 tactics now, instead of ltac1. Tranlation is
+    straightforward. Typically
+    
+``` coq
+Require Import Ltac2.Ltac2.
+From Stdlib Require Import List.
+Import ListNotations.
+
+
+Ltac2 rename_hyp_2 _ th :=
+  match! th with
+  | true <> false => [ String "tNEQf" ]
+  | true = false => [ String "tEQf" ]
+  end.
+
+Ltac2 Set rename_hyp := rename_hyp_2.
+
+(* Suppose I want to add later another naming rule: *)
+Ltac2 rename_hyp_3 n th :=
+  match! th with
+  | Nat.eqb ?x ?y = true => [ String "Neqb"; Rename x ; Rename y ]
+  | true = Nat.eqb ?x ?y => [ String "Neqb" ; Rename x ;  Rename y ]
+  | _ => rename_hyp_2 n th (* call the previously defined tactic *)
+  end.
+
+Ltac2 Set rename_hyp := rename_hyp_3.
+
+Local Set Default Proof Mode "Classic". (* This restores ltac1 proof mode. *)
+```
+    
+- `especialize` now allows the generated subgoals to use the
+  quantified hypothesis. This is logically more sound.
+- `especialize` now by default quanttifies hypothesis that are not
+  mentioned. To build evars instead, use the `with x,y` argument. See
+  README.md.
+- `especialize` has a variant where the subgoal are transformed into a
+  new hypothesis instead of being directly applied to the initial
+  hypothesis. This variant can create only one subgoal.
+
+
+
+# Changes from 2.x to 4.x
 
 # Changes from 1.x to 2.x
 
 ## New Syntax
 
-  + "tac1 ;; tac2" remains, but you can also use "tac1; { tac2 }".
-  + "tac1 ;!; tac2" remains, but you can also use "tac1; {< tac2 }".
++ The tactical `then_eachnh tac1 tac2` has now syntax `tac1 ; { tac2 }`.
++ The tactical `then_eachnh_rev tac1 tac2` has now syntax `tac1 ; {< tac2 }`.
++ `tac /s` is an alias for `tac ;{ substHyp }`
++ `tac /r` is an alias for `tac ;{ revertHyp }`
++ `tac /n` is an alias for `tac ;{ autorename }`
++ `tac /g` is an alias for `tac ;{ group_up_list }` which is itself
+  preferred to `tac ; { move_up_types }` or `tac ;; move_up_types.`
++ Combinations like `tac /s/n/g` are accepted.
++ Some combination have shortcuts, e.g. `tac /sng` stands for `tac
+  /s/n/g`. Other shortcuts include `\sn`,`\ng`,`\sg`...
 
-  + "!tac", "!!tac" etc are now only loaded if you do: 
-    `Import LibHyps.LegacyNotations.`, the new following
-    composable tacticals are preferred:
+## Old syntax
 
-  + `tac /s` is an alias for `tac ;{ substHyp }`
-  + `tac /r` is an alias for `tac ;{ revertHyp }`
-  + `tac /n` is an alias for `tac ;{ autorename }`
-  + `tac /g` is an alias for `tac ;{ group_up_list}` which is itself
-    preferred to `tac ; { move_up_types }` or `tac ;; move_up_types.`
++ "tac1 ;; tac2" remains, but you can also use "tac1; { tac2 }".
++ "tac1 ;!; tac2" remains, but you can also use "tac1; {< tac2 }".
++ "!tac", "!!tac" etc are now only loaded if you do: 
+  `Import LibHyps.LegacyNotations.`, the new following
+  composable tacticals are preferred:
 
-  + Combinations like `tac /s/n/g` are accepted.
-  + Some combination have shortcuts, e.g. `tac /sng` stands for `tac
-    /s/n/g`. Other shortcuts include `\sn`,`\ng`,`\sg`...
-
-## New Tactical for tactical dealing with all hyps at once
+## New Tactical for tactical dealing with all hyps at once (OBSOLETE IN > 5.0)
 
  + "tac1; {! tac2 }" applies tac2 once to *the list of* all new hypothesis.
  + "tac1; {!< tac2 }" applies tac2 once to *the list of* all new hypothesis (reverse order).

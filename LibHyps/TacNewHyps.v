@@ -35,7 +35,7 @@ Require Import Ltac2.Ltac2.
 From Ltac2 Require Import Option Constr Printf.
 Import Constr.Unsafe.
 Local Set Default Proof Mode "Classic".
-Require Import LibHyps.LibHypsDebug.
+(* Require Import LibHyps.LibHypsDebug. *)
 
 (* Utilities *)
 Local Ltac2 is_dep_prod (t:constr): bool :=

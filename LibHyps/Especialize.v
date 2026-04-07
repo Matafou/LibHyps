@@ -66,6 +66,61 @@ Proof.
      been specialized. *)
 Abort.
 
+Lemma foo: forall x y : nat, (forall n m:nat, n < m -> n <= m -> forall p:nat, p > 0 -> p+1 = m+n) -> False.
+Proof.
+
+  intros x y H. 
+  (* - We start from a goal evarEV with no typing constraint. *)
+  let ev1 := open_constr:(_) in
+  assert ev1 as newH.
+  (* then we refine this unknown goal by mimick H until we reach the
+  premise we want to remove: *)
+  intro n. (*or refine (fun (n:nat) => _) *)
+  specialize (H n).
+  intro m. 
+  specialize (H m).
+
+  (* 1 more times, but more automatic *)
+  match type of H with
+    (forall nme:?t, _) => (intro nme) (*refine (fun nme:t => _)*); specialize (H nme)
+  end.
+  
+  (* We want to prove (n<=m) as a consequence of (n<m) in H. So here
+  instead of mimickig H we assert the premise as a new goal. *)
+  assert (n<=m) as h.
+  all:swap 1 2.
+  (* We stop here and instantiate the goal with h *)
+  (exact h).
+  (* Now we are left with 2 subgoals: the initial one and the wanted subgoal;
+     been specialized. *)
+  { admit. }
+  
+    (* - We start over again, and this time we instantiate the
+       hypothesis with the goal previously defined. *)
+  let ev1 := open_constr:(_) in
+  assert ev1 as newH'.
+  (* then we refine this unknown goal by mimick H until we reach the
+  premise we want to remove: *)
+  intro n. (*or refine (fun (n:nat) => _) *)
+  specialize (H n).
+  specialize (newH n). (* we specialize both the initial hypothesis and the previously created one. *)
+  intro m. 
+  specialize (H m).
+  specialize (newH m).
+
+  (* 1 more times, but more automatic *)
+  match type of H with
+    (forall nme:?t, _) => (intro nme) (*refine (fun nme:t => _)*); specialize (H nme); specialize (newH nme)
+  end.
+  specialize (H newH).
+  exact H.
+
+  
+Abort.
+
+
+
+
 
 Local Ltac2 Type directarg := [ Quantif | QuantifIgnore | SubGoal | Evar(ident) ].
 Local Ltac2 Type namearg := [
@@ -146,9 +201,16 @@ Local Ltac2 specialize_id_cstr (h:ident) (c:constr) : unit :=
 (*   printf "<infomsg>lnameargs  = %a</infomsg>" (pr_list pr_namearg) lnameargs; *)
 (*   printf "<infomsg>ldirectarg = %a</infomsg>" (pr_list pr_directarg) ldirectarg. *)
 
+(* The main function is refine_hd. It interprets all available directargs. The two other
+   functions refine_hd_name and refine_hd_num are applied when no directarg is available.
+   They compute the next directarg and call the main function.
 
-Local Ltac2 rec refine_hd (h:ident) (ldirectarg:directarg list) (lnameargs:namearg list)
-  (lnumargs:numarg list) (n:int) :=
+   n is the last seen dephyp number.
+ *)
+
+Local Ltac2 rec refine_hd (only_premis:bool) (h:ident)
+  (ldirectarg:directarg list) (lnameargs:namearg list) (lnumargs:numarg list) (n:int)
+  : unit :=
   (* pr_debug h ldirectarg lnameargs lnumargs n; *)
   let hc := Control.hyp h in
   let th := Constr.type hc in
@@ -156,72 +218,81 @@ Local Ltac2 rec refine_hd (h:ident) (ldirectarg:directarg list) (lnameargs:namea
   (* msgc th; *)
   match Unsafe.kind th with
   | Prod _ _ =>
-          match ldirectarg with
-          | directarg::ldirectarg' =>
-              match Unsafe.kind th with
-              | Prod bnd _ =>
-                  let h_premis := Constr.Binder.name bnd in
-                  let typ_premis := Constr.Binder.type bnd in
-                  let intronme:ident :=
-                    match h_premis with
-                      None => Option.get (Ident.of_string "h_premis")
-                    | Some idh => idh
-                    end in
-                  match directarg with
-                  | Quantif =>
-                      intro_typed intronme typ_premis;
-                      specialize_id_id h intronme;
-                      refine_hd h ldirectarg' lnameargs lnumargs newn
-                  | QuantifIgnore =>
-                      intro_typed intronme typ_premis;
-                      specialize_id_id h intronme;
-                      clear $intronme;
-                      refine_hd h ldirectarg' lnameargs lnumargs newn
-                  | Evar ename =>
-                      let ename := Fresh.in_goal ename in
-                      mk_evar ename typ_premis;
-                      (* let tac := ltac1:(ename typ_premis|- evar (ename:typ_premis)) in *)
-                      (* tac (Ltac1.of_ident ename) (Ltac1.of_constr typ_premis) ; *)
-                      specialize_id_id h ename;
-                      subst $ename;
-                      refine_hd h ldirectarg' lnameargs lnumargs newn
-                  | SubGoal =>
-                      let gl := Fresh.in_goal @h in (* this uses base name "h" *)
-                      (unshelve (epose (_:$typ_premis) as $gl)) >
-                        [  | 
-                          let special := Control.hyp gl in
-                          specialize_id_cstr h special;
-                          refine_hd h ldirectarg' lnameargs lnumargs newn ]
-                  end
-              | _ => invalid_arg "Not a product (directarg)"
+      match ldirectarg with
+      | directarg::ldirectarg' =>
+          match Unsafe.kind th with
+          | Prod bnd _ =>
+              let h_premis:ident option := Constr.Binder.name bnd in
+              let typ_premis := Constr.Binder.type bnd in
+              let intronme:ident :=
+                match h_premis with
+                  None =>
+                    let id := Option.map Fresh.in_goal (Ident.of_string "h_premis") in
+                    Option.get id
+                | Some idh => idh
+                end in
+              match directarg with
+              | Quantif =>
+                  intro_typed intronme typ_premis;
+                  specialize_id_id h intronme;
+                  refine_hd only_premis h ldirectarg' lnameargs lnumargs newn
+              | QuantifIgnore =>
+                  intro_typed intronme typ_premis;
+                  specialize_id_id h intronme;
+                  clear $intronme;
+                  refine_hd only_premis h ldirectarg' lnameargs lnumargs newn
+              | Evar ename =>
+                  let ename := Fresh.in_goal ename in
+                  mk_evar ename typ_premis;
+                  specialize_id_id h ename;
+                  subst $ename;
+                  refine_hd only_premis h ldirectarg' lnameargs lnumargs newn
+              | SubGoal =>
+                  let gl := Fresh.in_goal @h in (* this uses base name "h" *)
+                  (unshelve (epose (_:$typ_premis) as $gl)) >
+                    [  | 
+                      if only_premis then
+                        match ldirectarg' with
+                        | _ :: _ =>  invalid_arg "only one subgoal allowed."
+                        | [] => let special := Control.hyp gl in
+                                exact $special (* base case: we only create a premise *)
+                        end
+                      else
+                        let special := Control.hyp gl in
+                        specialize_id_cstr h special;
+                        refine_hd only_premis h ldirectarg' lnameargs lnumargs newn ]
               end
-          | _ =>
-              (* If this succeeds, never go back here from later backtrack. *)
-              Control.once
-                (fun () => Control.plus
-                   (fun() => refine_hd_name h lnameargs lnumargs n)
-                   (fun _ => 
-                      (* msgs "Backtracking from refine_hd_name "; *)
-                      Control.plus
-                        (fun () => refine_hd_num h lnameargs lnumargs n)
-                        (fun _ =>
-                           (*msgs "Backtracking from refine_hd_num "; *)
-                           refine_hd h [Quantif] lnameargs lnumargs n)))
-                
+          | _ => invalid_arg "Not a product (directarg)"
           end
+      | [] =>
+          (* If this succeeds, never go back here from later backtrack. *)
+          Control.once
+            (fun () => Control.plus
+                         (fun() => refine_hd_name only_premis h lnameargs lnumargs n)
+                         (fun _ => 
+                            (* msgs "Backtracking from refine_hd_name "; *)
+                            Control.plus
+                              (fun () => refine_hd_num only_premis h lnameargs lnumargs n)
+                              (* neither matching a namearg nor a numarg, let us generate a
+                                 Quantif and let refine_hd deal with it. *)
+                              (fun _ =>
+                                 (*msgs "Backtracking from refine_hd_num "; *)
+                                 refine_hd only_premis h [Quantif] lnameargs lnumargs n)))
+            
+      end
   | _ => (*base case *)
       match ldirectarg,lnameargs,lnumargs with
       | [],[],[] => exact $hc
       | [],[],[SubGoalAtAll] => exact $hc
       | _ => invalid_arg "Not a product (others)"
       end
-        (* (refine_hd_num (h:ident) (ldirectarg:directarg list) (lnameargs:namearg list) *)
-           (* (lnumargs:numarg list) (n:int)) *)
   end
-    with refine_hd_name (h:ident) (lnameargs:namearg list)
+    (* Try to match the first namearg with the name of the head product. If yes, apply the
+       namearg (by inserting the corresponding directarg), otherwise backtrack. *)
+    with refine_hd_name (only_premis:bool) (h:ident) (lnameargs:namearg list)
          (lnumargs:numarg list) (n:int) :=
-    let hc:constr := Control.hyp h in (* h as a constr *)
-    let th:constr := Constr.type hc in (* type of h as a constr *)
+    let hc:constr := Control.hyp h in
+    let th:constr := Constr.type hc in
     match lnameargs with
     | namearg :: lnameargs' => 
         match Unsafe.kind th with
@@ -230,24 +301,27 @@ Local Ltac2 rec refine_hd (h:ident) (ldirectarg:directarg list) (lnameargs:namea
             match namearg with
             | SubGoalAtName nme =>
                 if map_default (Ident.equal nme) false h_premis
-                then refine_hd h [SubGoal] lnameargs' lnumargs n
+                then refine_hd only_premis h [SubGoal] lnameargs' lnumargs n
                 else backtrack "refine_hd_name: SubGoalAtName"
             | EvarAtName nme nameevar =>
                 if map_default (Ident.equal nme) false h_premis
-                then refine_hd h [Evar nameevar] lnameargs' lnumargs n
+                then refine_hd only_premis h [Evar nameevar] lnameargs' lnumargs n
                 else backtrack "refine_hd_name: EvarAtName"
             end
         | _ => invalid_arg "Not a  product (refine_hd_name)"
         end
     | _ => backtrack "refine_hd_name: no namearg"
     end
-  with refine_hd_num (h:ident) (lnameargs:namearg list)
-       (lnumargs:numarg list) (n:int) :=
-    let hc:constr := Control.hyp h in (* h as a constr *)
-    let th:constr := Constr.type hc in (* type of h as a constr *)
-    let newn := if is_dep_prod th then n else (Int.add n 1) in
-    match lnumargs with
-    | numarg::lnumargs' =>
+    (* compute the num corresponding to the current hyp (newn), then try to match the
+       first numarg with it. If yes, apply the numarg (by inserting the corresponding
+       directarg), otherwise backtrack. *)
+      with refine_hd_num (only_premis:bool) (h:ident) (lnameargs:namearg list)
+           (lnumargs:numarg list) (n:int) :=
+      let hc:constr := Control.hyp h in (* h as a constr *)
+      let th:constr := Constr.type hc in (* type of h as a constr *)
+      let newn := if is_dep_prod th then n else (Int.add n 1) in
+      match lnumargs with
+      | numarg::lnumargs' =>
         match Unsafe.kind th with
         | Prod _ _ =>
             match numarg with
@@ -256,7 +330,7 @@ Local Ltac2 rec refine_hd (h:ident) (ldirectarg:directarg list) (lnameargs:namea
                 then backtrack "refine_hd_num: SubGoalAtNum, dep"
                 else if Int.le newn num
                      then if Int.equal newn num
-                          then refine_hd h [SubGoal] lnameargs lnumargs' n
+                          then refine_hd only_premis h [SubGoal] lnameargs lnumargs' n
                           else backtrack "refine_hd_num: SubGoalAtNum,nodep"
                      else invalid_arg "Did you not order the evar numbers?"
             | SubGoalUntilNum num =>
@@ -264,21 +338,22 @@ Local Ltac2 rec refine_hd (h:ident) (ldirectarg:directarg list) (lnameargs:namea
                 then backtrack "refine_hd_num: SubGoalUntilNum, dep"
                 else
                   if Int.equal newn num
-                  then refine_hd h [SubGoal] lnameargs lnumargs' n
-                  else refine_hd h [SubGoal] lnameargs lnumargs n
+                  then refine_hd only_premis h [SubGoal] lnameargs lnumargs' n
+                  else refine_hd only_premis h [SubGoal] lnameargs lnumargs n
 
             | SubGoalAtAll =>
                 if is_dep_prod th
                 then backtrack "refine_hd_num: SubGoalAtAll, dep"
-                else refine_hd h [SubGoal] lnameargs lnumargs n
+                else refine_hd only_premis h [SubGoal] lnameargs lnumargs n
             end
         | _ => invalid_arg "Not a product (refine_hd_num)."
         end
      | _ => backtrack "refine_hd_num: no numarg"
     end.
 
+
 (* initialize n to zero. *)
-Local Ltac2 refine_spec h lnameargs lnumargs := refine_hd h [] lnameargs lnumargs 0.
+Local Ltac2 refine_spec (only_premis:bool) h lnameargs lnumargs := refine_hd only_premis h [] lnameargs lnumargs 0.
 
 (*
 (* tests *)
@@ -289,63 +364,19 @@ Axiom ex_hyp : (forall (b:bool), forall x: nat, eq_one 1 -> forall y:nat, eq_one
 
 Lemma test_esepec: True.
 Proof.
-  (* specialize ex_hyp as h. *)
-  (* especialize ex_hyp at 2 as h. *)
   specialize ex_hyp as H.
-
-  ltac2:(assert_evar @hhh).
-
   let ev1 := open_constr:(_) in
   assert ev1 as hhh;[
       ltac2:(refine_spec
+               true
                (Option.get (Ident.of_string "H"))
                [EvarAtName @b @b; EvarAtName @x @x; EvarAtName @y @y]
-               [SubGoalAtNum 3])
-    | ];
-  [ | match type of hhh with eq_one 1 -> eq_one 3 -> eq_one 4 -> eq_one _ -> eq_one 6 -> eq_one _ -> eq_one 8 -> eq_one 9 -> False => idtac end]. 
-  [ ..  | match type of hhh with eq_one 1 -> eq_one 3 -> eq_one 4 -> eq_one _ -> eq_one 6 -> eq_one _ -> eq_one 8 -> eq_one 9 -> False => idtac end].
-
-
-especialize ex_hyp at 3 with b,x,y as h;
-  Undo.
-
-
-Lemma foo: forall x y : nat,
-    (forall (n m p :nat) (hhh:n < m) (iii:n <= m),
-        p > 0
-        -> p > 2
-        -> p > 1
-        -> hidden_product) -> False.
-Proof.
-  intros x y H. 
-
-  let ev1 := open_constr:(_) in
-  assert ev1.
-
-
-  ltac2:(refine_spec
-           (Option.get (Ident.of_string "H"))
-           [EvarAtName @m @m]
-           [SubGoalAtAll]).
-  Undo 1.
-
-  (ltac2:(refine_hd
-            (Option.get (Ident.of_string "H"))
-            []
-            [EvarAtName @m @m]
-            [SubGoalUntilNum 3]
-            0)).
-  Undo 1.
-
-  (ltac2:(refine_hd 
-            (Option.get (Ident.of_string "H"))
-            [Evar @ev]
-            [EvarAtName @p @p ;SubGoalAtName @iii]
-            [SubGoalAtNum 4]
-            0)).
+               [SubGoalAtNum 3;SubGoalAtNum 5])
+    | ].
 
 *)
 
+(* num args should be sorted.  *)
 Local Ltac2 cmp_numarg a b :=
   match a with
     SubGoalAtNum na => 
@@ -362,7 +393,7 @@ Local Ltac2 sort_numargs (l: numarg list): numarg list:= List.sort cmp_numarg l.
 
 (* TODO:sort the names or work modulo order on names? Or simply avoid infinite loops.
    TODO: if there is only one "at" and no "with"
- nor "until", then allow for the subgoal to be kept like an assert. *)
+         nor "until", then allow for the subgoal to be kept like an assert. *)
 (* builds the inital unknown goal, call the refining tactic, end up by
    replacing h or naming the new hyp. *)
 (* Precondition: name is already fresh *)
@@ -383,17 +414,28 @@ Local Ltac2 espec_gen (h:constr) lnames lnums name (replaceb:bool) :=
     let h := dest_var h in
     match replaceb with
       true =>
-        assert_evar name > [ (refine_spec h lnames lnums)
+        assert_evar name > [ (refine_spec false h lnames lnums)
                              | Std.clear [h]; Std.rename [(name, h)] ]
     | false =>
-        assert_evar name > [ (refine_spec h lnames lnums) | ]
+        assert_evar name > [ (refine_spec false h lnames lnums) | ]
     end
   else 
     (* replaceb should be false in this case. *)
     (let h' := Fresh.in_goal @H in
      Std.specialize (h , Std.NoBindings) (Some (Std.IntroNaming (Std.IntroIdentifier h')));
-     assert_evar name > [ (refine_spec h' lnames lnums) | Std.clear [h'] ]).
+     assert_evar name > [ (refine_spec false h' lnames lnums) | Std.clear [h'] ]).
 
+(* One num (the hypothesis one wants to prove, some args to evarize. *)
+Local Ltac2 epremis_gen (h:constr) lnames (num:numarg) name :=
+  let lnums := sort_numargs [num] in
+  if is_var h
+  then
+    let h := dest_var h in
+    assert_evar name > [ (refine_spec true h lnames lnums) | ]
+  else 
+    (let h' := Fresh.in_goal @H in
+     Std.specialize (h , Std.NoBindings) (Some (Std.IntroNaming (Std.IntroIdentifier h')));
+     assert_evar name > [ (refine_spec true h' lnames lnums) | Std.clear [h'] ]).
 
 
 (*
@@ -415,7 +457,11 @@ Proof.
   ltac2:(espec_gen constr:(H) [EvarAtName @m @m] [SubGoalAtAll] @toto true).
   Undo 1.
   ltac2:(espec_gen constr:(H) [EvarAtName @m @m] [SubGoalUntilNum 3] @toto false).
-  Undo 1.
+  4:let ttoto := type of toto in
+    match ttoto with
+    |  nat -> forall p : nat, p > 2 -> p > 1 -> hidden_product =>  idtac
+    end.
+  Undo 2.
   ltac2:(espec_gen constr:(H) [EvarAtName @m @m] [SubGoalUntilNum 3] @toto true).
   Undo 1.
   ltac2:(espec_gen constr:(H) [EvarAtName @m @m] [SubGoalAtAll] @toto false).
@@ -424,6 +470,28 @@ Proof.
   Undo 1.
   ltac2:(espec_gen constr:(H) [EvarAtName @n @n; EvarAtName @m @m] [SubGoalAtNum 4] @toto true).
   Undo 1.
+
+  ltac2:(epremis_gen constr:(H) [EvarAtName @m @m] [SubGoalAtAll] @toto).
+  2:let ttoto := type of toto in
+    match ttoto with
+    | (forall n : nat, nat -> n < _) => idtac
+    end.
+  Undo 2.
+
+  ltac2:(epremis_gen constr:(H) [EvarAtName @m @m] [SubGoalUntilNum 3] @toto).
+  2:{
+  Undo 1.
+  ltac2:(epremis_gen constr:(H) [EvarAtName @m @m] [SubGoalUntilNum 3] @toto true).
+  Undo 1.
+  ltac2:(epremis_gen constr:(H) [EvarAtName @m @m] [SubGoalAtAll] @toto false).
+  Undo 1.
+  ltac2:(epremis_gen constr:(H) [EvarAtName @n @n; EvarAtName @m @m] [SubGoalAtNum 4] @toto false).
+  Undo 1.
+  ltac2:(epremis_gen constr:(H) [EvarAtName @n @n; EvarAtName @m @m] [SubGoalAtNum 4] @toto true).
+  Undo 1.
+
+
+
 *)
 
 Local Ltac2 sgatnum_from_lint (li:int list): numarg list :=
@@ -449,6 +517,10 @@ Local Ltac2 espec_until_using_ltac1_gen (h:constr) (li:int list) (occsevar:ident
   else
     let c1 := if atAll then [SubGoalAtAll] else sguntilnum_from_lid li in
     espec_gen h (evatname_from_lid occsevar) c1 newH replaceb.
+
+Local Ltac2 eprem_at_using_ltac1_gen (h:constr) (i:int) (occsevar:ident list) (newH: ident):unit :=
+  let lid' := evatname_from_lid occsevar in
+  epremis_gen h lid' (SubGoalAtNum i) newH.
 
 
 (*
@@ -502,49 +574,44 @@ Proof.
   Undo 1.
 *)
 
-Local Ltac2 interp_ltac1_id_list (lid:Ltac1.t) : ident list :=
-  List.map (fun x => Option.get (Ltac1.to_ident x)) (Option.get (Ltac1.to_list lid)).
+Local Ltac2 interp_ltac1_id_list (lid:Ltac1.t list) : ident list :=
+  List.map (fun x => Option.get (Ltac1.to_ident x)) lid.
 
-Local Ltac2 interp_ltac1_int_list (li:Ltac1.t) : int list :=
-  List.map (fun x => Option.get (Ltac1.to_int x)) (Option.get (Ltac1.to_list li)).
+Local Ltac2 interp_ltac1_int_list (li:Ltac1.t list) : int list :=
+  List.map (fun x => Option.get (Ltac1.to_int x)) li.
 
 Local Ltac2 interp_ltac1_hyp (h:Ltac1.t) : constr := Option.get (Ltac1.to_constr h).
 
+Local Ltac2 default := Option.default.
+
 (* call Ltac2'especialize on argscoming from Ltac1 notation *)
 Local Ltac2 call_specialize_ltac2_gen (h:Ltac1.t) (li:Ltac1.t) levars newh (replaceb:bool) :=
-  let li2 := match Ltac1.to_list li with
-              None => []
-            | Some _ => interp_ltac1_int_list li
-            end in
-  let levar2 := match Ltac1.to_list levars with
-               None => []
-             | Some _ => interp_ltac1_id_list levars
-             end in
-    espec_at_using_ltac1_gen
-      (interp_ltac1_hyp h)
-      li2
-      levar2
-      (Option.get (Ltac1.to_ident newh))
-      replaceb.
+  let li2 := interp_ltac1_int_list (default [] (Ltac1.to_list li)) in
+  let levar2 := interp_ltac1_id_list (default [] (Ltac1.to_list levars)) in
+  let nme := Option.get (Ltac1.to_ident newh) in
+  espec_at_using_ltac1_gen (interp_ltac1_hyp h) li2 levar2 nme replaceb.
 
 (* call Ltac2'especialize on argscoming from Ltac1 notation *)
 
 Local Ltac2 call_specialize_until_ltac2_gen (h:Ltac1.t) li levars newh replaceb (atAll:bool) :=
-  let li2 := match Ltac1.to_list li with
-               None => []
-             | Some _ => interp_ltac1_int_list li
-             end in
-  let levar2 := match Ltac1.to_list levars with
-                  None => []
-                | Some _ => interp_ltac1_id_list levars
-                end in
+  let li2 := interp_ltac1_int_list (default [] (Ltac1.to_list li)) in
+  let levar2 := interp_ltac1_id_list (default [] (Ltac1.to_list levars)) in
   if Int.gt (List.length li2) 1
   then
-    (* msgi (List.length li'); *)
-    Control.zero (Tactic_failure (Some (fprintf "In 'specialize X until I', I must be a singleton.")))
+    Control.zero (Tactic_failure
+                    (Some (fprintf "In 'specialize X until I', I must be a singleton.")))
   else 
-    espec_until_using_ltac1_gen (interp_ltac1_hyp h) li2 levar2
-         (Option.get (Ltac1.to_ident newh)) replaceb atAll.
+    let nme := Option.get (Ltac1.to_ident newh) in
+    espec_until_using_ltac1_gen (interp_ltac1_hyp h) li2 levar2 nme replaceb atAll.
+
+
+(* call Ltac2'especialize on argscoming from Ltac1 notation *)
+Local Ltac2 call_premise_ltac2_gen (h:Ltac1.t) (i:Ltac1.t) levars (newh:Ltac1.t) :=
+  let i2 := Option.get (Ltac1.to_int i) in
+  let levar2 := interp_ltac1_id_list (default [] (Ltac1.to_list levars))  in
+  let newh2 := Option.default (Fresh.in_goal @H) (Ltac1.to_ident newh) in
+  eprem_at_using_ltac1_gen (interp_ltac1_hyp h) i2 levar2 newh2.
+
 
 
 Ltac gen_hyp_name h := match goal with
@@ -552,6 +619,76 @@ Ltac gen_hyp_name h := match goal with
                        | |- _ => fresh "H_spec_"
                        end.
 Ltac dummy_term := constr:(Prop).
+
+(* TODO only one integer, + evars + as => create a subgoal that wioll be added as hyp, h is not specialized *)
+Tactic Notation "prove_premise" constr(h) "with" ne_ident_list_sep(levars,",") "at" int(n) "as" ident(newH) :=
+  let tac := ltac2:(h n levars newH |- call_premise_ltac2_gen h n levars newH) in
+  tac h n levars newH.
+
+Tactic Notation "prove_premise" constr(h) "at" int(n) "with" ne_ident_list_sep(levars,",") "as" ident(newH) :=
+  let tac := ltac2:(h n levars newH |- call_premise_ltac2_gen h n levars newH) in
+  tac h n levars newH.
+
+Tactic Notation "prove_premise" constr(h) "at" int(n) "as" ident(newH) :=
+  let tac := ltac2:(h n levars newH |- call_premise_ltac2_gen h n levars newH) in
+  let levars := dummy_term in       (* something that is not a list. *)
+  tac h n levars newH.
+
+(* TODO only one integer, + evars + as => create a subgoal that wioll be added as hyp, h is not specialized *)
+Tactic Notation "prove_premise" constr(h) "with" ne_ident_list_sep(levars,",") "at" int(n) :=
+  let tac := ltac2:(h n levars newH |- call_premise_ltac2_gen h n levars newH) in
+  let newH := dummy_term in
+  tac h n levars newH.
+
+(* TODO only one integer, + evars + as => create a subgoal that wioll be added as hyp, h is not specialized *)
+Tactic Notation "prove_premise" constr(h) "at" int(n) "with" ne_ident_list_sep(levars,",") :=
+  let tac := ltac2:(h n levars newH |- call_premise_ltac2_gen h n levars newH) in
+  let newH := dummy_term in
+  tac h n levars newH.
+
+Tactic Notation "prove_premise" constr(h) "at" int(n) :=
+  let tac := ltac2:(h n levars newH |- call_premise_ltac2_gen h n levars newH) in
+  let levars := dummy_term in       (* something that is not a list. *)
+  let newH := dummy_term in
+  tac h n levars newH.
+
+(* TEST *)
+(*
+Definition eq_one (i:nat) := i = 1.
+Definition hidden_product := forall i j :nat, i+1=j -> i+1=j -> i+1=j.
+
+Axiom ex_hyp : (forall (b:bool), forall x: nat, eq_one 1 -> forall y:nat, eq_one 2 ->eq_one 3 ->eq_one 4 ->eq_one x ->eq_one 6 ->eq_one y -> eq_one 8 -> eq_one 9 -> False).
+
+
+Lemma test_espec_namings: forall n:nat, (forall m:nat, eq_one n -> eq_one 1 -> eq_one m -> False) -> True.
+Proof.
+  intros n h_eqone.
+  prove_premise h_eqone with m at 3 as hhhh.
+  { admit. }
+  Undo 4.
+  prove_premise h_eqone at 3 with m as hhhh.
+  { admit. }
+  Undo 4.
+  prove_premise h_eqone at 3 as hhh.
+  { admit. }
+  Undo 4.
+  prove_premise h_eqone with m at 3.
+  { admit. }
+  Undo 4.
+  prove_premise h_eqone at 3 with m.
+  { admit. }
+  Undo 4.
+  prove_premise h_eqone at 3.
+  { admit. }
+  Undo 4.
+
+  
+
+  
+
+*)
+
+
 
 (* ESPECIALIZE AT *)
 (* ********************* *)
@@ -740,6 +877,36 @@ Tactic Notation "especialize" constr(h) "until" ne_integer_list_sep(li,",") :=
   let nme := gen_hyp_name h in
   let levars := dummy_term in
   tac h li levars ident:(nme).
+(* TEST *)
+
+(*
+Definition eq_one (i:nat) := i = 1.
+Definition hidden_product := forall i j :nat, i+1=j -> i+1=j -> i+1=j.
+
+Axiom ex_hyp : (forall (b:bool), forall x: nat, eq_one 1 -> forall y:nat, eq_one 2 ->eq_one 3 ->eq_one 4 ->eq_one x ->eq_one 6 ->eq_one y -> eq_one 8 -> eq_one 9 -> False).
+
+
+Lemma test_espec_namings: forall n:nat, (forall m:nat, eq_one n -> eq_one 1 -> eq_one m -> False) -> True.
+Proof.
+  intros n h_eqone.
+  prove_premise h_eqone with m at 3 as h.
+  { admit. }
+  Undo 4.
+  prove_premise h_eqone at 3 as h.
+  { admit. }
+  Undo 4.
+  especialize h_eqone with m at 3.
+  { admit. }
+  Undo 4.
+  
+
+  specialize h_eqone with (1:=h).
+  prove_premise h_eqone with m at 1 as h.
+  { admit. }
+  specialize h_eqone with (1:=h).
+*)
+
+
 
 (*
 (* tests *)
@@ -756,7 +923,12 @@ Lemma foo: forall x y : nat,
 Proof.
   intros x y H. 
 
-  especialize H with m,p at 2,4 as toto.
+  especialize H with m,p at * as toto.
+  Undo 1.
+  especialize H with m,p until 3 as toto.
+  Undo.
+  (* evar names must be given in order. *)
+  Fail especialize H with p,m at 2,4 as toto.
 
   ltac2:(espec_at_using_ltac1_gen constr:(H) [2;4] [@m; @p] @toto false).
   Undo 1.

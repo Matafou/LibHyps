@@ -9,7 +9,7 @@ Require Export LibHyps.LibHypsTactics.
 (* We export ; { } etc. ";;" also. *)
 
 
-Ltac rename_or_revert H := autorename_strict H + revert dependent H.
+Ltac rename_or_revert H := autorename_strict H + generalize dependent H.
 
 (* Some usual tactics one may want to use on new hyps. *)
 

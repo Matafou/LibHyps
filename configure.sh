@@ -14,7 +14,7 @@ case $key in
         STDLIB=$1
         shift
         ;;
-    --dev)
+    -dev|--dev)
         DEVOPT=yes
         shift
         ;;
@@ -65,9 +65,9 @@ function gen_projet_file () {
 
 if [ "$DEVOPT" = "no" ]
 then
-    FILESLH=$(cd LibHyps && find . -name "*.v" | grep -v "ident_of_string\|especialize_ltac2\|LibEspecialize\|LibHypsDebug" )
+    FILESLH=$(cd LibHyps && find . -name "*.v" | grep -v "LibHypsDebug" )
 else
-        FILESLH=$(cd LibHyps && find . -name "*.v" | grep -v "ident_of_string\|especialize_ltac2\|LibEspecialize" )
+    FILESLH=$(cd LibHyps && find . -name "*.v"  )
 fi
 
 PROJECTDIRLH="LibHyps"

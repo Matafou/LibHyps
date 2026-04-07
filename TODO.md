@@ -1,15 +1,5 @@
 # Suggestion by Sylvain Boulme:
 
-## Looks like "exploit" developped in compcert.
-
-exploit creates evars for all premisses of a hyp.
-especialize creates evars for ONE premiss.
-Maybe we could have the best of both?
-like:
-```
-especialize h at 1,4,6. (* fine grained exploit *)
-especialize h at *. (* equivalent to exploit *)
-```
 # have a true replacement for "as"
 
 Syntax suggestion:
@@ -39,8 +29,10 @@ tac1 ; [[ tac2 ]].
 ## or go back to double semi-colon?
 
 tac1 ;; tac2.
+tac1 ;<; tac2.
 
-but we need 4 variants. ;<; ;!; ;!<; which are quite ugly.
+We don't need the 4 variants anymore (ltac2 is fast enough to avoid
+the list variants).
 
 # Are shortcuts reasonable wrt to ssreflect?
 
@@ -58,6 +50,9 @@ we need to have vaiants
 make possible the fact to decide to use an arg name only if it is an id.
 
 typically: "h_eq_add_add" is not so interesting
+
+idea yet to be refined: at last level if seeing a hyp name then use it
+else don't generate the last level.
 
 # Naming : distinguish sub terms in the name
 

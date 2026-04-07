@@ -18,7 +18,7 @@ Require Import Ltac2.Ltac2.
 From Ltac2 Require Import Option Constr Printf.
 Import Constr.Unsafe.
 Local Set Default Proof Mode "Classic".
-Require Import LibHyps.LibHypsDebug.
+(* Require Import LibHyps.LibHypsDebug. *)
 
 Local Ltac2 backtrack (msg:string) := Control.zero (Tactic_failure (Some (fprintf "Backtrack: %s" msg))).
 Local Ltac2 control_try tac := Control.plus tac (fun _ => ()). 
@@ -73,6 +73,7 @@ Ltac2 exists_prefix() := "ex".
   his development. See below for an example of such redefinition. It should
   always fail when no name suggestion is found, to give a chance to the
   default naming scheme to apply. *)
+#[warnings="-ltac2-unused-variable"] 
 Ltac2 mutable rename_hyp (stop:int)  (th:constr): rename_directives := backtrack "rename_hyp".
 
 
@@ -101,6 +102,7 @@ Ltac2 Set rename_hyp := rename_hyp_3.
 >> *)
 
 (* This one is similar but for internal use *)
+#[warnings="-ltac2-unused-variable"] 
 Ltac2 mutable rename_hyp_default (n:int) (th:constr): rename_directives := backtrack "rename_hyp_default".
 
 Module Ltac2.
@@ -144,7 +146,6 @@ Ltac2 string_first (p:char -> bool) (s:string) : int :=
 Ltac2 Eval (string_first (fun c => Int.equal (Char.to_int c) (codepercent())) "xxxcc").
 
 Ltac2 string_shorten_percent (s:string) : string :=
-  let lgth := String.length s in  
   let i := string_first (fun c => Int.equal (Char.to_int c) (codepercent())) s in
   String.sub s 0 i.
 
@@ -371,7 +372,7 @@ with rename_hyp_chained_quantifs stop (acc:string list ref) (th:constr) : unit :
                 let nme_c:constr := Unsafe.make (Var(nme)) in
                 let subth' := Constr.Unsafe.substnl [nme_c] 0 subth in
                 rename_hyp_chained_quantifs stop acc subth' in
-           (in_context nme typ tac_under_binder);
+           let _ := in_context nme typ tac_under_binder in
            ()
         else
           rename_hyp_chained_quantifs stop acc subth
@@ -397,7 +398,7 @@ with fallback_rename_hyp_quantif stop (acc:string list ref) (th:constr) : unit :
                 let nme_c:constr := Unsafe.make (Var(nme)) in
                 let subth' := Constr.Unsafe.substnl [nme_c] 0 subth in
                 rename_hyp_chained_quantifs newstop acc subth' in
-           (in_context nme typ tac_under_binder);
+           let _ := in_context nme typ tac_under_binder in
            ()
 
         else
@@ -460,7 +461,7 @@ with interp_directive stop acc d :=
    kept *)
 Ltac2 in_context_then_forget nme typ f :=
   Control.once_plus
-    (fun () => in_context nme typ f; backtrack "forget in_context subgoal")
+    (fun () => let _ := in_context nme typ f in backtrack "forget in_context subgoal")
     (fun _ => ()).
 
 Ltac2 rename_acc n th :=
@@ -485,6 +486,7 @@ Ltac2 fallback_rename_hyp_name th: ident :=
 (* This entry point is for really adhoc user renaming that need to inspect the
 goal in depth. For instance itf the name of a variable depends on the presence
 of some hypothesis. Currently unplugged.*)
+#[warnings="-ltac2-unused-variable"] 
 Ltac2 rename_hyp_with_name h th := fail.
 
 (* Tactic renaming hypothesis H. Ignore Type-sorted hyps, fails if no

@@ -9,7 +9,7 @@ From Stdlib Require Import List.
 
 Import ListNotations.
 
-Ltac2 rename_hyp_2 n th :=
+Ltac2 rename_hyp_2 _ th :=
   match! th with
   | true <> false => [ String "tNEQf" ]
   | true = false => [ String "tEQf" ]
