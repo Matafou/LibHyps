@@ -2,30 +2,9 @@
   This file is part of LibHyps. It is distributed under the MIT
   "expat license". You should have recieved a LICENSE file with it. *)
 
-Require Export LibHyps.TacNewHyps.
-Require Export LibHyps.LibHypsNaming.
-(* Require Export LibHyps.LibSpecialize. *)
 Require Import Ltac2.Ltac2.
-From Ltac2 Require Import Option Constr Printf.
 
-(* START DEBUG *)
-(*
-Require Import LibHypsDebug.
-
-
-
- (* example:  *)
-Lemma test_espec2: forall x:nat, x = 1 -> (forall a y z:nat, a = 1 -> y = 1 -> z+y+a = 2 -> z+1 = x -> False) -> x > 1.
-Proof.
-  intros x hx h_eqone.
-  (* specevar h_eqone at y. *)
-  (pr_goal()).
-Abort.
-
-(* END DEBUG *)
-*)
-
-(* TODO *)
+(* HYPS GROUPING *)
 
 Ltac2 rec find_above_which (foundone:bool) (t:constr)
   (lH:(ident * constr option * constr) list): ident option :=
@@ -65,12 +44,6 @@ Ltac2 move_up_types (h:ident) :=
         else Std.move h (Std.MoveAfter aboveh)
     end.
 
-(* Ltac2 move_up (h:constr) := *)
-(*   match Constr.Unsafe.kind h with *)
-(*   | Constr.Unsafe.Var id => move_up_hyp id *)
-(*   | _ => Control.throw (Invalid_argument None) *)
-(*   end. *)
-
 Ltac2 ltac1_move_up_types (h:Ltac1.t) :=
   let h: ident := Option.get (Ltac1.to_ident h) in
   move_up_types h.
@@ -79,65 +52,45 @@ Local Tactic Notation "Lmove_up_type" hyp(h) :=
   let tac := ltac2:(h |- ltac1_move_up_types h) in
   tac h.
 
+(* GLOBAL TACTICS *)
+
 Global Ltac move_up_types h := Lmove_up_type h.
 
+(* SUBST WITH ONLY ONE HYP *)
 
-Local Set Default Proof Mode "Classic".
-(*
-(* Tests *)
-Require Import LibHyps.LibHyps.
-Export TacNewHyps.Notations.
-Goal forall x1 x3:bool, forall a z e : nat,
-      z+e = a
-      -> forall SEP:(True -> True),
-        a = z+z
-        -> ((fun f => z = e) true)
-        -> forall b1 b2 b3 b4: bool,
-          True -> True.
-Proof.
-  (* Set Ltac Debug. *)
-  (* then_nh_rev ltac:(intros) ltac:(subst_or_idtac).   *)
-  intros ; {< move_up_types }.
-  (* intros ? ? ? ? ? ? ? ? ? ?. *)
-  (* group_up_list (DCons bool b1 DNil). *)
-  Undo.
-  intros ; { move_up_types }.
-  Undo.
-  intros ; { autorename }; {< move_up_types }.
-  Undo.
-  intros ; {subst_or_idtac} ; { autorename } ; {< move_up_types }.
-  Undo.
-  Fail progress intros ; { revertHyp }.
-  intros.
-  then_eachnh ltac:(intros) ltac:(subst_or_idtac).  
-  Undo.
-  intros ; { fun h => autorename_strict h }.
-  intros ; { fun h => idtac h }.
-  intros ; { ltac:(fun h => idtac h) }.
-*)
-
-(*
-
-Goal forall x y:nat, x<y -> x+1 <y+1 -> forall z:nat, forall a b : bool, forall n m p : nat,  True.
-Proof.
-  intros.
-  
-  progress (move_up_types z).
-  Fail progress (move_up_types z).
-  Fail progress (move_up_types H).
-  Fail progress (move_up_types H0).
-  
-
-  let l:(ident * constr option * constr) list := (Control.hyps()) in
-  let idopt := find_above_which false constr:(nat) l in
-  match idopt with
-  | None => printf "None"
-  | Some id => printf "res = %I" id
+(* This is similar to subst x, but ensures that H and only H is used.
+   Even if there is another hyp with the same variable *)
+Global Ltac substHyp H :=
+  match type of H with
+  (* | Depl => fail 1 (* fail immediately, we are applying on a list of hyps. *) *)
+  | ?x = ?y =>
+    (* subst would maybe subst using another hyp, so use replace to be sure *)
+    once ((is_var(x); replace x with y in *; [try clear x ; try clear H] )
+          + (is_var(y); replace y with x in * ; [try clear y; try clear H]))
+  | _ => idtac
   end.
 
-  Std.move ident:(z) (Std.MoveAfter ident:(H)).
+(* DECOMPOSE LOGICAL CONNECTORS *)
 
-  let l:(ident * constr option * constr) list := (Control.hyps()) in
-  let (h,_,_) := find_lowest constr:(nat) l in
-  printf "h = %I" h.
-*)
+Global Ltac decomp_logicals h :=
+  idtac;match type of h with
+  | @ex _ (fun x => _) => let x' := fresh x in let h1 := fresh in destruct h as [x' h1]; decomp_logicals h1
+  | @sig _ (fun x => _) => let x' := fresh x in let h1 := fresh in destruct h as [x' h1]; decomp_logicals h1
+  | @sig2 _ (fun x => _) (fun _ => _) => let x' := fresh x in
+                                         let h1 := fresh in
+                                         let h2 := fresh in
+                                         destruct h as [x' h1 h2];
+                                         decomp_logicals h1;
+                                         decomp_logicals h2
+  | @sigT _ (fun x => _) => let x' := fresh x in let h1 := fresh in destruct h as [x' h1]; decomp_logicals h1
+  | @sigT2 _ (fun x => _) (fun _ => _) => let x' := fresh x in
+                                          let h1 := fresh in
+                                          let h2 := fresh in
+                                          destruct h as [x' h1 h2]; decomp_logicals h1; decomp_logicals h2
+  | and _ _ => let h1 := fresh in let h2 := fresh in destruct h as [h1 h2]; decomp_logicals h1; decomp_logicals h2
+  | iff _ _ => let h1 := fresh in let h2 := fresh in destruct h as [h1 h2]; decomp_logicals h1; decomp_logicals h2
+  | or _ _ => let h' := fresh in destruct h as [h' | h']; [decomp_logicals h' | decomp_logicals h' ]
+  | _ => idtac
+  end.
+
+

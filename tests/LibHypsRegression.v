@@ -129,10 +129,32 @@ Lemma dummy: forall x y,
   match type of h_impl_not_lt with 0 < 1 -> ~ 1 < 0 => idtac | _ => fail "test failed!" end.
   match type of h_impl_lt_1n_0n with 0 < 1 -> 1 < 0 => idtac | _ => fail "test failed!" end.
   match type of h_lt_0n_z with 0 < z => idtac | _ => fail "test failed!" end.
+
+  Restart.
+  intros /ng.
+  lazymatch reverse goal with
+  | Ht:_,Hz:_, Hx0:_,Hy:_ , Hx:_ |- True =>
+    let _ := constr:((ltac:(reflexivity)): Hx=x) in
+    let _ := constr:((ltac:(reflexivity)): Hy=y) in
+    let _ := constr:((ltac:(reflexivity)): Hx0=x0) in
+    let _ := constr:((ltac:(reflexivity)): Ht=t) in
+    idtac
+  | _ => fail "test failed (wrong order of hypothesis)!"
+  end.
+
+  Restart.
+  intros /sng.
+  lazymatch reverse goal with
+  | Ht:_,Hz:_, Hx0:_,Hy:_ |- True =>
+    let _ := constr:((ltac:(reflexivity)): Hy=y) in
+    let _ := constr:((ltac:(reflexivity)): Hx0=x0) in
+    let _ := constr:((ltac:(reflexivity)): Ht=t) in
+    idtac
+  | _ => fail "test failed (wrong order of hypothesis)!"
+  end.
+  
   exact I.
 Qed. 
-
-
 
 
 
@@ -152,6 +174,33 @@ Proof.
   exact I.
 Qed.
 
+Lemma test_espec_namings_premis: forall n:nat, (eq_one n -> eq_one 1 -> False) -> True.
+Proof.
+  intros n h_eqone.
+  assert premise 1 of Nat.quadmul_le_squareadd with a as ?(*: h*).
+  { apply le_n. }
+  Undo 4.
+  assert premise 1 of Nat.quadmul_le_squareadd with a as hh (*: h*).
+  { apply le_n. }
+  Undo 4.
+  assert premise 1 of min_l with n,m as hhh.
+  { apply (le_n O). }
+  Undo 4.
+  assert premise 1 of min_l as hhh.
+  { admit. }
+  Undo 4.
+  assert premise 1 of min_l with a,b .
+  { admit. }
+  Undo 4.
+  
+  especialize h_eqone at 2 as h1 (*: h2 *).
+  { reflexivity. }
+  (* unfold eq_one in h2. *)
+  (* match type of h2 with 1 = 1 => idtac | _ => fail end. *)
+  match type of h1 with eq_one n -> False => idtac | _ => fail end.
+  exact I.
+Qed.
+
 
 Ltac2 rename_hyp_4 n th :=
   match! th with
@@ -161,7 +210,6 @@ Ltac2 rename_hyp_4 n th :=
 
 Ltac2 Set rename_hyp := rename_hyp_4.
 
-Require Import LibHyps.LibDecomp.
 Ltac2 Set rename_depth := 3.
 
 Goal forall l1 l2 l3:list nat, List.length l1 = List.length l2 /\ List.length l1 = List.length l3 -> True.

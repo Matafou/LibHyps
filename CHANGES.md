@@ -1,6 +1,5 @@
 # Changes from 4 to 5.0
 
-
 - Almost all tactics are implementd in Ltac2.
   - consequently they are musch faster
   - also no more "list" variant of the tactical `; { }`. Typically
@@ -46,9 +45,16 @@ Local Set Default Proof Mode "Classic". (* This restores ltac1 proof mode. *)
   new hypothesis instead of being directly applied to the initial
   hypothesis. This variant can create only one subgoal.
 
+## Unpoolugged syntax
 
+- `tac1 ;; tac2` a,d `tac1 ;!; tac2` syntax definitely disabled.
+  Although you can re-enable it with:
+  
+``` coq
+Tactic Notation (at level 4) tactic4(tac) ";;" tactic4(tach) := then_eachnh tac tach. `
+Tactic Notation (at level 4) tactic4(tac) ";!;" tactic4(tach) := (then_eachnh_rev tac tach).
+```
 
-# Changes from 2.x to 4.x
 
 # Changes from 1.x to 2.x
 

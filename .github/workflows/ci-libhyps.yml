@@ -29,7 +29,6 @@ jobs:
           - 'rocq/rocq-prover:latest'
           - 'rocq/rocq-prover:dev'
           - 'rocq/rocq-prover:9.1'
-          - 'rocq/rocq-prover:9.2'
           - 'rocq/rocq-prover:9.0'
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:

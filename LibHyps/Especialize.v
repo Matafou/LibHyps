@@ -62,12 +62,12 @@ Proof.
   (* we go on by specializing H with this new goal *)
   specialize (H h').
   (* Now we have finished, we finish refining the unknown goal with H itself. *)
-  exact H.
+  exact H. (* Building the new hyp: the specialized version of H. *)
   (* Now we are left with 2 subgoals and the initial goal where H has
      been specialized. *)
 Abort.
 
-Lemma foo: forall x y : nat, (forall n m:nat, n < m -> n <= m -> forall p:nat, p > 0 -> p+1 = m+n) -> False.
+Lemma foo: forall x y : nat, (forall n m:nat, n < m -> n <= m -> forall p:nat, p >= 0 -> p+1 = m+n) -> True.
 Proof.
 
   intros x y H. 
@@ -76,46 +76,15 @@ Proof.
   assert ev1 as newH.
   (* then we refine this unknown goal by mimick H until we reach the
   premise we want to remove: *)
-  intro n. (*or refine (fun (n:nat) => _) *)
-  specialize (H n).
-  intro m. 
-  specialize (H m).
-
-  (* 1 more times, but more automatic *)
-  match type of H with
-    (forall nme:?t, _) => (intro nme) (*refine (fun nme:t => _)*); specialize (H nme)
-  end.
+  (* ignore n, m n<m and n<=m *)
   
-  (* We want to prove (n<=m) as a consequence of (n<m) in H. So here
-  instead of mimickig H we assert the premise as a new goal. *)
-  assert (n<=m) as h.
-  all:swap 1 2.
-  (* We stop here and instantiate the goal with h *)
-  (exact h).
-  (* Now we are left with 2 subgoals: the initial one and the wanted subgoal;
-     been specialized. *)
-  { admit. }
+  evar (p:nat).
+  assert (p >= 0) as h.
+  2:{ exact h. } (* Building the new hyp: h itself, that is the premise of H *)
+
+  { unfold p. apply OrdersEx.Nat_as_OT.le_0_1. }
+  specialize H with (3:=newH).
   
-    (* - We start over again, and this time we instantiate the
-       hypothesis with the goal previously defined. *)
-  let ev1 := open_constr:(_) in
-  assert ev1 as newH'.
-  (* then we refine this unknown goal by mimick H until we reach the
-  premise we want to remove: *)
-  intro n. (*or refine (fun (n:nat) => _) *)
-  specialize (H n).
-  specialize (newH n). (* we specialize both the initial hypothesis and the previously created one. *)
-  intro m. 
-  specialize (H m).
-  specialize (newH m).
-
-  (* 1 more times, but more automatic *)
-  match type of H with
-    (forall nme:?t, _) => (intro nme) (*refine (fun nme:t => _)*); specialize (H nme); specialize (newH nme)
-  end.
-  specialize (H newH).
-  exact H.
-
   
 Abort.
 
@@ -433,66 +402,12 @@ Local Ltac2 epremis_gen (h:constr) lnames (num:numarg) name :=
     let h := dest_var h in
     assert_evar name > [ (refine_spec true h lnames lnums) | ]
   else 
-    (let h' := Fresh.in_goal @H in
+     let h' := Fresh.in_goal @H_temp in
      Std.specialize (h , Std.NoBindings) (Some (Std.IntroNaming (Std.IntroIdentifier h')));
-     assert_evar name > [ (refine_spec true h' lnames lnums) | Std.clear [h'] ]).
+      
+     assert_evar name > [ (refine_spec true h' lnames lnums) | Std.clear [h'] ].
 
 
-(*
-(* tests *)
-Definition eq_one (i:nat) := i = 1.
-Definition hidden_product := forall i j :nat, i+1=j -> i+1=j -> i+1=j.
-
-Lemma foo: forall x y : nat,
-    (forall (n m p :nat) (hhh:n < m) (iii:n <= m),
-        p > 0
-        -> p > 2
-        -> p > 1
-        -> hidden_product) -> False.
-Proof.
-  intros x y H. 
-
-  ltac2:(espec_gen constr:(H) [EvarAtName @m @m] [SubGoalAtAll] @toto false).
-  Undo 1.
-  ltac2:(espec_gen constr:(H) [EvarAtName @m @m] [SubGoalAtAll] @toto true).
-  Undo 1.
-  ltac2:(espec_gen constr:(H) [EvarAtName @m @m] [SubGoalUntilNum 3] @toto false).
-  4:let ttoto := type of toto in
-    match ttoto with
-    |  nat -> forall p : nat, p > 2 -> p > 1 -> hidden_product =>  idtac
-    end.
-  Undo 2.
-  ltac2:(espec_gen constr:(H) [EvarAtName @m @m] [SubGoalUntilNum 3] @toto true).
-  Undo 1.
-  ltac2:(espec_gen constr:(H) [EvarAtName @m @m] [SubGoalAtAll] @toto false).
-  Undo 1.
-  ltac2:(espec_gen constr:(H) [EvarAtName @n @n; EvarAtName @m @m] [SubGoalAtNum 4] @toto false).
-  Undo 1.
-  ltac2:(espec_gen constr:(H) [EvarAtName @n @n; EvarAtName @m @m] [SubGoalAtNum 4] @toto true).
-  Undo 1.
-
-  ltac2:(epremis_gen constr:(H) [EvarAtName @m @m] [SubGoalAtAll] @toto).
-  2:let ttoto := type of toto in
-    match ttoto with
-    | (forall n : nat, nat -> n < _) => idtac
-    end.
-  Undo 2.
-
-  ltac2:(epremis_gen constr:(H) [EvarAtName @m @m] [SubGoalUntilNum 3] @toto).
-  2:{
-  Undo 1.
-  ltac2:(epremis_gen constr:(H) [EvarAtName @m @m] [SubGoalUntilNum 3] @toto true).
-  Undo 1.
-  ltac2:(epremis_gen constr:(H) [EvarAtName @m @m] [SubGoalAtAll] @toto false).
-  Undo 1.
-  ltac2:(epremis_gen constr:(H) [EvarAtName @n @n; EvarAtName @m @m] [SubGoalAtNum 4] @toto false).
-  Undo 1.
-  ltac2:(epremis_gen constr:(H) [EvarAtName @n @n; EvarAtName @m @m] [SubGoalAtNum 4] @toto true).
-  Undo 1.
-
-
-
-*)
 
 Local Ltac2 sgatnum_from_lint (li:int list): numarg list :=
   List.map (fun i => SubGoalAtNum i) li.
@@ -518,61 +433,12 @@ Local Ltac2 espec_until_using_ltac1_gen (h:constr) (li:int list) (occsevar:ident
     let c1 := if atAll then [SubGoalAtAll] else sguntilnum_from_lid li in
     espec_gen h (evatname_from_lid occsevar) c1 newH replaceb.
 
+(* Create a new subgoal, based ont the ith dependent premise of h.
+   named newH. Creating occsevar on the fly.*)
 Local Ltac2 eprem_at_using_ltac1_gen (h:constr) (i:int) (occsevar:ident list) (newH: ident):unit :=
   let lid' := evatname_from_lid occsevar in
   epremis_gen h lid' (SubGoalAtNum i) newH.
 
-
-(*
-(* tests *)
-Definition eq_one (i:nat) := i = 1.
-Definition hidden_product := forall i j :nat, i+1=j -> i+1=j -> i+1=j.
-
-Axiom ex_hyp : (forall (b:bool), forall x: nat, eq_one 1 -> forall y:nat, eq_one 2 ->eq_one 3 ->eq_one 4 ->eq_one x ->eq_one 6 ->eq_one y -> eq_one 8 -> eq_one 9 -> False).
-
-
-Lemma test_espec_namings: forall n:nat, (eq_one n -> eq_one 1 -> False) -> True.
-Proof.
-  intros n h_eqone.
-  specialize min_l as hhh.
-  ltac2:(espec_at_using_ltac1_gen constr:(hhh) [1] [@n; @m] @hhh' false).
-
-  let tac := ltac2:(hhh |- call_specialize_ltac2_gen hhh [1] [@n; @m] hhh' false) in
-  tac hhh.
-  let tac := ltac2:(h li levars newH |- call_specialize_ltac2_gen h li levars newH false) in
-  let newH := gen_hyp_name hhh in
-  tac hhh  li levars ident:(newH).
-
-  especialize hhh with n,m at 1 as ?.
-  especialize min_l with n,m at 1 as ?.
-
-
-Lemma foo: forall x y : nat,
-    (forall (n m p :nat) (hhh:n < m) (iii:n <= m),
-        p > 0
-        -> p > 2
-        -> p > 1
-        -> hidden_product) -> False.
-Proof.
-  intros x y H. 
-
-  ltac2:(espec_at_using_ltac1_gen constr:(H) [2;4] [@m; @p] @toto false).
-  Undo 1.
-  ltac2:(espec_at_using_ltac1_gen constr:(H) [2;4] [@m; @p] @toto true).
-  Undo 1.
-  ltac2:(espec_until_using_ltac1_gen constr:(H) [] [@m]  @toto false true).
-  Undo 1.
-  ltac2:(espec_until_using_ltac1_gen constr:(H) [] [@m]  @toto true true).
-  Undo 1.
-  ltac2:(espec_until_using_ltac1_gen constr:(H) [3] [@m] @toto false false).
-  Undo 1.
-  ltac2:(espec_until_using_ltac1_gen constr:(H) [3] [@m] @toto true false).
-  Undo 1.
-  ltac2:(espec_until_using_ltac1_gen constr:(H) [4] [@n ; @m] @toto false false).
-  Undo 1.
-  ltac2:(espec_until_using_ltac1_gen constr:(H) [4] [@n ; @m] @toto true false).
-  Undo 1.
-*)
 
 Local Ltac2 interp_ltac1_id_list (lid:Ltac1.t list) : ident list :=
   List.map (fun x => Option.get (Ltac1.to_ident x)) lid.
@@ -603,16 +469,22 @@ Local Ltac2 call_specialize_until_ltac2_gen (h:Ltac1.t) li levars newh replaceb 
   else 
     let nme := Option.get (Ltac1.to_ident newh) in
     espec_until_using_ltac1_gen (interp_ltac1_hyp h) li2 levar2 nme replaceb atAll.
+(*
+Local Ltac2 call_premise_ltac2_gen (h:Ltac1.t) (i:Ltac1.t) levars (newh:Ltac1.t) :=
+  let i2 := Option.get (Ltac1.to_int i) in
+  let levar2 := interp_ltac1_id_list (default [] (Ltac1.to_list levars))  in
+  match Ltac1.to_ident newh with
+  | None => Control.zero (Tactic_failure (Some (fprintf "You must provide a name with 'as'.")))
+  | Some newh2 => eprem_at_using_ltac1_gen (interp_ltac1_hyp h) i2 levar2 newh2
+  end.*)
 
-
-(* call Ltac2'especialize on argscoming from Ltac1 notation *)
+(* Create a new subgoal, based ont the ith dependent premise of h,
+   named newh, creating levars on the fly.. *)
 Local Ltac2 call_premise_ltac2_gen (h:Ltac1.t) (i:Ltac1.t) levars (newh:Ltac1.t) :=
   let i2 := Option.get (Ltac1.to_int i) in
   let levar2 := interp_ltac1_id_list (default [] (Ltac1.to_list levars))  in
   let newh2 := Option.default (Fresh.in_goal @H) (Ltac1.to_ident newh) in
   eprem_at_using_ltac1_gen (interp_ltac1_hyp h) i2 levar2 newh2.
-
-
 
 Ltac gen_hyp_name h := match goal with
                        | |- _ => let _ := is_var h in fresh h "_spec_"
@@ -620,75 +492,83 @@ Ltac gen_hyp_name h := match goal with
                        end.
 Ltac dummy_term := constr:(Prop).
 
-(* TODO only one integer, + evars + as => create a subgoal that wioll be added as hyp, h is not specialized *)
-Tactic Notation "prove_premise" constr(h) "with" ne_ident_list_sep(levars,",") "at" int(n) "as" ident(newH) :=
+(* TODO only one integer, + evars + as => create a subgoal that wioll
+   be added as hyp, h is not specialized. Since a new hyp is created,
+   the "as" field is mandatory. *)
+
+Tactic Notation "assert" "premise" int(n) "of" constr(h) "with" ne_ident_list_sep(levars,",") "as" ident(newH) :=
   let tac := ltac2:(h n levars newH |- call_premise_ltac2_gen h n levars newH) in
   tac h n levars newH.
 
-Tactic Notation "prove_premise" constr(h) "at" int(n) "with" ne_ident_list_sep(levars,",") "as" ident(newH) :=
-  let tac := ltac2:(h n levars newH |- call_premise_ltac2_gen h n levars newH) in
-  tac h n levars newH.
-
-Tactic Notation "prove_premise" constr(h) "at" int(n) "as" ident(newH) :=
-  let tac := ltac2:(h n levars newH |- call_premise_ltac2_gen h n levars newH) in
-  let levars := dummy_term in       (* something that is not a list. *)
-  tac h n levars newH.
-
-(* TODO only one integer, + evars + as => create a subgoal that wioll be added as hyp, h is not specialized *)
-Tactic Notation "prove_premise" constr(h) "with" ne_ident_list_sep(levars,",") "at" int(n) :=
-  let tac := ltac2:(h n levars newH |- call_premise_ltac2_gen h n levars newH) in
-  let newH := dummy_term in
-  tac h n levars newH.
-
-(* TODO only one integer, + evars + as => create a subgoal that wioll be added as hyp, h is not specialized *)
-Tactic Notation "prove_premise" constr(h) "at" int(n) "with" ne_ident_list_sep(levars,",") :=
-  let tac := ltac2:(h n levars newH |- call_premise_ltac2_gen h n levars newH) in
-  let newH := dummy_term in
-  tac h n levars newH.
-
-Tactic Notation "prove_premise" constr(h) "at" int(n) :=
+Tactic Notation "assert" "premise" int(n) "of" constr(h) "as" ident(newH) :=
   let tac := ltac2:(h n levars newH |- call_premise_ltac2_gen h n levars newH) in
   let levars := dummy_term in       (* something that is not a list. *)
+  tac h n levars newH.
+
+(* Explicitely asking for a autogen name, this is discouraged unless
+   you use another naming mechanism e.g. LibHyps's "/n" tactical. *)
+Tactic Notation "assert" "premise" int(n) "of" constr(h) "with" ne_ident_list_sep(levars,",") "as" "?" :=
+  let tac := ltac2:(h n levars newH |- call_premise_ltac2_gen h n levars newH) in
+  let newH := fresh "HHH" in
+  tac h n levars newH.
+
+Tactic Notation "assert" "premise" int(n) "of" constr(h) "as" "?" :=
+  let tac := ltac2:(h n levars newH |- call_premise_ltac2_gen h n levars newH) in
+  let levars := dummy_term in       (* something that is not a list. *)
+  let newH := fresh "HHH" in
+  tac h n levars newH.
+
+(* VERSION WITHOUT "AS". Should it be forbidden? *)
+(* TODO only one integer, + evars + as => create a subgoal that wioll be added as hyp, h is not specialized *)
+Tactic Notation "assert" "premise" int(n) "of" constr(h) "with" ne_ident_list_sep(levars,",") :=
+  let tac := ltac2:(h n levars newH |- call_premise_ltac2_gen h n levars newH) in
   let newH := dummy_term in
   tac h n levars newH.
 
-(* TEST *)
+Tactic Notation "assert" "premise" int(n) "of" constr(h) :=
+  let tac := ltac2:(h n levars newH |- call_premise_ltac2_gen h n levars newH) in
+  let levars := dummy_term in       (* something that is not a list. *)
+  let newH := dummy_term in
+  tac h n levars newH.
+
+
+
 (*
+Ltac2 foo () :=
+  let h' := Fresh.in_goal @H in
+  printf "%I" h'.
+
 Definition eq_one (i:nat) := i = 1.
 Definition hidden_product := forall i j :nat, i+1=j -> i+1=j -> i+1=j.
 
 Axiom ex_hyp : (forall (b:bool), forall x: nat, eq_one 1 -> forall y:nat, eq_one 2 ->eq_one 3 ->eq_one 4 ->eq_one x ->eq_one 6 ->eq_one y -> eq_one 8 -> eq_one 9 -> False).
 
+Require Import Arith ZArith List.
 
 Lemma test_espec_namings: forall n:nat, (forall m:nat, eq_one n -> eq_one 1 -> eq_one m -> False) -> True.
 Proof.
-  intros n h_eqone.
-  prove_premise h_eqone with m at 3 as hhhh.
-  { admit. }
-  Undo 4.
-  prove_premise h_eqone at 3 with m as hhhh.
-  { admit. }
-  Undo 4.
-  prove_premise h_eqone at 3 as hhh.
-  { admit. }
-  Undo 4.
-  prove_premise h_eqone with m at 3.
-  { admit. }
-  Undo 4.
-  prove_premise h_eqone at 3 with m.
-  { admit. }
-  Undo 4.
-  prove_premise h_eqone at 3.
-  { admit. }
-  Undo 4.
-
+  intros n h_premis.
+  specialize Nat.quadmul_le_squareadd as hle.
   
+  Check Nat.quadmul_le_squareadd.
+  assert premise 1 of Nat.quadmul_le_squareadd with a as h.
+  { apply OrdersEx.Nat_as_OT.le_0_1. }
 
-  
+  Undo 4.
+  assert premise 1 of Nat.quadmul_le_squareadd with a as ?.
+  { apply OrdersEx.Nat_as_OT.le_0_1. }
+
+  Undo 4.
+  assert premise 1 of Nat.quadmul_le_squareadd as h.
+  { apply OrdersEx.Nat_as_OT.le_0_l. }
+
+  Undo 4.
+  assert premise 1 of Nat.quadmul_le_squareadd as ?.
+  { apply OrdersEx.Nat_as_OT.le_0_l. }
+
+  Undo 4.
 
 *)
-
-
 
 (* ESPECIALIZE AT *)
 (* ********************* *)
@@ -877,7 +757,155 @@ Tactic Notation "especialize" constr(h) "until" ne_integer_list_sep(li,",") :=
   let nme := gen_hyp_name h in
   let levars := dummy_term in
   tac h li levars ident:(nme).
+
+
+
+
+(*
+(* tests *)
+Definition eq_one (i:nat) := i = 1.
+Definition hidden_product := forall i j :nat, i+1=j -> i+1=j -> i+1=j.
+
+Axiom ex_hyp : (forall (b:bool), forall x: nat, eq_one 1 -> forall y:nat, eq_one 2 ->eq_one 3 ->eq_one 4 ->eq_one x ->eq_one 6 ->eq_one y -> eq_one 8 -> eq_one 9 -> False).
+
+
+Lemma test_espec_namings: forall n:nat, (eq_one n -> eq_one 1 -> False) -> True.
+Proof.
+  intros n h_eqone.
+  specialize min_l as hhh.
+  ltac2:(espec_at_using_ltac1_gen constr:(hhh) [1] [@n; @m] @hhh' false).
+
+  let tac := ltac2:(hhh |- call_specialize_ltac2_gen hhh [1] [@n; @m] hhh' false) in
+  tac hhh.
+  let tac := ltac2:(h li levars newH |- call_specialize_ltac2_gen h li levars newH false) in
+  let newH := gen_hyp_name hhh in
+  tac hhh  li levars ident:(newH).
+
+  especialize hhh with n,m at 1 as ?.
+  especialize min_l with n,m at 1 as ?.
+
+
+Lemma foo: forall x y : nat,
+    (forall (n m p :nat) (hhh:n < m) (iii:n <= m),
+        p > 0
+        -> p > 2
+        -> p > 1
+        -> hidden_product) -> False.
+Proof.
+  intros x y H. 
+
+  ltac2:(espec_at_using_ltac1_gen constr:(H) [2;4] [@m; @p] @toto false).
+  Undo 1.
+  ltac2:(espec_at_using_ltac1_gen constr:(H) [2;4] [@m; @p] @toto true).
+  Undo 1.
+  ltac2:(espec_until_using_ltac1_gen constr:(H) [] [@m]  @toto false true).
+  Undo 1.
+  ltac2:(espec_until_using_ltac1_gen constr:(H) [] [@m]  @toto true true).
+  Undo 1.
+  ltac2:(espec_until_using_ltac1_gen constr:(H) [3] [@m] @toto false false).
+  Undo 1.
+  ltac2:(espec_until_using_ltac1_gen constr:(H) [3] [@m] @toto true false).
+  Undo 1.
+  ltac2:(espec_until_using_ltac1_gen constr:(H) [4] [@n ; @m] @toto false false).
+  Undo 1.
+  ltac2:(espec_until_using_ltac1_gen constr:(H) [4] [@n ; @m] @toto true false).
+  Undo 1.
+*)
+
+
 (* TEST *)
+(*
+Definition eq_one (i:nat) := i = 1.
+Definition hidden_product := forall i j :nat, i+1=j -> i+1=j -> i+1=j.
+
+Axiom ex_hyp : (forall (b:bool), forall x: nat, eq_one 1 -> forall y:nat, eq_one 2 ->eq_one 3 ->eq_one 4 ->eq_one x ->eq_one 6 ->eq_one y -> eq_one 8 -> eq_one 9 -> False).
+
+
+Lemma test_espec_namings: forall n:nat, (forall m:nat, eq_one n -> eq_one 1 -> eq_one m -> False) -> True.
+Proof.
+  intros n h_eqone.
+  ltac2: 
+  prove_premise h_eqone with m at 3 as hhhh.
+  { admit. }
+  Undo 4.
+  prove_premise h_eqone at 3 with m as hhhh.
+  { admit. }
+  Undo 4.
+  prove_premise h_eqone at 3 as hhh.
+  { admit. }
+  Undo 4.
+  prove_premise h_eqone with m at 3.
+  { admit. }
+  Undo 4.
+  prove_premise h_eqone at 3 with m.
+  { admit. }
+  Undo 4.
+  prove_premise h_eqone at 3.
+  { admit. }
+  Undo 4.
+
+  
+
+  
+
+*)
+
+
+(* TEST *)
+
+(*
+(* tests *)
+Definition eq_one (i:nat) := i = 1.
+Definition hidden_product := forall i j :nat, i+1=j -> i+1=j -> i+1=j.
+
+Lemma foo: forall x y : nat,
+    (forall (n m p :nat) (hhh:n < m) (iii:n <= m),
+        p > 0
+        -> p > 2
+        -> p > 1
+        -> hidden_product) -> False.
+Proof.
+  intros x y H. 
+
+  ltac2:(espec_gen constr:(H) [EvarAtName @m @m] [SubGoalAtAll] @toto false).
+  Undo 1.
+  ltac2:(espec_gen constr:(H) [EvarAtName @m @m] [SubGoalAtAll] @toto true).
+  Undo 1.
+  ltac2:(espec_gen constr:(H) [EvarAtName @m @m] [SubGoalUntilNum 3] @toto false).
+  4:let ttoto := type of toto in
+    match ttoto with
+    |  nat -> forall p : nat, p > 2 -> p > 1 -> hidden_product =>  idtac
+    end.
+  Undo 2.
+  ltac2:(espec_gen constr:(H) [EvarAtName @m @m] [SubGoalUntilNum 3] @toto true).
+  Undo 1.
+  ltac2:(espec_gen constr:(H) [EvarAtName @m @m] [SubGoalAtAll] @toto false).
+  Undo 1.
+  ltac2:(espec_gen constr:(H) [EvarAtName @n @n; EvarAtName @m @m] [SubGoalAtNum 4] @toto false).
+  Undo 1.
+  ltac2:(espec_gen constr:(H) [EvarAtName @n @n; EvarAtName @m @m] [SubGoalAtNum 4] @toto true).
+  Undo 1.
+
+  ltac2:(epremis_gen constr:(H) [EvarAtName @m @m] [SubGoalAtAll] @toto).
+  2:let ttoto := type of toto in
+    match ttoto with
+    | (forall n : nat, nat -> n < _) => idtac
+    end.
+  Undo 2.
+
+  ltac2:(epremis_gen constr:(H) [EvarAtName @m @m] [SubGoalUntilNum 3] @toto).
+  2:{
+  Undo 1.
+  ltac2:(epremis_gen constr:(H) [EvarAtName @m @m] [SubGoalUntilNum 3] @toto true).
+  Undo 1.
+  ltac2:(epremis_gen constr:(H) [EvarAtName @m @m] [SubGoalAtAll] @toto false).
+  Undo 1.
+  ltac2:(epremis_gen constr:(H) [EvarAtName @n @n; EvarAtName @m @m] [SubGoalAtNum 4] @toto false).
+  Undo 1.
+  ltac2:(epremis_gen constr:(H) [EvarAtName @n @n; EvarAtName @m @m] [SubGoalAtNum 4] @toto true).
+  Undo 1.
+
+*)
 
 (*
 Definition eq_one (i:nat) := i = 1.
