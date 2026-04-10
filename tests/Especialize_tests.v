@@ -1,4 +1,4 @@
-Require Import LibHyps.LibHypsTactics.
+(* Require Import LibHyps.LibHypsTactics. *)
 Require Import LibHyps.Especialize.
 
 (* tests *)
@@ -30,20 +30,24 @@ Lemma foo: forall x y : nat,
         -> hidden_product) -> False.
 Proof.
   intros x y H. 
-
+  (* evar names must be given in order. *)
+  Fail especialize H at * with n,p,m.
   (* Fail especialize (let x:=not_eq_S in x) with n,m at *. *)
-  especialize H at * with n,m,p;[admit|admit|admit|admit| |admit];
-  match goal with
-    H1 : ?n < ?m
-      , H2 : ?n <= ?m
-        , H3 : ?p > 0
-          , H4 : ?p > 2 |- _ => idtac
-  end.
-  Undo 1.
-  especialize H at 2;
-    [ now apply PeanoNat.Nat.lt_le_incl | match goal with | |- False => idtac end;
-                                          match type of H with forall (n:_) (m:_) (p:_), n < m -> _ => idtac end ].
-  Undo 1.
+  especialize H at * with n,m,p.
+  5:{
+    match goal with
+      H1 : ?n < ?m
+        , H2 : ?n <= ?m
+          , H3 : ?p > 0
+            , H4 : ?p > 2 |- _ => idtac
+  end. admit. }
+  Undo 5.
+
+  especialize H at 2.
+  2:{ match goal with | |- False => idtac end.
+      match type of H with forall (n:_) (m:_) (p:_), n < m -> _ => idtac end.
+      admit. }
+  Undo 6.
   especialize H at 2 as h;
     [ now apply PeanoNat.Nat.lt_le_incl | match goal with | |- False => idtac end;
                                           match type of h with forall (n:_) (m:_) (p:_), n < m -> _ => idtac end ].
@@ -588,11 +592,21 @@ Module Using.
   Qed.
 
 (* This tests only hold for coq >= 8.18 *)
+
+  Lemma test_espec8: forall x:nat, (forall a :nat, a = 1 -> x = 1 -> False) -> x > 1.
+  Proof.
+    intros x h. 
+    especialize h at 1.
+    Undo 1.
+    especialize h with a at 1.
+  Abort.
+
+
 (*
   Lemma test_espec8: forall x:nat, x = 1 -> (forall a y z:nat, a = 1 -> y = 1 -> z+y+a = 2 -> z+1 = x -> False) -> x > 1.
   Proof.
     intros x hx h_eqone.
-    Fail especialize h_eqone with a at 1,4 .
+    especialize h_eqone with a at 1,4 .
   Abort.
 
   Lemma test_espec8_h: forall x:nat, x = 1 -> (forall a y z:nat, a = 1 -> y = 1 -> z+y+a = 2 -> z+1 = x -> False) -> x > 1.

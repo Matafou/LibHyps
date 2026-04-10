@@ -2,35 +2,45 @@
   This file is part of LibHyps. It is distributed under the MIT
   "expat license". You should have recieved a LICENSE file with it. *)
 
-From Stdlib Require Import Arith ZArith List.
+Require Import Arith ZArith List.
 Require Import  LibHyps.LibHyps (*LibHyps.LibSpecialize*).
-From Stdlib Require Import List.
+Require Import Ltac2.Ltac2.
+Require Import List.
 
-Local Open Scope autonaming_scope.
 Import ListNotations.
 
-Ltac rename_hyp_2 n th :=
-  match th with
-  | true <> false => name(`_tNEQf`)
-  | true = false => name(`_tEQf`)
+Ltac2 rename_hyp_2 _ th :=
+  match! th with
+  | true <> false => [ String "tNEQf" ]
+  | true = false => [ String "tEQf" ]
   end.
 
-Ltac rename_hyp ::= rename_hyp_2.
+Ltac2 Set rename_hyp := rename_hyp_2.
 
 (* Suppose I want to add later another naming rule: *)
-Ltac rename_hyp_3 n th :=
-  match th with
-  | Nat.eqb ?x ?y = true => name(`_Neqb` ++ x#n ++ y#n)
-  | true = Nat.eqb ?x ?y => name(`_Neqb` ++ x#n ++ y#n)
+Ltac2 rename_hyp_3 n th :=
+  match! th with
+  | Nat.eqb ?x ?y = true => [ String "Neqb"; Rename x ; Rename y ]
+  | true = Nat.eqb ?x ?y => [ String "Neqb" ; Rename x ;  Rename y ]
   | _ => rename_hyp_2 n th (* call the previously defined tactic *)
   end.
 
-Ltac rename_hyp ::= rename_hyp_3.
-Ltac rename_depth ::= constr:(3).
+Ltac2 Set rename_hyp := rename_hyp_3.
 
-Close Scope autonaming_scope.
+Ltac2 rename_hyp_4 n th :=
+  lazy_match! th with
+  | @cons _ ?x (cons ?y ?l) => [String "cons"; Rename x; Rename y; RenameN (decr (decr n)) l]
+  | @cons _ ?x ?l => if Int.ge n 1 then [String "cons"; Rename x; RenameN (decr n) l] else [String "cons"]
+  | _ => rename_hyp_3 n th (* call the previously defined tactic *)
+  end.
+
+Ltac2 Set rename_hyp := rename_hyp_4.
+
+Ltac2 rename_depth := 3.
+
 Close Scope Z_scope.
 Open Scope nat_scope.
+Local Set Default Proof Mode "Classic".
 
 Ltac test h th :=
   match type of h with
@@ -172,7 +182,9 @@ Lemma test_rename_or_revert: forall x y:nat,
       (0 < 1 -> 1<0) -> 0 < z -> True.
 Proof.
   intros ; { rename_or_revert }.
-  testg ((fun _ : bool => x = y) true -> True).
+  match goal with
+  | |- _ -> True => idtac
+  end.
   auto.
 Qed.
 
@@ -186,7 +198,9 @@ Lemma test_rename_or_revert2: forall x y:nat,
       (0 < 1 -> 1<0) -> 0 < z -> True.
 Proof.
   intros /n?.
-  testg ((fun _ : bool => x = y) true -> True).
+  match goal with
+  | |- _ -> True => idtac
+  end.
   test x (nat).
   test y (nat).
   (* Checking that hyps after the failed rename are introduced. *)
@@ -233,7 +247,7 @@ Lemma test_group_up_list2: forall x y:nat,
     x = y ->
       (0 < 1 -> 1<0) -> 0 < z -> True.
 Proof.
-  intros ; {! group_up_list }. 
+  intros ; { move_up_types }. 
   lazymatch reverse goal with
     | Hb:_, Ha:_,Hz : _ , Hy:_ , Hx:_ |- True =>
       let t := constr:((ltac:(reflexivity)): Hb=b) in
@@ -290,43 +304,6 @@ Proof.
   end.
   exact I.
 Qed.
-
-(* group_up_list is insensitive to order of hypothesis. It respects
-   the respective order of variables in each segment. This has changed
-   in version 2.0.5 together with a bug fix.
-   Note that the deprecated move_up_types is sensitive to order. *)
-Lemma test_group_up_list1_rev: forall x y:nat,
-    ((fun f => x = y) true)
-    -> forall a b: bool, forall z:nat,
-    0 <= 1 ->
-    (0%Z <= 1%Z)%Z ->
-    x <= y ->
-    x = y ->
-      (0 < 1 -> 1<0) -> 0 < z -> True.
-Proof.
-  intros ; {!< group_up_list }.
-  lazymatch reverse goal with
-    | Hb:_, Ha:_,Hz : _ , Hy:_ , Hx:_ |- True =>
-      let t := constr:((ltac:(reflexivity)): Hb=b) in
-      let t := constr:((ltac:(reflexivity)): Ha=a) in
-      let t := constr:((ltac:(reflexivity)): Hz=z) in
-      let t := constr:((ltac:(reflexivity)): Hy=y) in
-      let t := constr:((ltac:(reflexivity)): Hx=x) in
-      idtac
-    | _ => fail "test failed (wrong order of hypothesis)!"
-  end.
-  lazymatch goal with
-    | hH1:_, hH2:_,hH3 : _ , hH4:_ , hH5:_ |- True =>
-      let t := constr:((ltac:(reflexivity)):H1=hH1) in
-      let t := constr:((ltac:(reflexivity)): H2=hH2) in
-      let t := constr:((ltac:(reflexivity)): H3=hH3) in
-      let t := constr:((ltac:(reflexivity)): H4=hH4) in
-      let t := constr:((ltac:(reflexivity)): H5=hH5) in
-      idtac
-    | _ => fail "test failed (wrong order of hypothesis)!"
-  end.
-  exact I.
- Qed.
 
 (* Two more tests for the case where the top hyp is Prop-sorted. *)
 
@@ -435,7 +412,7 @@ Lemma test_group_up_after_subst: forall x y:nat,
     x = y ->
       (0 < 1 -> 1<0) -> 0 < z -> True.
 Proof.
-  intros ; { subst_or_idtac } ; {! group_up_list }.
+  intros ; { subst_or_idtac } ; { move_up_types }.
   lazymatch reverse goal with
   | Hb:_, Ha:_,Hz:_ , Hy:_ |- True =>
     let t := constr:((ltac:(reflexivity)): Hb=b) in
@@ -459,87 +436,6 @@ Proof.
 Qed.
 
 
-Ltac substHyp H ::=
-  match type of H with
-  | Depl => fail 1 (* fail immediately, we are applying on a list of hyps. *)
-  | ?x = ?y =>
-    (* subst would maybe subst using another hyp, so use replace to be sure *)
-    once ((is_var(x); replace x with y in *; [try clear x ; try clear H] )
-          + (is_var(y);replace y with x in * ; [ try clear H]))
-  | _ => idtac
-  end.
-
-
-(* Legacy Notations tac ;!; tac2. *)
-Lemma test_tactical_semi: forall x y:nat,
-    ((fun f => x = y) true)
-    -> forall a b: bool, forall z:nat,
-    0 <= 1 ->
-    (0%Z <= 1%Z)%Z ->
-    x <= y ->
-    x = y ->
-      (0 < 1 -> 1<0) -> 0 < z -> True.
-Proof.
-  (* move_up_types is there for backward compatibility. It moves Type-Sorted hyps up. *)
-  intros ;; move_up_types.
-  lazymatch reverse goal with
-    | Hb:_, Ha:_,Hz : _ , Hy:_ , Hx:_ |- True =>
-      let t := constr:((ltac:(reflexivity)): Hb=b) in
-      let t := constr:((ltac:(reflexivity)): Ha=a) in
-      let t := constr:((ltac:(reflexivity)): Hz=z) in
-      let t := constr:((ltac:(reflexivity)): Hy=y) in
-      let t := constr:((ltac:(reflexivity)): Hx=x) in
-      idtac
-    | _ => fail "test failed (wrong order of hypothesis)!"
-  end.
-  lazymatch goal with
-    | hH1:_, hH2:_,hH3 : _ , hH4:_ , hH5:_ |- True =>
-      let t := constr:((ltac:(reflexivity)): H1=hH1) in
-      let t := constr:((ltac:(reflexivity)): H2=hH2) in
-      let t := constr:((ltac:(reflexivity)): H3=hH3) in
-      let t := constr:((ltac:(reflexivity)): H4=hH4) in
-      let t := constr:((ltac:(reflexivity)): H5=hH5) in
-      idtac
-    | _ => fail "test failed (wrong order of hypothesis)!"
-  end.
-  auto.
-Qed.
-
-(* Legacy Notations tac ;; tac2. *)
-Lemma test_tactical_semi_rev: forall x y:nat,
-    ((fun f => x = y) true)
-    -> forall a b: bool, forall z u:nat,
-    0 <= 1 ->
-    (0%Z <= 1%Z)%Z ->
-    x <= y ->
-    x = y ->
-      (0 < 1 -> 1<0) -> 0 < z -> True.
-Proof.
-  (* move_up_types is there for backward compatibility. It moves Type-Sorted hyps up. *)
-  intros ;!; move_up_types.
-  lazymatch reverse goal with
-    | Ha:_, Hb:_, Hz: _ , Hu : _ , Hy:_ , Hx:_ |- True =>
-      let t := constr:((ltac:(reflexivity)): Hb=b) in
-      let t := constr:((ltac:(reflexivity)): Ha=a) in
-      let t := constr:((ltac:(reflexivity)): Hu=u) in
-      let t := constr:((ltac:(reflexivity)): Hz=z) in
-      let t := constr:((ltac:(reflexivity)): Hy=y) in
-      let t := constr:((ltac:(reflexivity)): Hx=x) in
-      idtac
-    | _ => fail "test failed (wrong order of hypothesis)!"
-  end.
-  lazymatch goal with
-    | hH1:_, hH2:_,hH3 : _ , hH4:_ , hH5:_ |- True =>
-      let t := constr:((ltac:(reflexivity)): H1=hH1) in
-      let t := constr:((ltac:(reflexivity)): H2=hH2) in
-      let t := constr:((ltac:(reflexivity)): H3=hH3) in
-      let t := constr:((ltac:(reflexivity)): H4=hH4) in
-      let t := constr:((ltac:(reflexivity)): H5=hH5) in
-      idtac
-    | _ => fail "test failed (wrong order of hypothesis)!"
-  end.
-  auto.
-Qed.
 
 
 (* Legacy Notations !!!!tac. *)
@@ -641,7 +537,7 @@ Lemma foo':
                   (a b:bool), True -> forall y z:nat, True.
   (* Time intros. (* .07s *) *)
   (* Time intros; { fun x => idtac x}. (* 1,6s *) *)
-  Time intros /g. (* 3s *)
+  Time intros /g. (* Ltac with cache: 3s, Ltac2: 0,04s *)
   (* Time intros ; { move_up_types }. (* ~7mn *) *)
   (* Time intros /n. (* 19s *) *)
 exact I.

@@ -29,268 +29,154 @@
     
      *)
 
-(* Credit for the harvesting of hypothesis: Jonathan Leivant *)
-Ltac harvest_hyps harvester := constr:(ltac:(harvester; constructor) : True).
-Ltac harvest_hyps_h harvester h := constr:(ltac:(harvester h; constructor) : True).
 
-(* This will be stuck on section variables if some hypothesis really
-   depends on it. We can use "revert dependent" but the hypothesis
-   remains in the goal and make this tactic loop. The trick consisting
-   of marking hyms with (id) fails on types. Needs more thinking.
-   Meanwhile harvest_hyps will fail on some section variables. *)
-Ltac revert_clearbody_all :=
-  repeat lazymatch goal with
-           H : _ |- _ => try clearbody H; revert H
-         end.
+Require Import Ltac2.Ltac2.
 
-Ltac revert_clearbody_above Hyp :=
-  lazymatch goal with
-  | _H : ?T |- _ =>
-    match constr:((_H , Hyp)) with
-    | (?h,?h) => let dummy := constr:(ltac:(apply eq_refl): _H=Hyp) in
-                 (* we have foud Hyp, clear it and register everything up *)
-                 clear _H; revert_clearbody_all
-    | _ => clear _H; revert_clearbody_above Hyp
-    end
+From Ltac2 Require Import Option Constr Printf.
+Import Constr.Unsafe.
+Local Set Default Proof Mode "Classic".
+(* Require Import LibHyps.LibHypsDebug. *)
+
+(* Utilities *)
+Local Ltac2 is_dep_prod (t:constr): bool :=
+  match kind t with
+  | Prod _ subt => Bool.neg (is_closed subt)
+  | _ => false
   end.
 
-(* THE GENERIC MECHANISM is to have a tactic that applies directly to
-   the *list* of hypothesis. Most of the time it will be a simpl
-   iteration on each hypothesis independently, but sometimes for
-   efficiency we will need to be smarter (e.g. group_up_list). We
-   don't use directly the product build by harvest_hyps for efficiency
-   reasons. Instead we use the dependent list Depl defined below. *)
-Inductive Depl :=
-  | DNil: Depl
-  | DCons: forall (A:Type) (x:A), Depl -> Depl.
+Local Ltac2 pr_list (pr: unit -> 'a -> message) () (l: 'a list) :=
+  let rec pr_list_  () (l: 'a list) :=
+    match l with
+    | [] => fprintf ""
+    | [e] => fprintf "%a" pr e
+    | e::l' => fprintf "%a , %a" pr e pr_list_ l'
+    end in
+  fprintf "[ %a ]" pr_list_ l.
 
-(* Transforming the product from harvest_hyps into a Depl. *)
-Ltac prod_to_list_ acc prod :=
-  match prod with
-  | (?prod' ?h) =>
-    let t := type of h in
-    let acc := constr:(DCons t h acc) in
-    prod_to_list_ acc prod'
-  | _ => acc
-  end.
 
-Ltac prod_to_list prod := prod_to_list_ DNil prod.
+(* Pure Ltac2 tactics *)
+Module Ltac2.
+  Ltac2 all_hyps_ident() := List.map (fun (x,_,_) => x) (Control.hyps ()).
 
-(* Same but reversing the list. *)
-Ltac prod_to_list_rev prod :=
-  match prod with
-  | (?prod' ?h) =>
-    let t := type of h in
-    let recres := prod_to_list_rev prod' in
-    constr:(DCons t h recres)
-  | _ => DNil
-  end.
+  Ltac2 iter_hyps (tac:ident -> unit) (lh:ident list) :=
+    List.iter tac lh.
 
-(* { BUILDING THE LIST OF ALL HYPS } *)
+  Ltac2 map_all_hyps (tac:'a -> unit) :=
+    let all_hyps := all_hyps_ident() in
+    iter_hyps tac all_hyps.
 
-(* Builds the DList of all hyps *)
-Ltac all_hyps := let prod := harvest_hyps revert_clearbody_all in prod_to_list prod.
-Ltac all_hyps_rev := let prod := harvest_hyps revert_clearbody_all in prod_to_list_rev prod.
+  Ltac2 map_all_hyps_rev (tac: 'a -> unit) :=
+    let all_hyps := List.rev (all_hyps_ident()) in
+    iter_hyps tac all_hyps.
 
-(* { BUILDING THE LIST OF ALL HYPS ABOVE H }. (useful?). *)
-Ltac up_segment H :=
-  let prod := harvest_hyps_h revert_clearbody_above H in prod_to_list prod.
-Ltac up_segment_rev H :=
-  let prod := harvest_hyps_h revert_clearbody_above H in prod_to_list_rev prod.
+  Ltac2 then_eachnh_gen (tac1:'a -> unit) (tac2:ident -> unit) (rev:bool) :=
+    let hyps_before := all_hyps_ident() in
+    let _ := tac1() in
+    Control.enter
+      (fun () => 
+         let hyps_after := all_hyps_ident() in
+         let new_hyps: ident list := List.filter_out (fun id => List.mem Ident.equal id hyps_before) hyps_after in
+         iter_hyps tac2 (if rev then List.rev new_hyps else new_hyps)).
 
-(* { GENERATING THE LIST OF "NEW" HYPOTHESIS } *)
+  Ltac2 then_eachnh (tac1:'a -> unit) (tac2:ident -> unit) :=
+    then_eachnh_gen tac1 tac2 false.
 
-(* Remark: this version has several potential efficiency problems:
+  Ltac2 then_eachnh_rev (tac1:'a -> unit) (tac2:ident -> unit) :=
+    then_eachnh_gen tac1 tac2 true.
 
-1) it is quadratic, but this may be unavoidable unless we replace list
-by trees.
+End Ltac2.
 
-2) it looks for hyp (context) names inside types, instead of only hyp
-names. Since context is quite fast it does not seem much visible,
-but on big types (class types for instance) it may become problematic.
+(* Ltac2 tacticals on Ltac1 tactics and values. Mainly work
+   translating them to ltac2 values and call tactical from Ltac2
+   above.*)
+Module Ltac1.
+  Ltac2 apply_run (tac:Ltac1.t) lid :=
+    let larg := List.map Ltac1.of_ident lid in
+    Ltac1.apply tac larg (fun t => Ltac1.run t).
+  
+  Ltac2 iter_hyps (tac:Ltac1.t) (lh:ident list): unit :=
+    let tac2:ident -> unit := (fun (id:ident) => apply_run tac [id])  in
+    Ltac2.iter_hyps tac2 lh.
 
-I have tried to optimize more the filtering. Mainly trying to avoid to
-look at types by iterating by hand in ltac on the list. No real
-speedup was observed.
+  (* Iterate tac on all hyps of a goal, top to bottom or reverse. *)
 
-The filter_new_hyps_optim tactic does speed up significantly in most
-cases. *)
+  Ltac2 map_all_hyps (tac:Ltac1.t) :=
+    let tac2:ident -> unit := (fun (id:ident) => apply_run tac [id])  in
+    Ltac2.map_all_hyps tac2.
 
-(* Builds the list (DCons/DNil) of hypothesis appearing in lh2 that
-   are not present in lh1. This version may be slow on big types
-   because of the "context" will dive into them uselessly. However on
-   standard goals it is quite efficient. See below for
-   optimizations. *)
-Ltac filter_new_hyps lh2 lh1 :=
-  match lh2 with
-    (DCons _  ?h ?lh2') =>
-    match lh1 with
-    (* This context is fast but it may have bad complexity on big hyps
-       types (e.g. type classes). *)
-    | context [h] => filter_new_hyps lh2' lh1
-    | _ => let th := type of h in
-           let recres := filter_new_hyps lh2' lh1 in
-           constr:(DCons th h recres)
-    end
-  | _ => DNil
-  end.
+  Ltac2 map_all_hyps_rev (tac:Ltac1.t) :=
+    let tac2:ident -> unit := (fun (id:ident) => apply_run tac [id])  in
+    Ltac2.map_all_hyps_rev tac2.
 
-(* This naive optimization works pretty well since most of the time
-   lh1 and lh2 share a significant prefix. *)
-Ltac filter_new_hyps_optim lh2 lh1 :=
-  lazymatch lh2 with
-  | (DCons _ ?h ?lh2') =>
-    lazymatch lh1 with
-    | (DCons _ h ?lh1') => 
-      filter_new_hyps_optim lh2' lh1'
-    | _ => filter_new_hyps lh2 lh1
-    end
-  | _ => filter_new_hyps lh2 lh1
-  end.
+  Ltac2 then_eachnh (tac1:Ltac1.t) (tac2:Ltac1.t) :=  
+    let tac1':unit -> unit := (fun () => Ltac1.run tac1) in
+    let tac2':ident -> unit := (fun id => apply_run tac2 [id]) in
+    Ltac2.then_eachnh tac1' tac2'.
 
-(* { TACTICALS ITERATING ON A GIVEN LIST OF HYPOTHESIS } *)
+  Ltac2 then_eachnh_rev (tac1:Ltac1.t) (tac2:Ltac1.t) :=  
+    let tac1':unit -> unit := (fun () => Ltac1.run tac1) in
+    let tac2':ident -> unit := (fun id => apply_run tac2 [id]) in
+    Ltac2.then_eachnh_rev tac1' tac2'.
+End Ltac1.
 
-(* Default way of iterating a tactic on all elements of a Decl. *)
-Ltac map_hyps tac l :=
-  match l with
-  | DNil => idtac
-  | DCons _ ?h ?l' => tac h; map_hyps tac l'
-  end.
+Ltac map_all_hyps tac :=
+  let t := ltac2:(tac |- Ltac1.map_all_hyps tac) in
+  t tac.
 
-(* Same thing in reverse order. Prefer map_hyps on reversed list? *)
-Ltac map_hyps_rev tac l :=
-  match l with
-  | DNil => idtac
-  | DCons _ ?h ?l' => map_hyps_rev tac l'; tac h
-  end.
+Ltac map_all_hyps_rev tac :=
+  let t := ltac2:(tac |- Ltac1.map_all_hyps_rev tac) in
+  t tac.
 
-(* { TACTICALS ITERATING ON ALL HYPOTHESIS OF A GOAL } *)
+(* Ltac tacticals *)
+Ltac then_eachnh tac1 tac2 :=
+  let t := ltac2:(tac1 tac2 |- Ltac1.then_eachnh tac1 tac2) in
+  t tac1 tac2.
 
-(* Iterate tac on all hyps of a goal, top to bottom or reverse. *)
-Ltac map_all_hyps tac := map_hyps tac all_hyps.
-Ltac map_all_hyps_rev tac := map_hyps tac all_hyps_rev.
+Ltac then_eachnh_rev tac1 tac2 :=
+  let t := ltac2:(tac1 tac2 |- Ltac1.then_eachnh_rev tac1 tac2) in
+  t tac1 tac2.
+
+  (* then_allnh_rev tac1 ltac:(map_hyps tac2). *)
+(* Ltac then_eachnh tac1 tac2 := then_allnh tac1 ltac:(map_hyps tac2). *)
+
+
 
 (* For less parenthesis: OnAllHyp tacA;tac2. *)
-Tactic Notation (at level 4) "onAllHyps" tactic(Tac) := (map_all_hyps Tac).
-Tactic Notation (at level 4) "onAllHypsRev" tactic(Tac) := (map_all_hyps_rev Tac).
-
-(* { TACTICALS ITERATING ON *NEW* HYPOTHESIS AFTER APPLYING A TACTIC }
-
-The most common tacticals are then_eachnh and then_eachnh_rev, use
-then_allnh and then_allnh_rev for efficiency reason (see e.g.
-LibHyps.group_up_list). *)
-
-Ltac then_allnh_gen gathertac tac1 tac2 :=
-  let hyps_before_tac := gathertac idtac in
-  tac1;
-  let hyps_after_tac := gathertac idtac in
-  let l_new_hyps := filter_new_hyps_optim hyps_after_tac hyps_before_tac in
-  tac2 l_new_hyps.
-
-(* [then_allnh tac1 tac2] and [then_allnh_rev tac1 tac2] applies tac1 and
-   then applies tac2 on the list of *new* hypothesis of the resulting
-   goals. The list is of type [Decl].
-   NOTE: tac2 must operates directly on the whole list. For
-   single-goal minded tac2, use then_eachnh(_rev), below. *)
-Ltac then_allnh tac1 tac2 := then_allnh_gen ltac:(fun x => all_hyps) tac1 tac2.
-Ltac then_allnh_rev tac1 tac2 := then_allnh_gen ltac:(fun x => all_hyps_rev) tac1 tac2.
-(* For a single-goal-minded tac2 (most common use case). *)
-Ltac then_eachnh_rev tac1 tac2 := then_allnh_rev tac1 ltac:(map_hyps tac2).
-Ltac then_eachnh tac1 tac2 := then_allnh tac1 ltac:(map_hyps tac2).
+Tactic Notation (at level 4) "onAllHyps" tactic(tac) := map_all_hyps tac.
+Tactic Notation (at level 4) "onAllHypsRev" tactic(tac) := map_all_hyps_rev tac.
 
 Module Notations.
   (* Default syntax: *)
-  Tactic Notation (at level 4) tactic4(tac)";" "{!" tactic(tach) "}" := then_allnh tac tach.
-  Tactic Notation (at level 4) tactic4(tac)";" "{!<" tactic(tach)"}":= then_allnh_rev tac tach.
+  (* Tactic Notation (at level 4) tactic4(tac)";" "{!" tactic(tach) "}" := then_allnh tac tach. *)
+  (* Tactic Notation (at level 4) tactic4(tac)";" "{!<" tactic(tach)"}":= then_allnh_rev tac tach. *)
   (* single-goal-minded tach (most common use case). *)
   Tactic Notation (at level 4) tactic4(tac)";" "{" tactic(tach)"}":= then_eachnh tac tach.
   Tactic Notation (at level 4) tactic4(tac)";" "{<" tactic(tach)"}":= then_eachnh_rev tac tach.
   (* Legacy tacticals.
      Warning: not applicable for tactic operating directly on a list of hyps *)
-  Tactic Notation (at level 4) tactic4(tac) ";;" tactic4(tach) := then_eachnh tac tach.
-  Tactic Notation (at level 4) tactic4(tac) ";!;" tactic4(tach) := (then_eachnh_rev tac tach).
+  (* Tactic Notation (at level 4) tactic4(tac) ";;" tactic4(tach) := then_eachnh tac tach. *)
+  (* Tactic Notation (at level 4) tactic4(tac) ";!;" tactic4(tach) := (then_eachnh_rev tac tach). *)
 End Notations.
 
+
+Import Notations.
 (*
-(* Tests. *)
-Ltac r h := revert h.
-Ltac rl lh :=
-  match lh with
-    DCons ?t ?h ?lh' => revert h; rl lh'
-  | DNil => idtac
-  end.
-
-
-Ltac p h := idtac h.
-Ltac pl lh :=
-  match lh with
-    DCons ?t ?h ?lh' => idtac h; pl lh'
-  | DNil => idtac
-  end.
-
-(* dummy rename *)
-Ltac n h := let nm := fresh "h" in rename h into nm.
-Ltac nl lh :=
-  match lh with
-    DCons ?t ?h ?lh' => (let nm := fresh "h" in rename h into nm) ; nl lh'
-  | DNil => idtac
-  end.
-
-Import TacNewHyps.Notations.
-Goal forall x1:bool, forall a z e r t z e r t z e r t z e r t y: nat, True -> forall u i o p q s d f g:nat, forall x2:bool,  True -> True.
+Goal forall n m p q : nat, n<m -> m<p -> p<=q -> True.
 Proof.
-  (* intros. let l := all_hyps in idtac l. (* pb dans l'ordre entre map_hyp et all_hyp *) *)
-  (* intros ;; n. *)
-
-  intros ; { p }; { n }; { r }.
-  Undo.
-  intros ; {! pl } ; { n }; { r }.
-  Undo.
-  intros ; { n }; { p }; { r }.
-  Undo.
-  intros ; {! nl }; { p }; { r }.
-  Undo.
-
-Import TacNewHyps.SimpleNotations.
-
-  intros  ;!; ltac:(fun h => idtac h) ;; ltac:(fun h => revert h).
-
- ;!; ltac:(fun h => idtac h)
-  then_nh ltac:(intros) ltac:(revert_l). *)
-
-(* Testing speedup for filter_new_hyps_optim, when there is a common
-prefix in the two lists. *)
-(*
-Lemma foo:
-  forall (_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-            _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-            _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-            _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-            _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-            _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-            _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-            _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-          : (forall (_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-                       _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-                       _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-                       _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-                     :nat), True))
-                  (a b:bool), True -> forall y z:nat, True.
-  intros.
-  Ltac prefx n l :=
-    lazymatch n with
-      0%nat => DNil
-    | S ?n' =>
-      lazymatch l with
-        DCons ?a ?b ?l' => let p := prefx n' l' in constr:(DCons a b p)
-      | DNil => DNil
-      | _ => fail
-      end
-    end.
-
-  time let all := all_hyps in
-       let few := prefx 20 all in
-       let diff := filter_new_hyps_optim all few in
-       idtac.
+  intros n m p q H H0 H1.
+  Unset Silent.
+  map_all_hyps ltac:(fun h => idtac h).
+  map_all_hyps_rev ltac:(fun h => idtac h).
+  onAllHyps (fun h => idtac h).
+  onAllHypsRev (fun h => idtac h).
+  ltac2:(Ltac2.then_eachnh (fun () => induction H) (fun id => printf "%I" id)).
+  Undo 1.
+  then_eachnh ltac:(induction H) ltac:(fun h => idtac h).
+  Undo 1.
+  then_eachnh_rev ltac:(induction H) ltac:(fun h => idtac h).
+  Undo 1.
+  induction H ;{ fun h => idtac h }.
+  Undo 1.
+  induction H ;{< fun h => idtac h }.
 *)
 

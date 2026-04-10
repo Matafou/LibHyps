@@ -16,11 +16,11 @@ playing the Undos. *)
 opam install coq_libhyps *)
 
 (*** Proof maintenance ***)
-From Stdlib Require Import Arith ZArith  List.
+Require Import Arith ZArith  List.
 Require Import LibHyps.LibHyps.
 
 Lemma demo: forall x y z:nat,
-    x = y -> forall  a b t : nat, a+1 = t+2 -> b + 5 = t - 7 ->  (forall u v, v+1 = 1 -> u+1 = 1 -> a+1 = z+2)  -> z = b + x-> True.
+    x = y -> x+y = y+ z -> forall  a b t : nat, a+1 = t+2 -> b + 5 = t - 7 ->  (forall u v, v+1 = 1 -> u+1 = 1 -> a+1 = z+2)  -> z = b + x-> True.
 Proof.
   intros.
   (* ugly names *)
@@ -42,16 +42,32 @@ Proof.
   Undo.
   (* Even shorter: *)  
   intros /sng.
-  (* Let us instantiate the 2nd premis of h_all_eq_add_add without copying its type: *)
-  (* BROKEN IN COQ 8.18*)
+  (* Let us instantiate the 2nd premis of h_all_eq_add_add without
+     copying its type. Having variable u evarized (and then instantitated): *)
   especialize h_all_eq_add_add_ with u at 2.
   { apply Nat.add_0_l. }
-  (* now h_all_eq_add_add is specialized *)
-  Undo 6.
+  (* See how both u and (u + 1) have been removed from the hypothesis. *)
+  Undo 4.
+  (* We can do it for several hyps at a time: *)
+  especialize h_all_eq_add_add_ with u,v until 2.
+  { apply Nat.add_0_l. }
+  { apply Nat.add_0_l. }
+  Undo 7.
+  (* We can do it for several hyps at a time: *)
+  especialize h_all_eq_add_add_ with u,v at *.
+  { apply Nat.add_0_l. }
+  { apply Nat.add_0_l. }
+  Undo 7.
+  (* We can do it for several hyps at a time: *)
+  especialize h_all_eq_add_add_ with u,v at 1,2.
+  { apply Nat.add_0_l. }
+  { apply Nat.add_0_l. }
+  Undo 7.
 
+  Restart.
   intros until 1.
   (** The taticals apply after any tactic. Notice how H:x=y is not new
-    and hence not substituted, whereas z = b + x is. *)
+    and hence not substituted (and becomes 0=y), whereas z = b + x is. *)
   destruct x eqn:heq;intros /sng.
   - apply I.
   - apply I.
@@ -172,7 +188,7 @@ Proof.
   Undo 5.
   (* IDEs don't like Undo, replay the next ocommand twice will resync
      proofgeneral. *)
-  (* It accepts several (up to 7) premisses numers. *)
+  (* It accepts several (up to 7) premisses numbers. *)
   (* THIS HAS CHANGED in libHyps 3 *)
   especialize H3 with n,m,p at 2,3.
   Undo.
@@ -189,6 +205,10 @@ Proof.
   (* Show 4. *)
   Undo.
 
+  (* Note that non dependent variables must be given in order: *)
+  Fail especialize H3 with n,p,m until 3.
+
+
   (* VARIABLES MIXED WITH HYPOTHESIS. *)
   (* move_up_types X. moves X at top near something of the same type,
      but only if X is Type-sorted (not Prop). *)
@@ -203,10 +223,7 @@ Proof.
   (* Better do that on new hyps only. *)
   intros ; { move_up_types }.
   Undo.
-  (* Faster version dealing with the whole list of new hyps at once: *)
-  intros; {! group_up_list }.
-  Undo.
-  (* Shortcut for this faster version: *)
+  (* Shortcut: *)
   intros /g.
   Undo.
   (* combined with subst: *)
@@ -270,59 +287,42 @@ Abort.
 
 (* customization of autorename *)
 
-Local Open Scope autonaming_scope.
+(* Local Open Scope autonaming_scope. *)
 Import ListNotations.
-
+Require Import Ltac2.Ltac2.
 (* Define the naming scheme as new tactic pattern matching on a type
 th, and the depth n of the recursive naming analysis. Here we state
 that a type starting with Nat.eqb should start with _Neqb, followed by
 the name of both arguments. #n here means normal decrement of depth.
 (S n) would increase depth by 1 (n-1) would decrease depth. *)
-Ltac rename_hyp_2 n th :=
-  match th with
-  | Nat.eqb ?x ?y => name(`_Neqb` ++ x#n ++ y#n)
+
+Ltac2 rename_hyp_2 _n th :=
+  match! th with
+  | Nat.eqb ?x ?y => [ String "Neqb" ; Rename x ; Rename y]
   end.
 
 (* Then overwrite the customization hook of the naming tactic *)
-Ltac rename_hyp ::= rename_hyp_2.
+Ltac2 Set rename_hyp := rename_hyp_2.
 
-Goal forall x y:nat, True.
-  intros.
-  (* computing a few names *)
-  (* Customize the starting depth *)
-
-  let res := fallback_rename_hyp_name (Nat.eqb 1 2) in idtac res.
-  let res := fallback_rename_hyp_name (Nat.eqb x 4) in idtac res.
-  let res := fallback_rename_hyp_name (Nat.eqb 1 2 = false) in idtac res.
-  Ltac rename_depth ::= constr:(2).
-  let res := fallback_rename_hyp_name (Nat.eqb 1 2 = false) in idtac res.
-  Ltac rename_depth ::= constr:(3).
-Abort.
 
 (** Suppose I want to add another naming rule: I need to cumulate the
     previous scheme with the new one. First define a new tactic that
     will replace the old one. it should call previous naming schemes
     in case of failure of the new scheme. It is thus important that
     rename_hyp_2 was defined by itself and directly as rename_hyp. *)
-Ltac rename_hyp_3 n th :=
-  match th with
-  | ?x = false => name(x#n ++ `_isf`)
-  | ?x = true => name( x#n ++ `_ist`)
+Ltac2 rename_hyp_3 n th :=
+  match! th with
+  | ?x = false => [ Rename x ; String "isf" ]
+  | ?x = true => [ Rename x ; String "ist" ]
   | _ => rename_hyp_2 n th (* previous naming scheme *)
   end.
 
 (* Then update the customization hook *)
-Ltac rename_hyp ::= rename_hyp_3.
+Ltac2 Set rename_hyp := rename_hyp_3.
 (* Close the naming scope *)
-Local Close Scope autonaming_scope.
-
-Goal forall x y:nat, True.
-  intros.
-  let res := fallback_rename_hyp_name (Nat.eqb 1 2 = false) in
-  idtac res.
-Abort.
 
 
+Local Set Default Proof Mode "Classic".
 
 Lemma foo: forall (x:nat) (b1:bool) (y:nat) (b2:bool),
     x = y
@@ -336,12 +336,12 @@ Lemma foo: forall (x:nat) (b1:bool) (y:nat) (b2:bool),
             -> z = b + 5-> z' + 1 = b + x-> x < y + b.
 Proof.
   (* Customize the starting depth *)
-  Ltac rename_depth ::= constr:(3).
+  Ltac2 Set rename_depth := 3.
 
   intros/n/g.
   Undo.
   (* Have shorter names: *)
-  Ltac rename_depth ::= constr:(2).
+  Ltac2 Set rename_depth := 2.
   intros/n/g.
 
 

@@ -4,4 +4,6 @@
 -arg force
 -arg -w
 -arg -undo-batch-mode
+-arg -w
+-arg -deprecated-since-9.0
 
