@@ -174,33 +174,6 @@ Proof.
   exact I.
 Qed.
 
-Lemma test_espec_namings_premis: forall n:nat, (eq_one n -> eq_one 1 -> False) -> True.
-Proof.
-  intros n h_eqone.
-  assert premise 1 of Nat.quadmul_le_squareadd with a as ?(*: h*).
-  { apply le_n. }
-  Undo 4.
-  assert premise 1 of Nat.quadmul_le_squareadd with a as hh (*: h*).
-  { apply le_n. }
-  Undo 4.
-  assert premise 1 of min_l with n,m as hhh.
-  { apply (le_n O). }
-  Undo 4.
-  assert premise 1 of min_l as hhh.
-  { admit. }
-  Undo 4.
-  assert premise 1 of min_l with a,b .
-  { admit. }
-  Undo 4.
-  
-  especialize h_eqone at 2 as h1 (*: h2 *).
-  { reflexivity. }
-  (* unfold eq_one in h2. *)
-  (* match type of h2 with 1 = 1 => idtac | _ => fail end. *)
-  match type of h1 with eq_one n -> False => idtac | _ => fail end.
-  exact I.
-Qed.
-
 
 Ltac2 rename_hyp_4 n th :=
   match! th with

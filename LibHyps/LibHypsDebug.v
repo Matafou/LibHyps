@@ -46,6 +46,8 @@ Ltac2 pr_binder () (b:binder):message :=
   fprintf "(%I:%t)" (Option.get nme) typ.
 
 Ltac2 pr_string () (s:string): message := fprintf "%s" s.
+Ltac2 pr_ident () (id:ident): message := fprintf "%I" id.
+Ltac2 pr_bool () (b:bool): message := fprintf "%s" (if b then "true" else "false").
 
 Ltac2 pr_goal() :=
   let l := Control.hyps() in

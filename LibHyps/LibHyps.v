@@ -5,6 +5,7 @@
 Require Export LibHyps.TacNewHyps.
 Require Export LibHyps.LibHypsNaming.
 Require Export LibHyps.Especialize.
+Require Export LibHyps.AssertPremise.
 Require Export LibHyps.LibHypsTactics.
 
 (* Some usual tactics one may want to use on new hyps. *)
