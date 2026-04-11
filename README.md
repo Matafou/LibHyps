@@ -3,18 +3,25 @@ hypothesis during a proof.
 
 Main page and documentation: https://github.com/Matafou/LibHyps
 
-Demo file [demo.v](https://github.com/Matafou/LibHyps/blob/master/Demo/demo.v) acts as a documentation.
+Demo file [demo.v](https://github.com/Matafou/LibHyps/blob/master/tests/demo.v) acts as a documentation.
 
 # Short description:
 
-LibHyps provides utilities for hypothesis manipulations.
+LibHyps provides utilities for hypothesis manipulations. For example a
+    few tacticals to deal with "new" hypothesis (new = their name did
+    not appear in the previous goal):
 
-- a new tactic `especialize H at ...` to generate one or several
-  subgoals from the premiese of `H` (which can be a hypothesis name or
-  an lemma name).
-- a set of tacticals to apply or iterate tactics either on all
-  hypothesis of a goal or on "new' hypothesis after a tactic. It also
-  provide syntax for a few predefined such iterators.
+- `tac /r`: applies tac then revert new hypothesis.
+- `tac /s`: applies tac then try to `subst` with new hyps.
+- `tac /n`: applies tac then try to automatically rename new hyps from their type.
+- `tac /g`: applies tac then try to tidy non-prop hyps to save room in your goal.
+- `tac/sng` : combination of the above
+- `tac1 ; { tac2 }` applies tac1, then tac2 on each new hyp (generic version of above).
+- `especialize H at ...` to generate one or several subgoals from the
+  premise(s) of `H` (which can be a hypothesis name or an lemma name).
+  This tactic comes with many variants. See below.
+- `assert premise i of H` generates a subgoal to prove the `i`th
+  premise of `H`, without specializing `H`.
 
 # Quick Test
 ## Quick install using opam
@@ -51,55 +58,58 @@ make install
 Require Import LibHyps.LibHyps.
 ```
 
-Demo files [demo.v](https://github.com/Matafou/LibHyps/blob/master/Demo/demo.v).
+Demo files [demo.v](https://github.com/Matafou/LibHyps/blob/master/tests/demo.v).
 
 
 
 ## The especialize tactic
 
-Let `H` be a hypothesis (or lemma) with type `∀ x y z, H1 -> H2 -> H3 -> C`.
+Let `H` be a hypothesis (or lemma) with type `∀ x y z, H1 x -> H2 y -> H3 x y -> C x y z`.
 
-+ `especialize H at 2.` Creates a subgoal of the form:
+```
+especialize H at 2.
+```
 
-  ```
-   ∀ x y z, H1 -> H2
-  ```
+Creates a subgoal of the form:
+
+```
+ ∀ x y z, H1 x -> H2 y
+```
   
-  and specializes `H` with this subgoal:
+and applies it the subgoal to `H` which thus becomes:
   
-  ```
-  H: ∀ x y z, H1 -> H3 -> C
-  ```
+```
+H: ∀ x y z, H1 x -> H3 x y -> C x y z
+```
 
-+ `especialize H at 2,3.` does what you think: two subgoals. Note that
-  the order of hyps.
+Variants
++ `especialize H at 2 as h.` specializes a *copy* of `H` named `h`.
+  Leaves `H` unchanged. quantifying them.
++ `especialize H at 2,3.`
++ `especialize H at *.` means specialize *all* premises
++ `especialize H until 2.` all premises until the 2nd.
 
-+ `especialize H at * with x,y.` Creates one subgoal for each dependent
-    premise of `H`.
-
-+ `especialize H until 2 [as h].` Creates one subgoal for each 2 first
-  dependent premises of `H`. 
-    
-+ By default all non-dependent hypothesis of `H` are left quantified.
-  But you can specify the ones that should rather be transformed into
-  existential variables. Examples:
++ By default all non-dependent hypothesis of `H` are left quantified
+  (hence its type above `∀ x y z, H1 -> H2`). But you can specify the
+  ones that should rather be transformed into existential variables.
+  Examples:
 
   + `especialize H at 2 with y.` Creates an evar `?y` subgoal of the form:
 
     ```
-     ∀ x z, H1 -> H2
+     ∀ x z, H1 x -> H2 ?y
     ```
   
     and specializes `H` with this subgoal and evar `?y`:
   
     ```
-    H: ∀ x z, H1 -> H3 -> C
+    H: ∀ x z, H1 x -> H3 x ?y -> C x ?y z
     ```
     (where H1 and H3 reference `?y` now).
     
   + Several evars can be specified, they must be in order:
 
-    ```especialize H at 2 with y.```
+    ```especialize H at 2 with x,y.```
 
 
 Note that (contrary to previous versions of this library), if you
@@ -224,7 +234,43 @@ Proof.
   intros /s/n/g.
   Undo.
   (* Even shorter: *)  
+  intros /sng.
+
+  (* Let us instantiate the 2nd premis of h_all_eq_add_add without
+     copying its type. And instantiating u with an evar. *)
+  especialize h_all_eq_add_add_ with u at 2.
+  { apply Nat.add_0_l. }
+  Undo 6.
+  intros until 1.
+  (** The taticals apply after any tactic. Notice how H:x=y is not new
+    and hence not substituted, whereas z = b + x is. *)
+  destruct x eqn:heq;intros /sng.
+  - apply I.
+  - apply I.
+Qed.
+Lemma foo: forall x y z:nat,
+    x = y -> forall  a b t : nat, a+1 = t+2 -> b + 5 = t - 7 ->  (forall u v, v+1 = 1 -> u+1 = 1 -> a+1 = z+2)  -> z = b + x-> True.
+Proof.
+  intros.
+  (* ugly names *)
+  Undo.
+  (* Example of using the iterator on new hyps: this prints each new hyp name. *)
+  intros; {fun h => idtac h}.
+  Undo.
+  (* This gives sensible names to each new hyp. *)
+  intros ; { autorename }.
+  Undo.
+  (* short syntax: *)
+  intros /n.
+  Undo.
+  (* same thing but use subst if possible, and group non prop hyps to the top. *)
+  intros ; { substHyp }; { autorename}; {move_up_types}.
+  Undo.
+  (* short syntax: *)
   intros /s/n/g.
+  Undo.
+  (* Even shorter: *)
+  intros /sng.
 
   (* Let us instantiate the 2nd premis of h_all_eq_add_add without copying its type: *)
   especialize h_all_eq_add_add_ with u at 2.
@@ -251,23 +297,11 @@ to apply more generic iterators to their own tactics. See also the code.
   + `onAllHypsRev tac` same as `onAllHyps tac` but in reverse order
     (good for reverting for instance).
 
-
-### Iterators on ALL NEW hypothesis (since LibHyps-1.2.0)
-
-  + `tac1 ;{! tac2 }` applies `tac1` to current goal and then `tac2`
-    to *the list* of all new hypothesis in each subgoal (iteration:
-    oldest first).
-    The list is a term of type `LibHyps.TacNewHyps.DList`. See the code.
-  + `tac1 ;{!< tac2 }` is similar but the list of new hyps is reveresed.
-
 ### Iterators on EACH NEW hypothesis
 
   + `tac1 ;{ tac2 }` applies `tac1` to current goal and then `tac2` to
     each new hypothesis in each subgoal (iteration: older first).
   + `tac1 ;{< tac2 }` is similar but applies tac2 on newer hyps first.
-
-  + `tac1 ;; tac2` is a synonym of `tac1; { tac2 }`.
-  + `tac1 ;!; tac2` is a synonym of `tac1; {< tac2 }`.
 
 ### Customizable hypothesis auto naming system
 
@@ -277,45 +311,46 @@ tactic allow to rename hypothesis automatically.
 - `autorename H` rename `H` according to the current naming scheme
   (which is customizable, see below).
 
-- `rename_all_hyps` applies `autorename` to all hypothesis.
-
-- `!tac` applies tactic `tac` and then applies autorename to each new
-  hypothesis. Shortcut for: `(Tac ;!; revert_if_norename ;;
-  autorename).`.`
-
-- `!!tac` same as `!tac` with lesser priority (less than `;`) to apply
-  renaming after a group of chained tactics.
+- Hence `onAllHyps autorename` applies `autorename` to all hypothesis.
 
 #### How to cstomize the naming scheme
 
 The naming engine analyzes the type of hypothesis and generates a name
 mimicking the first levels of term structure. At each level the
 customizable tactic `rename_hyp` is called. One can redefine it at
-will. It must be of the following form:
+will. It must be of the following form (Ltac2):
 
 ```coq
+Require Import Ltac2.Ltac2.
+From Stdlib Require Import List.
+Import ListNotations.
+Local Set Default Proof Mode "Classic". (* Optional This restores ltac1 proof mode. *)
+
 (** Redefining rename_hyp*)
 (* First define a naming ltac. It takes the current level n and
    the sub-term th being looked at. It returns a "name". *)
-Ltac rename_hyp_default n th :=
-   match th with
-   | (ind1 _ _) => name (`ind1`)
-   | (ind1 _ _ ?x ?y) => name (`ind1` ++ x#(S n)x ++ y$n)
-   | f1 _ ?x = ?y => name (`f1` ++ x#n ++ y#n)
-   | _ => previously_defined_renaming_tac1 n th (* cumulative with previously defined renaming tactics *)
-   | _ => previously_defined_renaming_tac2 n th
-   end.
+Ltac2 rename_hyp_2 _ th :=
+  match! th with
+  | true <> false => [ String "tNEQf" ]
+  | true = false => [ String "tEQf" ]
+  end.
+
+Ltac2 Set rename_hyp := rename_hyp_2.
+
+(* Suppose I want to add later another naming rule: *)
+Ltac2 rename_hyp_3 n th :=
+  match! th with
+  | Nat.eqb ?x ?y = true => [ String "Neqb"; Rename x ; Rename y ]
+  | true = Nat.eqb ?x ?y => [ String "Neqb" ; Rename x ;  Rename y ]
+  | _ => rename_hyp_2 n th (* call the previously defined tactic *)
+  end.
 
 (* Then overwrite the definition of rename_hyp using the ::= operator. :*)
-Ltac rename_hyp ::= my_rename_hyp.
+Ltac2 Set rename_hyp := rename_hyp_3.
 ```
 
-Where:
-
-- `` `id` `` to use the name id itself
-- `t$n` to recursively call the naming engine on term t, n being the maximum depth allowed
-- `name ++ name` to concatenate name parts.
-
+Where `Rename` stands for calling the naming scheme recursively
+(unless the maximum depth is reached).
 
 #### How to define variants of these tacticals?
 

@@ -56,6 +56,45 @@ Proof.
 Abort.
 
 
+Lemma foo: forall x y z:nat,
+    x = y -> forall  a b t : nat, a+1 = t+2 -> b + 5 = t - 7 ->  (forall u v, v+1 = 1 -> u+1 = 1 -> a+1 = z+2)  -> z = b + x-> True.
+Proof.
+  intros.
+
+  (* ugly names *)
+  Undo.
+  (* Example of using the iterator on new hyps: this prints each new hyp name. *)
+  intros; {fun h => idtac h}.
+  Undo.
+  (* This gives sensible names to each new hyp. *)
+  intros ; { autorename }.
+  Undo.
+  (* short syntax: *)
+  intros /n.
+  Undo.
+  (* same thing but use subst if possible, and group non prop hyps to the top. *)
+  intros ; { substHyp }; { autorename}; {move_up_types}.
+  Undo.
+  (* short syntax: *)  
+  intros /s/n/g.
+  Undo.
+  (* Even shorter: *)  
+  intros /sng.
+
+  (* Let us instantiate the 2nd premis of h_all_eq_add_add without
+     copying its type. And instantiating u with an evar. *)
+  especialize h_all_eq_add_add_ with u at 2.
+  { apply Nat.add_0_l. }
+  Undo 6.
+  intros until 1.
+  (** The taticals apply after any tactic. Notice how H:x=y is not new
+    and hence not substituted, whereas z = b + x is. *)
+  destruct x eqn:heq;intros /sng.
+  - apply I.
+  - apply I.
+Qed.
+
+
 Lemma demo: forall x y z:nat,
     x = y -> x+y = y+ z -> forall  a b t : nat, a+1 = t+2 -> b + 5 = t - 7 ->  (forall u v, v+1 = 1 -> u+1 = 1 -> a+1 = z+2)  -> z = b + x-> True.
 Proof.
@@ -112,7 +151,7 @@ Qed.
 
 Unset Printing Compact Contexts.
 
-Lemma foo: forall (x:nat) (b1:bool) (y:nat) (b2:bool),
+Lemma foo': forall (x:nat) (b1:bool) (y:nat) (b2:bool),
     x = y
     -> orb b2 b1 = false
     -> forall  a b:nat, forall b3:bool, forall t : nat,
@@ -183,7 +222,7 @@ Abort.
 
 (*** Large Goals - Foraward reasoning and reordering and autorenaming of hypothesis. ***)
 Unset Silent.
-Lemma foo: forall (x:nat) (b1:bool) (y:nat) (b2:bool),
+Lemma foo'': forall (x:nat) (b1:bool) (y:nat) (b2:bool),
     x = y ->
     orb b2 b1 = false ->
     forall  a b:nat, forall b3:bool, forall t : nat,
@@ -361,7 +400,7 @@ Ltac2 Set rename_hyp := rename_hyp_3.
 
 Local Set Default Proof Mode "Classic".
 
-Lemma foo: forall (x:nat) (b1:bool) (y:nat) (b2:bool),
+Lemma foo'': forall (x:nat) (b1:bool) (y:nat) (b2:bool),
     x = y
     -> orb b2 b1 = false
     -> forall  a b:nat, forall b3:bool, forall t : nat,

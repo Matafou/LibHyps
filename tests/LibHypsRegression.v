@@ -203,3 +203,19 @@ Proof.
   end.
   exact I.
 Qed.
+
+(* example of new tactical from the documentation. *)
+Tactic Notation "!!!" tactic3(Tac) := Tac ;{ substHyp } ;{< rename_or_revert }; { autorename}.
+
+Lemma foo: forall x y z:nat,
+    x = y -> forall  a b t : nat, a+1 = t+2 -> b + 5 = t - 7 ->  (forall u v, v+1 = 1 -> u+1 = 1 -> a+1 = z+2) -> (fun x => x <= 0) 0 -> z = b + x-> True.
+Proof.
+  !!!intros.
+  match goal with
+  | |- (0 <= 0) -> True => idtac
+  end.
+  match type of h_eq_add_a_1n_add_t_2n with
+  | a + 1 = t + 2 =>  idtac
+  end.
+
+Abort.
