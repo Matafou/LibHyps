@@ -7,51 +7,105 @@ Demo file [demo.v](https://github.com/Matafou/LibHyps/blob/master/Demo/demo.v) a
 
 # Short description:
 
-LibHyps provides utilities for hypothesis manipulations. In particular
-a new tactic `especialize H` and a set of tacticals to appy or iterate
-tactics either on all hypothesis of a goal or on "new' hypothesis after
-a tactic. It also provide syntax for a few predefined such iterators.
+LibHyps provides utilities for hypothesis manipulations.
 
-## QUICK REF: especialize
+- a new tactic `especialize H at ...` to generate one or several
+  subgoals from the premiese of `H` (which can be a hypothesis name or
+  an lemma name).
+- a set of tacticals to apply or iterate tactics either on all
+  hypothesis of a goal or on "new' hypothesis after a tactic. It also
+  provide syntax for a few predefined such iterators.
 
-This tactic was broken in coq v8.18. It is now fixed with some
-modification: see the remark about evars below
+# Quick Test
+## Quick install using opam
 
-+ `especialize H at 3 [as h].` Creates a subgoal to prove the nth
-    (here the 3rd) dependent premise of `H`, creating necessary evars
-    for non unifiable variables (see below for how to declare this
-    variables). Once proved the subgoal is used to remove the nth
-    premise of `H` (or of a new created hypothesis if the `as` option
-    is given). Se at the bottom of this page for a discussion about
-    the logical completeness of this tactic.
+If you have not done it already add the coq platform repository to opam!
 
-+ `especialize H at * [as h].` Creates one subgoal for each dependent
-    premise of `H`, creating necessary evars for non unifiable
-    variables. Once proved the subgoal is used to remove the premises
-    of `H` (or of a new created hypothesis if the `as` option is
-    given).
+```bash
+opam repo add coq-released https://coq.inria.fr/opam/released
+```
 
-+ `especialize H until 3 [as h].` Creates one subgoal for each 3 first
-    dependent premises of `H`. Creating necessary evars for non
-    unifiable variables. Once proved the subgoal is used to remove the
-    premises of `H` (or of a new created hypothesis if the `as` option
-    is given).
+and then:
 
+```bash
+opam install coq-libhyps
+```
+
+## Quick install using github:
+
+Clone the github repository:
+
+```bash
+git clone https://github.com/Matafou/LibHyps
+```
+then compile:
+```bash
+configure.sh
+make
+make install
+```
+
+## Quick test:
+
+```coq
+Require Import LibHyps.LibHyps.
+```
+
+Demo files [demo.v](https://github.com/Matafou/LibHyps/blob/master/Demo/demo.v).
+
+
+
+## The especialize tactic
+
+Let `H` be a hypothesis (or lemma) with type `∀ x y z, H1 -> H2 -> H3 -> C`.
+
++ `especialize H at 2.` Creates a subgoal of the form:
+
+  ```
+   ∀ x y z, H1 -> H2
+  ```
+  
+  and specializes `H` with this subgoal:
+  
+  ```
+  H: ∀ x y z, H1 -> H3 -> C
+  ```
+
++ `especialize H at 2,3.` does what you think: two subgoals. Note that
+  the order of hyps.
+
++ `especialize H at * with x,y.` Creates one subgoal for each dependent
+    premise of `H`.
+
++ `especialize H until 2 [as h].` Creates one subgoal for each 2 first
+  dependent premises of `H`. 
+    
 + By default all non-dependent hypothesis of `H` are left quantified.
   But you can specify the ones that should rather be transformed into
   existential variables. Examples:
 
-  - `especialize H with x,z at n [as h].` makes xn and `z` evars.
-  - `especialize H with a at * [as h].`, etc.
+  + `especialize H at 2 with y.` Creates an evar `?y` subgoal of the form:
+
+    ```
+     ∀ x z, H1 -> H2
+    ```
   
-Note that the variables declared in `with` must be **in the order of
-quantification**, otherwise you will get an error
-(`Invalid_argument`)".
+    and specializes `H` with this subgoal and evar `?y`:
+  
+    ```
+    H: ∀ x z, H1 -> H3 -> C
+    ```
+    (where H1 and H3 reference `?y` now).
+    
+  + Several evars can be specified, they must be in order:
+
+    ```especialize H at 2 with y.```
+
 
 Note that (contrary to previous versions of this library), if you
 forget to list a variable, the tactic won't fail. Instead it will
-simply leave the variable quantified in the original hypothesis
-**and in suqsequentlky created subgoals**.
+simply leave the variable quantified in the original hypothesis **and
+in subsequently created subgoals**.
 
 For example, after this:
 
@@ -124,41 +178,6 @@ The most useful user-dedicated tacticals are the following
 
 # Install
 
-## Quick install using opam
-
-If you have not done it already add the coq platform repository to opam!
-
-```bash
-opam repo add coq-released https://coq.inria.fr/opam/released
-```
-
-and then:
-
-```bash
-opam install coq-libhyps
-```
-
-## Quick install using github:
-
-Clone the github repository:
-
-```bash
-git clone https://github.com/Matafou/LibHyps
-```
-then compile:
-```bash
-configure.sh
-make
-make install
-```
-
-## Quick test:
-
-```coq
-Require Import LibHyps.LibHyps.
-```
-
-Demo files [demo.v](https://github.com/Matafou/LibHyps/blob/master/Demo/demo.v).
 
 # More information
 

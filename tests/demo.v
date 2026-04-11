@@ -19,6 +19,43 @@ opam install coq_libhyps *)
 Require Import Arith ZArith  List.
 Require Import LibHyps.LibHyps.
 
+(* Quick demo of especialize. *)
+Lemma demo_especialize: forall x y z:nat,
+    forall  t : nat, (forall u v, v+t = 1 -> u+1 = 1 -> u = v -> v+x = z+y) -> True.
+Proof.
+  intros x y z t H.
+  especialize H at 2.
+  Undo 1.
+  especialize H at 2 with u. (* Creates one subgoal and on evar and specialize H3 *)
+  Show 2. (* u and 2nd hypothesis of H disappeard. *)
+  Undo.
+  especialize H at 1,2 with u,v. (* Creates two subgoals specializes H3 *)
+  Show 3. (* u,v and 1st and 2nd hypothesis of H disappeard. *)
+  Undo.
+  especialize H at * with u,v. (* Creates subgoals for all hyps and specialize *)
+  Show 4. (* u,v and all hypothesis of H disappeard. *)
+  Undo.
+  especialize H until 2 with u,v. (* Creates subgoals for the 2 first hyps and specialize *)
+  Show 3.
+Abort.
+
+(* Quick demo of "assert premise". Same idea as especialize but:
+   - only creates (one) subgoal without specialize the hypothesis
+   - by default evarize variables occuring in the sugoal. *)
+Lemma demo_assert_premise: forall x y z:nat,
+    forall  t : nat, (forall u v, v+t = 1 -> u+1 = 1 -> u = v -> v+x = z+y) -> True.
+Proof.
+  intros x y z t H.
+  assert premise 2 of H. (* Creates one subgoal. Creates an evar for
+                            variables appearing in the subgoal *)
+  Undo 1.
+  assert premise 2 of H with u. (* quantifies u instead instead of evarize it. *)
+  Undo.
+  assert premise 1 -> 2 of H with u,v. (* the subgoal has a premise *)
+  Undo.
+Abort.
+
+
 Lemma demo: forall x y z:nat,
     x = y -> x+y = y+ z -> forall  a b t : nat, a+1 = t+2 -> b + 5 = t - 7 ->  (forall u v, v+1 = 1 -> u+1 = 1 -> a+1 = z+2)  -> z = b + x-> True.
 Proof.

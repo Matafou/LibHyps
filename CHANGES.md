@@ -1,18 +1,46 @@
 # Changes from 4 to 5.0
 
-- Almost all tactics are implementd in Ltac2.
-  - consequently they are musch faster
-  - also no more "list" variant of the tactical `; { }`. Typically
-    `/g` now is a shotcut for `; { move_up_types }` (`group_up_list`
-    removed).
-  - for auto naming, the user defined naming schemes need to be
-    written as ltac2 tactics now, instead of ltac1. Tranlation is
-    straightforward. Typically
-    
+## Under the hood: switch to Ltac2
+
+Almost all tactics are now implementd in Ltac2. They are musch faster.
+
+This implies a few changes:
+
+- no more "list" variant of the tactical `; { }`. See below.
+- Customization must be written in ltac2, to come back to ltac1
+  standard mode you need to do `Local Set Default Proof Mode
+  "Classic".`
+
+## Incompatibilities
+
+Things should me mostly forwward compatible except customization that
+must be written in Ltac2.
+
+## New features
+
+- With `especialize` subgoals generated from a hypothesis H now
+  depends on all premises quantified before H. This is logically more
+  sound. This should not introduce incompatibilities buy itself from
+  libhyps 4.
+- Since libhyps 4 `especialize` now by default quantifies hypothesis
+  that are not mentioned instead of declaring evars. To build evars
+  instead, use the `with x,y` argument. See README.md.
+- new experimental tactic `assert premise i of H` generate a subgoal
+  (like assert) for the `i`th premise of H. The asserted subgoal is
+  not applied to `H` (but can be used later on to do so). See
+  README.md.
+
+## Changes concerning the user customization
+
+### Custom auto naming must now be written in ltac2.
+
+Tranlation from ltac1 is straightforward. Example:
+
 ``` coq
 Require Import Ltac2.Ltac2.
 From Stdlib Require Import List.
 Import ListNotations.
+Local Set Default Proof Mode "Classic". (* Optional This restores ltac1 proof mode. *)
 
 
 Ltac2 rename_hyp_2 _ th :=
@@ -32,20 +60,16 @@ Ltac2 rename_hyp_3 n th :=
   end.
 
 Ltac2 Set rename_hyp := rename_hyp_3.
-
-Local Set Default Proof Mode "Classic". (* This restores ltac1 proof mode. *)
 ```
-    
-- `especialize` now allows the generated subgoals to use the
-  quantified hypothesis. This is logically more sound.
-- `especialize` now by default quanttifies hypothesis that are not
-  mentioned. To build evars instead, use the `with x,y` argument. See
-  README.md.
-- `especialize` has a variant where the subgoal are transformed into a
-  new hypothesis instead of being directly applied to the initial
-  hypothesis. This variant can create only one subgoal.
 
-## Unpoolugged syntax
+### No more "list" variant of the tactical `; { }`.
+
+Ltac2 being much faster, no more need for those variants. Typically
+`/g` now is a shotcut for `; { move_up_types }` (`group_up_list`
+removed).
+
+
+## Unplugged syntax
 
 - `tac1 ;; tac2` a,d `tac1 ;!; tac2` syntax definitely disabled.
   Although you can re-enable it with:

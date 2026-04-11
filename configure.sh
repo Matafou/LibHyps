@@ -89,6 +89,6 @@ gen_projet_file "$FILESLH" "$PROJECTDIRLH" "resources/coq_project.libhyps" "$STD
 
 
 
-FILESTEST=$(cd tests && find . -name "*.v" | grep -v "incremental" )
+FILESTEST=$(cd tests && find . -name "*.v" | grep -v "incremental" | grep -v "\#" )
 PROJECTDIRTESTS="tests"
 gen_projet_file "$FILESTEST" "$PROJECTDIRTESTS" "resources/coq_project.tests" "$STDLIB"

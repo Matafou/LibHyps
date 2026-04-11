@@ -159,20 +159,20 @@ Qed.
 
 
 Definition eq_one (i:nat) := i = 1.
-Lemma test_espec_namings: forall n:nat, (eq_one n -> eq_one 1 -> False) -> True.
+Lemma test_espec_namings: forall n:nat, (forall m, eq_one n -> eq_one 1 -> eq_one m -> m = n) -> True.
 Proof.
   intros n h_eqone.
   especialize Nat.quadmul_le_squareadd with a at 1 as hh (*: h*).
   { apply le_n. }
   especialize min_l with n,m at 1 as ?.
   { apply (le_n O). }
-  especialize h_eqone at 2 as h1 (*: h2 *).
-  { reflexivity. }
+  especialize h_eqone at 3 as h1 (*: h2 *).
+  { admit. }
   (* unfold eq_one in h2. *)
   (* match type of h2 with 1 = 1 => idtac | _ => fail end. *)
-  match type of h1 with eq_one n -> False => idtac | _ => fail end.
+  match type of h1 with forall m : nat, eq_one n -> eq_one 1 -> m = n => idtac | _ => fail end.
   exact I.
-Qed.
+Abort.
 
 
 Ltac2 rename_hyp_4 n th :=
