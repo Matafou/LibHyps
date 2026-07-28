@@ -1,4 +1,3 @@
--R . LibHyps.LibHyps
+-R . LibHyps
 -arg -w
 -arg -deprecated-since-9.0
-
