@@ -1,9 +1,8 @@
 -R . LibHyps.tests
--R ../LibHyps LibHyps.LibHyps
+-R ../LibHyps LibHyps
 -arg -async-proofs-cache
 -arg force
 -arg -w
 -arg -undo-batch-mode
 -arg -w
 -arg -deprecated-since-9.0
-

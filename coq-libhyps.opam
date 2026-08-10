@@ -1,0 +1,21 @@
+# this is a mirror of an opam description file in the
+# opam-coq-archive at:
+# https://github.com/coq/opam-coq-archive/tree/master/extra-dev/packages/coq-libhyps
+# the latter being official and probably more up to date.
+
+opam-version: "2.0"
+maintainer: "Pierre.Courtieu@lecnam.net"
+
+homepage: "https://github.com/Matafou/LibHyps"
+dev-repo: "git+https://github.com/Matafou/LibHyps.git"
+bug-reports: "https://github.com/Matafou/LibHyps/issues"
+doc: "https://github.com/Matafou/LibHyps/blob/master/Demo/demo.v"
+license: "MIT"
+
+depends: [ "rocq-libhyps" { = version } ]
+
+authors: [
+ "Pierre Courtieu"
+]
+
+synopsis: "Compatibility package for rocq-libhyps"

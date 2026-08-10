@@ -373,7 +373,7 @@ Module Ltac2.
                 let nme_c:constr := Unsafe.make (Var(nme)) in
                 let subth' := Constr.Unsafe.substnl [nme_c] 0 subth in
                 rename_hyp_chained_quantifs stop acc subth' in
-            let _ := in_context nme typ tac_under_binder in
+            let _ := Constr.in_context nme typ tac_under_binder in
             ()
           else
             rename_hyp_chained_quantifs stop acc subth
@@ -399,7 +399,7 @@ Module Ltac2.
                   let nme_c:constr := Unsafe.make (Var(nme)) in
                   let subth' := Constr.Unsafe.substnl [nme_c] 0 subth in
                   rename_hyp_chained_quantifs newstop acc subth' in
-              let _ := in_context nme typ tac_under_binder in
+              let _ := Constr.in_context nme typ tac_under_binder in
               ()
 
             else
@@ -461,7 +461,7 @@ Module Ltac2.
    kept *)
   Ltac2 in_context_then_forget nme typ f :=
     Control.once_plus
-      (fun () => let _ := in_context nme typ f in backtrack "forget in_context subgoal")
+      (fun () => let _ := Constr.in_context nme typ f in backtrack "forget in_context subgoal")
       (fun _ => ()).
 
   Ltac2 rename_acc n th :=
