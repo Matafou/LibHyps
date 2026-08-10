@@ -61,22 +61,41 @@ Module Ltac2.
   Ltac2 iter_hyps (tac:ident -> unit) (lh:ident list) :=
     List.iter tac lh.
 
+  (* [all_hyps_ident] calls [Control.hyps], which is a single-goal primitive: it raises
+     [Init.Not_focussed] whenever more than one goal is under focus.  Every entry point that
+     reaches it must therefore run under [Control.enter].
+
+     This matters because these tactics are reached from Ltac1 through an [ltac2:()] quotation.
+     A plain Ltac1 tactic under a range selector is dispatched goal-wise by Ltac1 itself, so in
+     4.0 -- where these were pure Ltac1 -- [1-4: onAllHyps ...] and [all: onAllHyps ...] simply
+     worked.  The quotation evaluates in the multi-goal context instead, so the same script
+     raises [Not_focussed] and the goal-wise dispatch has to be reinstated explicitly.
+     Entering restores the 4.0 semantics rather than choosing new ones. *)
   Ltac2 map_all_hyps (tac:'a -> unit) :=
-    let all_hyps := all_hyps_ident() in
-    iter_hyps tac all_hyps.
+    Control.enter
+      (fun () =>
+         let all_hyps := all_hyps_ident() in
+         iter_hyps tac all_hyps).
 
   Ltac2 map_all_hyps_rev (tac: 'a -> unit) :=
-    let all_hyps := List.rev (all_hyps_ident()) in
-    iter_hyps tac all_hyps.
-
-  Ltac2 then_eachnh_gen (tac1:'a -> unit) (tac2:ident -> unit) (rev:bool) :=
-    let hyps_before := all_hyps_ident() in
-    let _ := tac1() in
     Control.enter
-      (fun () => 
-         let hyps_after := all_hyps_ident() in
-         let new_hyps: ident list := List.filter_out (fun id => List.mem Ident.equal id hyps_before) hyps_after in
-         iter_hyps tac2 (if rev then List.rev new_hyps else new_hyps)).
+      (fun () =>
+         let all_hyps := List.rev (all_hyps_ident()) in
+         iter_hyps tac all_hyps).
+
+  (* The inner [Control.enter] below guarded [hyps_after] only; [hyps_before] was computed in
+     whatever context the caller supplied and hit the same exception one line earlier.  Entering
+     around the whole body also keeps [tac1] goal-wise, which is what Ltac1 did in 4.0. *)
+  Ltac2 then_eachnh_gen (tac1:'a -> unit) (tac2:ident -> unit) (rev:bool) :=
+    Control.enter
+      (fun () =>
+         let hyps_before := all_hyps_ident() in
+         let _ := tac1() in
+         Control.enter
+           (fun () =>
+              let hyps_after := all_hyps_ident() in
+              let new_hyps: ident list := List.filter_out (fun id => List.mem Ident.equal id hyps_before) hyps_after in
+              iter_hyps tac2 (if rev then List.rev new_hyps else new_hyps))).
 
   Ltac2 then_eachnh (tac1:'a -> unit) (tac2:ident -> unit) :=
     then_eachnh_gen tac1 tac2 false.
