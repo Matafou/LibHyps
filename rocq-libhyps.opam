@@ -32,6 +32,8 @@ depends: [
   "rocq-stdlib"
 ]
 
+conflicts: [ "coq-libhyps" { != version } ]
+
 tags: [
   "keyword:proof environment manipulation"
   "keyword:forward reasoning"
